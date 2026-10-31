@@ -73,7 +73,8 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const L={es:['hiszpański','espl','es-ES'],en:['angielski','enpl','en-GB'],de:['niemiecki','depl','de-DE'],fr:['francuski','frpl','fr-FR'],it:['włoski','itpl','it-IT']};
 // Wklej wartości z Supabase: Settings → API. Klucz anon jest przeznaczony do aplikacji klienckich.
 const SUPABASE_URL='https://icwmcoxscwpswrhmfiht.supabase.co';
-const SUPABASE_ANON_KEY='https://icwmcoxscwpswrhmfiht.supabase.co/rest/v1/';
+const SUPABASE_ANON_KEY='sb_publishable_saVIwdtGphXww4eraJIr-w_0qy5ShrO';
+const createSupabaseClient=()=>{try{return SUPABASE_URL&&SUPABASE_ANON_KEY&&window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null}catch(e){console.error('Nieprawidłowa konfiguracja Supabase',e);return null}};
 let Sync=null;
 let S=null;
 try{S=JSON.parse(localStorage.getItem('fiszki-v1'))}catch(e){}
@@ -94,7 +95,7 @@ S.daily={...(S.daily||{})};
 S.cards.forEach(c=>{if(typeof c.imageEnabled!=='boolean')c.imageEnabled=false;});
 save();
 Sync={
-  client:SUPABASE_URL&&SUPABASE_ANON_KEY&&window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null,
+  client:createSupabaseClient(),
   user:null,timer:0,
   async init(){if(!this.client)return;const {data:{session}}=await this.client.auth.getSession();this.user=session?.user||null;if(this.user)await this.download();render()},
   async download(){const {data}=await this.client.from('app_states').select('state').eq('user_id',this.user.id).maybeSingle();if(data?.state&&(+data.state.updatedAt||0)>(+S.updatedAt||0)){S=data.state;localStorage.setItem('fiszki-v1',JSON.stringify(S));render()}},
