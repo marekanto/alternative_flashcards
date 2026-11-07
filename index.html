@@ -57,6 +57,11 @@ body.reviewing #t{bottom:20px}
 #md{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:9}
 .mb{background:var(--sf);border-radius:16px;padding:18px;width:100%;max-width:420px}
 .mb textarea{min-height:50px}.mb h3{margin-top:0}
+/* --- EKRAN LOGOWANIA --- */
+#login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}
+#login .box{width:100%;max-width:380px}
+body.locked main,body.locked nav{display:none}
+body.locked #t{display:none!important}
 </style></head><body>
 <main id="v"></main>
 <nav>
@@ -95,24 +100,96 @@ S.daily={...(S.daily||{})};
 S.cards.forEach(c=>{if(typeof c.imageEnabled!=='boolean')c.imageEnabled=false;});
 S.ratings=S.ratings||{};
 save();
+
+/* ---- LOGIN ---- */
+function showLogin(){
+  document.body.classList.add('locked');
+  if($('#login'))return;
+  const d=document.createElement('div');d.id='login';
+  d.innerHTML=`<div class="box"><h2>Zaloguj się</h2>
+  <p class="mu">Aplikacja wymaga konta (synchronizacja przez Supabase).</p>
+  <input id="lemail" type="email" placeholder="E-mail" autocomplete="email">
+  <input id="lpass" type="password" minlength="6" placeholder="Hasło (min. 6 znaków)" autocomplete="current-password">
+  <button class="p" id="lbtn">Zaloguj</button>
+  <button class="s" id="rbtn" style="width:100%">Załóż konto</button>
+  <p class="mu" id="lerr" style="color:#e5484d"></p></div>`;
+  document.body.appendChild(d);
+  const go=async(signUp)=>{
+    const e=$('#lemail').value.trim(),p=$('#lpass').value;
+    const err=$('#lerr');
+    err.textContent='';
+    if(!Sync?.client){err.textContent='Synchronizacja nie jest skonfigurowana.';return}
+    if(!e||p.length<6){err.textContent='Podaj e-mail i hasło (min. 6 znaków).';return}
+    const r=signUp?await Sync.client.auth.signUp({email:e,password:p}):await Sync.client.auth.signInWithPassword({email:e,password:p});
+    if(r.error){err.textContent=r.error.message;return}
+    if(signUp&&!r.data.session){err.textContent='Sprawdź e-mail, aby potwierdzić konto, potem zaloguj się.';return}
+    Sync.user=r.data.user||r.data.session?.user;
+    await Sync.download();
+    hideLogin();
+    render();
+    toast(signUp?'Konto utworzone':'Zalogowano');
+  };
+  $('#lbtn').onclick=()=>go(false);
+  $('#rbtn').onclick=()=>go(true);
+  $('#lpass').onkeydown=e=>{if(e.key==='Enter')go(false)};
+}
+function hideLogin(){document.body.classList.remove('locked');const l=$('#login');if(l)l.remove()}
+
 Sync={
   client:createSupabaseClient(),
   user:null,timer:0,
-  async init(){if(!this.client)return;const {data:{session}}=await this.client.auth.getSession();this.user=session?.user||null;if(this.user)await this.download();render()},
+  async init(){
+    if(!this.client){showLogin();return}
+    const {data:{session}}=await this.client.auth.getSession();
+    this.user=session?.user||null;
+    if(!this.user){showLogin();return}
+    await this.download();render();
+    this.client.auth.onAuthStateChange(async(_e,s)=>{
+      this.user=s?.user||null;
+      if(this.user){await this.download();hideLogin();render()}
+      else{showLogin();document.body.classList.add('locked')}
+    });
+  },
   async download(){const {data}=await this.client.from('app_states').select('state').eq('user_id',this.user.id).maybeSingle();if(data?.state&&(+data.state.updatedAt||0)>(+S.updatedAt||0)){S=data.state;localStorage.setItem('fiszki-v1',JSON.stringify(S));render()}},
   queueUpload(){if(!this.client||!this.user)return;clearTimeout(this.timer);this.timer=setTimeout(()=>this.upload(),800)},
   async upload(){if(!this.client||!this.user)return;await this.client.from('app_states').upsert({user_id:this.user.id,state:S,updated_at:new Date().toISOString()})},
-  async signIn(email,password,signUp){if(!this.client){toast('Uzupełnij konfigurację Supabase w index.html');return}const r=signUp?await this.client.auth.signUp({email,password}):await this.client.auth.signInWithPassword({email,password});if(r.error){toast(r.error.message);return}this.user=r.data.user;await this.download();render();toast(signUp?'Sprawdź e-mail, aby potwierdzić konto':'Zalogowano i zsynchronizowano')},
-  async signOut(){if(this.client)await this.client.auth.signOut();this.user=null;render();toast('Wylogowano')}
+  async signIn(email,password,signUp){if(!this.client){toast('Uzupełnij konfigurację Supabase w index.html');return}const r=signUp?await this.client.auth.signUp({email,password}):await this.client.auth.signInWithPassword({email,password});if(r.error){toast(r.error.message);return}this.user=r.data.user||r.data.session?.user;await this.download();hideLogin();render();toast(signUp?'Sprawdź e-mail, aby potwierdzić konto':'Zalogowano i zsynchronizowano')},
+  async signOut(){if(this.client)await this.client.auth.signOut();this.user=null;showLogin();toast('Wylogowano')}
 };
 
 
 function render(){
+  if(!Sync?.user){showLogin();return}
   document.body.classList.toggle('reviewing',tab==='study'&&!!sess);
   ({study:vStudy,add:vAdd,cards:vCards,stats:vStats,settings:vSettings})[tab]($('#v'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==tab));
 }
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()});
+
+/* ---- SKRÓTY KLAWIATURY ---- */
+document.addEventListener('keydown',e=>{
+  // nie przechwytuj gdy użytkownik pisze w polu
+  const tag=(e.target.tagName||'').toLowerCase();
+  if(tag==='input'||tag==='textarea'||tag==='select'||e.target.isContentEditable)return;
+  if($('#md')||$('#login'))return;
+  if(tab!=='study'||!sess)return;
+  if(!sess.q.length)return;
+  const key=e.key.toLowerCase();
+  const c=S.cards.find(x=>x.id==sess.q[0]);
+  if(!c)return;
+  if(key==='m'){say(c.id);e.preventDefault();return}
+  if(!flip){
+    // przed odkryciem tylko m i o są sensowne; "o" odkryje kartę pokazując obraz po odkryciu
+    if(key==='o'){e.preventDefault();flip=true;revealImage(c.id);}
+    return;
+  }
+  if(key==='1'){e.preventDefault();ans(0)}
+  else if(key==='2'){e.preventDefault();ans(1)}
+  else if(key==='3'){e.preventDefault();ans(2)}
+  else if(key==='4'){e.preventDefault();ans(3)}
+  else if(key==='z'){e.preventDefault();undoAnswer()}
+  else if(key==='o'){e.preventDefault();revealImage(c.id)}
+});
 
 function vStudy(v){
   if(sess){
@@ -121,7 +198,7 @@ function vStudy(v){
     const prompt=c.contextSentence?`<div class="sentence">${esc(c.contextSentence).replace(/\{\{.*?\}\}/,'<span class="blank">_____</span>')}</div>`:`<div class="f">${esc(c.front)}</div>`;
     v.innerHTML=`<div class="prog">Pozostało: ${sess.q.length} <button class="s" style="float:right" onclick="sess=null;render()">Zakończ</button></div><div class="card" style="margin-top:12px" onclick="flip=true;render()">${prompt}${flip?`<hr><div class="f">${esc(c.front)}</div><div class="b">${esc(c.back)}</div>${c.contextSentence?'<p class="mu">'+esc(c.contextSentence).replace(/\{\{(.*?)\}\}/,'<b>$1</b>')+'</p>':''}${imageRevealed?'<div id="imghost" class="mu">Szukam obrazu…</div>':'<button class="s" style="margin-top:18px" onclick="event.stopPropagation();revealImage(&quot;'+c.id+'&quot;)">🖼 Pokaż obraz</button>'}`:'<div class="hint" style="margin-top:20px">Dotknij, aby odkryć</div>'}</div>
     <div class="row" style="margin-top:10px"><button class="s" onclick="say('${c.id}')">🔊 Wymowa</button><button class="s" onclick="undoAnswer()">↶ Cofnij odpowiedź</button></div>`+
-    (flip?`<div class="g"><button style="background:#e5484d" onclick="ans(0)">Znowu</button><button style="background:#f08c00" onclick="ans(1)">Trudne</button><button style="background:#30a46c" onclick="ans(2)">Dobrze</button><button style="background:#3b82f6" onclick="ans(3)">Łatwe</button></div>`:'');
+    (flip?`<div class="g"><button style="background:#e5484d" onclick="ans(0)">Znowu (1)</button><button style="background:#f08c00" onclick="ans(1)">Trudne (2)</button><button style="background:#30a46c" onclick="ans(2)">Dobrze (3)</button><button style="background:#3b82f6" onclick="ans(3)">Łatwe (4)</button></div><p class="hint" style="text-align:center;margin-top:8px">Klawisze: 1–4 ocena · z cofnij · o obraz · m wymowa</p>`:'');
     if(flip&&imageRevealed)loadCardImage(c);
     return;
   }
@@ -177,8 +254,8 @@ function ans(g){
 let sgTimer=0;
 
 function vSettings(v){
-  const account=Sync?.user?`<p class="mu">Zalogowano: ${esc(Sync.user.email||'konto')}</p><button class="s" onclick="Sync.signOut()">Wyloguj</button>`:`<input id="semail" type="email" placeholder="E-mail"><input id="spass" type="password" minlength="6" placeholder="Hasło (min. 6 znaków)"><div class="row"><button class="s" onclick="signIn(false)">Zaloguj</button><button class="s" onclick="signIn(true)">Załóż konto</button></div>`;
-  v.innerHTML=`<h2>Ustawienia</h2><div class="c"><h3>Synchronizacja</h3>${Sync?.client?account:'<p class="mu">Synchronizacja nie jest skonfigurowana.</p>'}</div><div class="c"><label for="nlmt"><b>Limit nowych fiszek na sesję</b></label>
+  const account=Sync?.user?`<p class="mu">Zalogowano: ${esc(Sync.user.email||'konto')}</p><button class="s" onclick="Sync.signOut()">Wyloguj</button>`:'<p class="mu">Nie zalogowano.</p>';
+  v.innerHTML=`<h2>Ustawienia</h2><div class="c"><h3>Synchronizacja</h3>${account}</div><div class="c"><label for="nlmt"><b>Limit nowych fiszek na sesję</b></label>
   <p class="mu">Maksymalna liczba nowych kart dodawanych do jednej sesji nauki.</p>
   <input id="nlmt" type="number" min="1" max="500" value="${S.settings.newLimit}">
   <button class="p" onclick="saveSettings()">Zapisz ustawienia</button></div>
@@ -258,157 +335,4 @@ function vCards(v){
   <h3>Decki</h3><div id="dl"></div>
   <div class="row"><input id="nn" placeholder="Nazwa nowego decku"><select id="nl">${Object.entries(L).map(([k,x])=>`<option value="${k}">${x[0]}</option>`).join('')}</select></div>
   <button class="p" onclick="addDeck()">Utwórz deck</button>
-  <h3>Zdania z lukami</h3><select id="cdk">${deckOpts('')}</select><p class="mu">Generator doda krótkie zdanie do kart, które jeszcze go nie mają.</p><button class="p" onclick="generateContexts()">✨ Wygeneruj zdania dla decku</button>
-  <h3>Import CSV (np. z Noji)</h3><select id="idk">${deckOpts('')}</select><input id="cf" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain"><div class="row"><input id="c1" type="number" value="1" min="1"><input id="c2" type="number" value="2" min="1"></div><p class="mu" style="margin-top:-4px">Numery kolumn: przód · tył</p><button class="p" onclick="importCSV()">Importuj</button>`;
-  renderCards();dlist();
-}
-function renderCards(){
-  if(!$('#q')||!$('#fd')||!$('#ls'))return;
-  const q=$('#q').value.trim().toLocaleLowerCase('pl'),d=$('#fd').value;
-  const a=S.cards.filter(c=>(!d||c.deck==d)&&(c.front+' '+c.back).toLocaleLowerCase('pl').includes(q));
-  $('#ls').innerHTML=a.slice(0,200).map(c=>`<div class="it"><div><b>${esc(c.front)}</b><br><span class="mu">${esc(c.back)}</span></div><button aria-label="Edytuj fiszkę" onclick="editCard('${c.id}')">✎</button><button aria-label="Usuń fiszkę" onclick="delCard('${c.id}')">🗑</button></div>`).join('')||'<p class="mu">Brak kart.</p>';
-}
-function dlist(){
-  $('#dl').innerHTML=S.decks.map(d=>`<div class="it"><div>${esc(d.name)} <span class="mu">· ${L[d.lang][0]} · ${S.cards.filter(c=>c.deck==d.id).length} kart</span></div><button onclick="delDeck('${d.id}')">🗑</button></div>`).join('');
-}
-async function generateContexts(){
-  const deck=$('#cdk').value,d=S.decks.find(x=>x.id===deck),cards=S.cards.filter(c=>c.deck===deck&&!c.contextSentence);
-  if(!cards.length){toast('Wszystkie karty w tym decku mają już zdanie');return}
-  const bridge=window.webkit&&webkit.messageHandlers&&webkit.messageHandlers.tr;
-  if(!bridge){toast('Generator działa tylko w aplikacji');return}
-  let done=0;
-  for(const c of cards){
-    toast(`Generuję ${done+1} z ${cards.length}…`);
-    try{
-      const sentence=await bridge.postMessage({action:'context',word:c.front,meaning:c.back,lang:d.lang});
-      if(typeof sentence==='string'&&sentence.includes('{{'+c.front+'}}')){c.contextSentence=sentence;done++}
-    }catch(e){}
-  }
-  save();toast(done?`Dodano zdań: ${done}`:'Generator jest niedostępny — włącz Apple Intelligence');
-}
-function modal(title,fields,ok){
-  const m=document.createElement('div');m.id='md';
-  m.innerHTML=`<div class="mb"><h3>${esc(title)}</h3>${fields.map(f=>`<textarea placeholder="${esc(f.ph||'')}">${esc(f.v||'')}</textarea>`).join('')}<div class="row"><button class="s" id="mc">Anuluj</button><button class="p" id="mo" style="margin:0">OK</button></div></div>`;
-  document.body.appendChild(m);
-  m.querySelector('#mc').onclick=()=>m.remove();
-  m.querySelector('#mo').onclick=()=>{const v=[...m.querySelectorAll('textarea')].map(x=>x.value);m.remove();ok(v)};
-}
-function editCard(id){
-  const c=S.cards.find(x=>x.id==id);
-  if(!c)return;
-  modal('Edytuj fiszkę',[{v:c.front,ph:'Przód'},{v:c.back,ph:'Tył'}],v=>{if(!v[0].trim()||!v[1].trim()){toast('Obie strony muszą być uzupełnione');return}const front=v[0].trim();if(front!==c.front)delete c.imageUrl;c.front=front;c.back=v[1].trim();save();renderCards()});
-}
-function delCard(id){
-  if(!S.cards.some(c=>c.id===id))return;
-  modal('Usunąć fiszkę?',[],()=>{S.cards=S.cards.filter(c=>c.id!==id);if(sess)sess.q=sess.q.filter(x=>x!==id);save();renderCards();dlist();toast('Usunięto fiszkę')});
-}
-function parseCSV(t){
-  t=t.replace(/^\uFEFF/,'');
-  const first=t.split('\n')[0],sep=[';','\t',','].map(s=>[s,first.split(s).length]).sort((a,b)=>b[1]-a[1])[0][0];
-  const rows=[];let r=[],f='',q=false;
-  for(let i=0;i<t.length;i++){const c=t[i];
-    if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=false}else f+=c}
-    else if(c=='"')q=true;
-    else if(c==sep){r.push(f);f=''}
-    else if(c=='\n'||c=='\r'){if(c=='\r'&&t[i+1]=='\n')i++;r.push(f);f='';rows.push(r);r=[]}
-    else f+=c}
-  if(f||r.length){r.push(f);rows.push(r)}
-  return rows.filter(r=>r.some(x=>x.trim()));
-}
-async function importCSV(){
-  const fl=$('#cf').files[0];if(!fl){toast('Wybierz plik');return}
-  const cl=s=>(s||'').replace(/<br\s*\/?>/gi,'; ').replace(/<[^>]+>/g,'').trim();
-  const rows=parseCSV(await fl.text()),a=Math.max(1,+$('#c1').value||1)-1,b=Math.max(1,+$('#c2').value||2)-1,d=$('#idk').value;
-  if(rows.length&&/^(front|back|przód|przod|tył|tyl|question|answer|term|definition|pytanie|odpowiedź)/i.test(cl(rows[0][a])))rows.shift();
-  const have=new Set(S.cards.filter(c=>c.deck==d).map(c=>c.front.toLowerCase()));let n=0;
-  rows.forEach(r=>{const x=cl(r[a]),y=cl(r[b]);if(x&&y&&!have.has(x.toLowerCase())){have.add(x.toLowerCase());S.cards.push({id:uid(),deck:d,front:x,back:y,ease:2.5,int:0,reps:0,lapses:0,due:0});n++}});
-  save();toast('Zaimportowano: '+n);renderCards();dlist();
-}
-function addDeck(){
-  const n=$('#nn').value.trim();if(!n)return;
-  S.decks.push({id:uid(),name:n,lang:$('#nl').value});save();render();
-}
-function delDeck(id){
-  if(S.decks.length<2){toast('Musi zostać co najmniej jeden deck');return}
-  modal('Usunąć deck wraz z kartami?',[],()=>{S.decks=S.decks.filter(d=>d.id!=id);S.cards=S.cards.filter(c=>c.deck!=id);if(sd==id)sd='';save();render()});
-}
-
-function vStats(v){
-  const C=S.cards,todayKey=dk(new Date());
-  const mast=C.filter(c=>c.int>=21).length,nw=C.filter(isNew).length,lr=C.length-mast-nw;
-  const today=(S.daily[todayKey]||[]).length;
-  const reviewedEver=C.filter(c=>c.reps>0).length;
-
-  let streak=0;const d=new Date();
-  if(!S.log[dk(d)])d.setDate(d.getDate()-1);
-  while(S.log[dk(d)]){streak++;d.setDate(d.getDate()-1)}
-
-  const activeKeys=Object.keys(S.log).filter(k=>S.log[k]>0).sort();
-  let longest=0,cur=0,prev=null;
-  activeKeys.forEach(k=>{
-    if(prev){const diff=Math.round((new Date(k+'T00:00:00')-new Date(prev+'T00:00:00'))/864e5);cur=diff===1?cur+1:1}
-    else cur=1;
-    if(cur>longest)longest=cur;prev=k;
-  });
-
-  const R=S.ratings||{};
-  let tA=0,tH=0,tG=0,tE=0;
-  Object.values(R).forEach(a=>{tA+=(a[0]||0);tH+=(a[1]||0);tG+=(a[2]||0);tE+=(a[3]||0)});
-  const totalReviews=tA+tH+tG+tE;
-  const retention=totalReviews?Math.round((tG+tE)/totalReviews*100)+'%':'—';
-  const activeDays=activeKeys.length;
-
-  const chart=[...Array(30)].map((_,i)=>{
-    const x=new Date();x.setDate(x.getDate()-29+i);const a=R[dk(x)]||[0,0,0,0];
-    return a[0]+a[1]+a[2]+a[3];
-  });
-  const mx=Math.max(1,...chart);
-
-  const perDeck=S.decks.map(deck=>{
-    const dc=C.filter(c=>c.deck==deck.id);
-    return {name:deck.name,total:dc.length,new:dc.filter(isNew).length,mastered:dc.filter(c=>c.int>=21).length};
-  });
-
-  const gb=(label,n,col)=>{
-    const h=totalReviews?Math.round(n/Math.max(1,totalReviews)*80):0;
-    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end"><div style="font-size:12px;color:var(--mu);margin-bottom:4px">${n}</div><div style="width:70%;background:${col};border-radius:4px 4px 0 0;min-height:2px;height:${h}px"></div><div style="font-size:11px;color:var(--mu);margin-top:4px">${label}</div></div>`;
-  };
-
-  v.innerHTML=`<h2>Postępy</h2>
-  <h3>Teraz</h3>
-  <div class="st">
-    <div class="c"><div class="n">${C.length}</div><span class="mu">wszystkich kart</span></div>
-    <div class="c"><div class="n">${mast}</div><span class="mu">opanowane (≥21 dni)</span></div>
-    <div class="c"><div class="n">${lr}</div><span class="mu">w trakcie nauki</span></div>
-    <div class="c"><div class="n">${nw}</div><span class="mu">nowe</span></div>
-    <div class="c"><div class="n">${due('').length}</div><span class="mu">do powtórki teraz</span></div>
-    <div class="c"><div class="n">${today}</div><span class="mu">fiszek dziś</span></div>
-  </div>
-  <h3>Łącznie</h3>
-  <div class="st">
-    <div class="c"><div class="n">${totalReviews}</div><span class="mu">wszystkich odpowiedzi</span></div>
-    <div class="c"><div class="n">${reviewedEver}</div><span class="mu">kart powtórzonych</span></div>
-    <div class="c"><div class="n">${retention}</div><span class="mu">skuteczność (Dobrze+Łatwe)</span></div>
-    <div class="c"><div class="n">${activeDays}</div><span class="mu">dni nauki łącznie</span></div>
-    <div class="c"><div class="n">${streak}🔥</div><span class="mu">dni z rzędu</span></div>
-    <div class="c"><div class="n">${longest}</div><span class="mu">najdłuższa seria</span></div>
-  </div>
-  <div class="c"><b>Odpowiedzi wg oceny</b>
-    <div style="display:flex;gap:8px;height:110px;margin-top:10px">
-      ${gb('Znowu',tA,'#e5484d')}${gb('Trudne',tH,'#f08c00')}${gb('Dobrze',tG,'#30a46c')}${gb('Łatwe',tE,'#3b82f6')}
-    </div>
-  </div>
-  <div class="c"><b>Ostatnie 30 dni</b><div class="bars" style="margin-top:10px;height:70px;gap:2px">${chart.map(n=>`<div><i style="height:${Math.round(n/mx*50)}px"></i></div>`).join('')}</div></div>
-  <h3>Per deck</h3>
-  ${perDeck.map(deck=>`<div class="it"><div><b>${esc(deck.name)}</b><br><span class="mu">${deck.total} kart · ${deck.new} nowych · ${deck.mastered} opanowanych</span></div></div>`).join('')||'<p class="mu">Brak decków.</p>'}
-  <h3>Kopia zapasowa</h3><p class="mu">Dane są tylko w tej przeglądarce/aplikacji. Zrób kopię przed zmianą telefonu.</p>
-  <div class="row"><button class="s" onclick="bkp()">Kopiuj kopię</button><button class="s" onclick="rst()">Wklej kopię</button></div>`;
-}
-async function bkp(){try{await navigator.clipboard.writeText(JSON.stringify(S));toast('Skopiowano do schowka')}catch(e){modal('Skopiuj ten tekst ręcznie',[{v:JSON.stringify(S)}],()=>{})}}
-function rst(){
-  modal('Wklej kopię zapasową (zastąpi obecne dane)',[{ph:'Kopia'}],v=>{
-    try{const o=JSON.parse(v[0]);if(!o.decks||!o.cards)throw 0;S=o;save();render();toast('Przywrócono')}catch(e){toast('Nieprawidłowa kopia')}
-  });
-}
-render();Sync.init();
-</script></body></html>
+  <h3>Zdania z lukami</h3><select id="cdk">${deckOpts('')}</select><p class="mu">Generator doda krótkie zdanie do kart, które jeszcze go nie mają.</p><button class="p
