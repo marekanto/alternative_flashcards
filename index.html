@@ -64,20 +64,198 @@ body.locked #t{display:none!important}
 </style></head><body>
 <main id="v"></main>
 <nav>
-<button data-t="study"><b>🧠</b>Nauka</button>
-<button data-t="add"><b>＋</b>Dodaj</button>
-<button data-t="cards"><b>🗂</b>Karty</button>
-<button data-t="stats"><b>📊</b>Postępy</button>
+<button data-t="study"><b>🧠</b><span data-nav="study">Nauka</span></button>
+<button data-t="add"><b>＋</b><span data-nav="add">Dodaj</span></button>
+<button data-t="cards"><b>🗂</b><span data-nav="cards">Karty</span></button>
+<button data-t="stats"><b>📊</b><span data-nav="stats">Postępy</span></button>
 </nav>
 <div id="t"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
 (()=>{const c=document.createElement('canvas');c.width=c.height=180;const x=c.getContext('2d');x.fillStyle='#4f46e5';x.fillRect(0,0,180,180);x.fillStyle='#fff';x.font='bold 100px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('Ñ',90,95);const l=document.createElement('link');l.rel='apple-touch-icon';l.href=c.toDataURL();document.head.appendChild(l)})();
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const L={es:['hiszpański','espl','es-ES'],en:['angielski','enpl','en-GB'],de:['niemiecki','depl','de-DE'],fr:['francuski','frpl','fr-FR'],it:['włoski','itpl','it-IT']};
+
+/* ---- Języki fiszek (do czego się uczysz) ---- */
+const L={
+  es:{name:{pl:'hiszpański',en:'Spanish',es:'Español'},pons:'espl',tts:'es-ES'},
+  en:{name:{pl:'angielski',en:'English',es:'Inglés'},pons:'enpl',tts:'en-GB'},
+  de:{name:{pl:'niemiecki',en:'German',es:'Alemán'},pons:'depl',tts:'de-DE'},
+  fr:{name:{pl:'francuski',en:'French',es:'Francés'},pons:'frpl',tts:'fr-FR'},
+  it:{name:{pl:'włoski',en:'Italian',es:'Italiano'},pons:'itpl',tts:'it-IT'}
+};
+const langName=code=>(L[code]?.name?.[UI])||code;
+
+/* ---- Tłumaczenia interfejsu ---- */
+const TR={
+  'nav.study':{pl:'Nauka',en:'Study',es:'Estudio'},
+  'nav.add':{pl:'Dodaj',en:'Add',es:'Añadir'},
+  'nav.cards':{pl:'Karty',en:'Cards',es:'Tarjetas'},
+  'nav.stats':{pl:'Postępy',en:'Progress',es:'Progreso'},
+
+  'ui.lang':{pl:'Język interfejsu',en:'Interface language',es:'Idioma de la interfaz'},
+
+  'login.title':{pl:'Zaloguj się',en:'Sign in',es:'Iniciar sesión'},
+  'login.subtitle':{pl:'Aplikacja wymaga konta (synchronizacja przez Supabase).',en:'The app requires an account (sync via Supabase).',es:'La aplicación requiere una cuenta (sincronización con Supabase).'},
+  'login.email':{pl:'E-mail',en:'Email',es:'Correo'},
+  'login.password':{pl:'Hasło (min. 6 znaków)',en:'Password (min. 6 chars)',es:'Contraseña (mín. 6 caracteres)'},
+  'login.login':{pl:'Zaloguj',en:'Sign in',es:'Entrar'},
+  'login.signup':{pl:'Załóż konto',en:'Create account',es:'Crear cuenta'},
+  'login.err.notConfig':{pl:'Synchronizacja nie jest skonfigurowana.',en:'Sync is not configured.',es:'La sincronización no está configurada.'},
+  'login.err.creds':{pl:'Podaj e-mail i hasło (min. 6 znaków).',en:'Enter email and password (min. 6 chars).',es:'Introduce correo y contraseña (mín. 6 caracteres).'},
+  'login.err.confirm':{pl:'Sprawdź e-mail, aby potwierdzić konto, potem zaloguj się.',en:'Check your email to confirm the account, then sign in.',es:'Revisa tu correo para confirmar la cuenta y luego inicia sesión.'},
+  'login.toast.logged':{pl:'Zalogowano',en:'Signed in',es:'Sesión iniciada'},
+  'login.toast.registered':{pl:'Konto utworzone',en:'Account created',es:'Cuenta creada'},
+
+  'study.title':{pl:'Nauka',en:'Study',es:'Estudio'},
+  'study.allDecks':{pl:'Wszystkie decki',en:'All decks',es:'Todos los mazos'},
+  'study.settings':{pl:'⚙️ Ustawienia',en:'⚙️ Settings',es:'⚙️ Ajustes'},
+  'study.shuffle':{pl:'🔀 Losuj nowe',en:'🔀 Shuffle new',es:'🔀 Barajar nuevas'},
+  'study.due':{pl:'do powtórki',en:'to review',es:'por repasar'},
+  'study.newLimit':{pl:'nowe (limit {n})',en:'new (limit {n})',es:'nuevas (límite {n})'},
+  'study.today':{pl:'fiszek dziś',en:'cards today',es:'tarjetas hoy'},
+  'study.start':{pl:'Zacznij naukę',en:'Start studying',es:'Empezar a estudiar'},
+  'study.noCards':{pl:'Nie masz jeszcze fiszek – dodaj je w zakładce „Dodaj”.',en:"You don't have cards yet – add some in the Add tab.",es:'Aún no tienes tarjetas – añádelas en la pestaña Añadir.'},
+  'study.tooFewNew':{pl:'Za mało nowych kart do wylosowania',en:'Not enough new cards to shuffle',es:'No hay suficientes tarjetas nuevas para barajar'},
+  'study.shuffled':{pl:'Wylosowano {n} nowych kart do kolejki',en:'Shuffled {n} new cards into queue',es:'Se barajaron {n} tarjetas nuevas'},
+
+  'sess.remaining':{pl:'Pozostało:',en:'Remaining:',es:'Quedan:'},
+  'sess.end':{pl:'Zakończ',en:'Finish',es:'Terminar'},
+  'sess.discover':{pl:'Dotknij lub naciśnij spację, aby odkryć',en:'Tap or press space to reveal',es:'Toca o pulsa espacio para revelar'},
+  'sess.image':{pl:'🖼 Pokaż obraz',en:'🖼 Show image',es:'🖼 Mostrar imagen'},
+  'sess.say':{pl:'🔊 Wymowa',en:'🔊 Pronounce',es:'🔊 Pronunciación'},
+  'sess.undo':{pl:'↶ Cofnij odpowiedź',en:'↶ Undo answer',es:'↶ Deshacer respuesta'},
+  'sess.again':{pl:'Znowu (1)',en:'Again (1)',es:'Otra vez (1)'},
+  'sess.hard':{pl:'Trudne (2)',en:'Hard (2)',es:'Difícil (2)'},
+  'sess.good':{pl:'Dobrze (3)',en:'Good (3)',es:'Bien (3)'},
+  'sess.easy':{pl:'Łatwe (4)',en:'Easy (4)',es:'Fácil (4)'},
+  'sess.keysHint':{pl:'Klawisze: spacja odkryj · 1–4 ocena · z cofnij · o obraz · m wymowa',en:'Keys: space reveal · 1–4 grade · z undo · o image · m pronounce',es:'Teclas: espacio revelar · 1–4 calificar · z deshacer · o imagen · m pronunciar'},
+  'sess.done':{pl:'Gotowe! 🎉',en:'Done! 🎉',es:'¡Hecho! 🎉'},
+  'sess.doneSub':{pl:'Sesja ukończona. Zajrzyj do zakładki Postępy.',en:'Session finished. Check the Progress tab.',es:'Sesión completada. Mira la pestaña Progreso.'},
+  'sess.back':{pl:'Wróć',en:'Back',es:'Volver'},
+  'sess.noUndo':{pl:'Nie ma odpowiedzi do cofnięcia',en:'Nothing to undo',es:'Nada que deshacer'},
+  'sess.undone':{pl:'Cofnięto ostatnią odpowiedź',en:'Last answer undone',es:'Última respuesta deshecha'},
+  'sess.imgSearch':{pl:'Szukam obrazu…',en:'Searching image…',es:'Buscando imagen…'},
+  'sess.imgNotFound':{pl:'Nie znaleziono pasującego obrazu.',en:'No matching image found.',es:'No se encontró una imagen adecuada.'},
+  'sess.imgError':{pl:'Obraz niedostępny — sprawdź połączenie z internetem.',en:'Image unavailable — check your internet connection.',es:'Imagen no disponible — comprueba tu conexión.'},
+  'sess.imgCredit':{pl:'Obraz poglądowy · Wikimedia Commons',en:'Reference image · Wikimedia Commons',es:'Imagen de referencia · Wikimedia Commons'},
+
+  'add.title':{pl:'Nowa fiszka',en:'New card',es:'Nueva tarjeta'},
+  'add.front':{pl:'Przód (np. słowo)',en:'Front (e.g. word)',es:'Frente (p. ej. palabra)'},
+  'add.suggest':{pl:'✨ Podpowiedz tłumaczenie',en:'✨ Suggest translation',es:'✨ Sugerir traducción'},
+  'add.pons':{pl:'Otwórz w PONS',en:'Open in PONS',es:'Abrir en PONS'},
+  'add.back':{pl:'Tył (np. tłumaczenie)',en:'Back (e.g. translation)',es:'Reverso (p. ej. traducción)'},
+  'add.add':{pl:'Dodaj fiszkę',en:'Add card',es:'Añadir tarjeta'},
+  'add.bothSides':{pl:'Uzupełnij obie strony',en:'Fill in both sides',es:'Completa ambos lados'},
+  'add.added':{pl:'Dodano ✓',en:'Added ✓',es:'Añadida ✓'},
+  'add.sg.search':{pl:'Szukam…',en:'Searching…',es:'Buscando…'},
+  'add.sg.unavailable':{pl:'Podpowiedzi niedostępne w tym widoku – użyj przycisku PONS.',en:'Suggestions unavailable here – use the PONS button.',es:'Sugerencias no disponibles aquí – usa el botón PONS.'},
+  'add.sg.noResults':{pl:'Brak podpowiedzi.',en:'No suggestions.',es:'Sin sugerencias.'},
+  'add.sg.error':{pl:'Nie udało się pobrać podpowiedzi – użyj przycisku PONS.',en:"Couldn't fetch suggestions – use the PONS button.",es:'No se pudieron obtener sugerencias – usa PONS.'},
+
+  'cards.title':{pl:'Karty',en:'Cards',es:'Tarjetas'},
+  'cards.search':{pl:'Szukaj…',en:'Search…',es:'Buscar…'},
+  'cards.decksTitle':{pl:'Decki',en:'Decks',es:'Mazos'},
+  'cards.newDeckPlaceholder':{pl:'Nazwa nowego decku',en:'New deck name',es:'Nombre del nuevo mazo'},
+  'cards.createDeck':{pl:'Utwórz deck',en:'Create deck',es:'Crear mazo'},
+  'cards.importTitle':{pl:'Import CSV (np. z Noji)',en:'Import CSV (e.g. from Noji)',es:'Importar CSV (p. ej. de Noji)'},
+  'cards.colsHint':{pl:'Numery kolumn: przód · tył',en:'Column numbers: front · back',es:'Números de columna: frente · reverso'},
+  'cards.importBtn':{pl:'Importuj',en:'Import',es:'Importar'},
+  'cards.noCards':{pl:'Brak kart.',en:'No cards.',es:'Sin tarjetas.'},
+  'cards.selectFile':{pl:'Wybierz plik',en:'Choose a file',es:'Elige un archivo'},
+  'cards.imported':{pl:'Zaimportowano: {n}',en:'Imported: {n}',es:'Importadas: {n}'},
+  'cards.editTitle':{pl:'Edytuj fiszkę',en:'Edit card',es:'Editar tarjeta'},
+  'cards.deleteCard':{pl:'Usunąć fiszkę?',en:'Delete card?',es:'¿Eliminar tarjeta?'},
+  'cards.deleteDeck':{pl:'Usunąć deck wraz z kartami?',en:'Delete deck and its cards?',es:'¿Eliminar mazo y sus tarjetas?'},
+  'cards.keepOneDeck':{pl:'Musi zostać co najmniej jeden deck',en:'At least one deck must remain',es:'Debe quedar al menos un mazo'},
+  'cards.cardDeleted':{pl:'Usunięto fiszkę',en:'Card deleted',es:'Tarjeta eliminada'},
+  'cards.front':{pl:'Przód',en:'Front',es:'Frente'},
+  'cards.back':{pl:'Tył',en:'Back',es:'Reverso'},
+  'cards.bothRequired':{pl:'Obie strony muszą być uzupełnione',en:'Both sides are required',es:'Ambos lados son obligatorios'},
+  'cards.deckCount':{pl:'{n} kart',en:'{n} cards',es:'{n} tarjetas'},
+  'cards.edit':{pl:'Edytuj fiszkę',en:'Edit card',es:'Editar tarjeta'},
+  'cards.del':{pl:'Usuń fiszkę',en:'Delete card',es:'Eliminar tarjeta'},
+
+  'stats.title':{pl:'Postępy',en:'Progress',es:'Progreso'},
+  'stats.now':{pl:'Teraz',en:'Now',es:'Ahora'},
+  'stats.all':{pl:'wszystkich kart',en:'all cards',es:'todas las tarjetas'},
+  'stats.mastered':{pl:'opanowane (≥21 dni)',en:'mastered (≥21 days)',es:'dominadas (≥21 días)'},
+  'stats.learning':{pl:'w trakcie nauki',en:'learning',es:'en aprendizaje'},
+  'stats.new':{pl:'nowe',en:'new',es:'nuevas'},
+  'stats.dueNow':{pl:'do powtórki teraz',en:'due now',es:'para repasar ahora'},
+  'stats.today':{pl:'fiszek dziś',en:'cards today',es:'tarjetas hoy'},
+  'stats.total':{pl:'Łącznie',en:'Total',es:'Total'},
+  'stats.allAnswers':{pl:'wszystkich odpowiedzi',en:'total answers',es:'respuestas totales'},
+  'stats.reviewedCards':{pl:'kart powtórzonych',en:'reviewed cards',es:'tarjetas repasadas'},
+  'stats.retention':{pl:'skuteczność (Dobrze+Łatwe)',en:'accuracy (Good+Easy)',es:'precisión (Bien+Fácil)'},
+  'stats.daysTotal':{pl:'dni nauki łącznie',en:'study days total',es:'días de estudio totales'},
+  'stats.streak':{pl:'dni z rzędu',en:'streak',es:'racha'},
+  'stats.longestStreak':{pl:'najdłuższa seria',en:'longest streak',es:'racha más larga'},
+  'stats.byRating':{pl:'Odpowiedzi wg oceny',en:'Answers by grade',es:'Respuestas por calificación'},
+  'stats.again':{pl:'Znowu',en:'Again',es:'Otra vez'},
+  'stats.hard':{pl:'Trudne',en:'Hard',es:'Difícil'},
+  'stats.good':{pl:'Dobrze',en:'Good',es:'Bien'},
+  'stats.easy':{pl:'Łatwe',en:'Easy',es:'Fácil'},
+  'stats.last30':{pl:'Ostatnie 30 dni',en:'Last 30 days',es:'Últimos 30 días'},
+  'stats.perDeck':{pl:'Per deck',en:'Per deck',es:'Por mazo'},
+  'stats.deckLine':{pl:'{total} kart · {new} nowych · {mastered} opanowanych',en:'{total} cards · {new} new · {mastered} mastered',es:'{total} tarjetas · {new} nuevas · {mastered} dominadas'},
+  'stats.backup':{pl:'Kopia zapasowa',en:'Backup',es:'Copia de seguridad'},
+  'stats.backupInfo':{pl:'Dane są tylko w tej przeglądarce/aplikacji. Zrób kopię przed zmianą telefonu.',en:'Data lives only in this browser/app. Back it up before switching phones.',es:'Los datos sólo están en este navegador/app. Haz una copia antes de cambiar de teléfono.'},
+  'stats.copyBackup':{pl:'Kopiuj kopię',en:'Copy backup',es:'Copiar copia'},
+  'stats.pasteBackup':{pl:'Wklej kopię',en:'Paste backup',es:'Pegar copia'},
+  'stats.copied':{pl:'Skopiowano do schowka',en:'Copied to clipboard',es:'Copiado al portapapeles'},
+  'stats.restored':{pl:'Przywrócono',en:'Restored',es:'Restaurado'},
+  'stats.invalidBackup':{pl:'Nieprawidłowa kopia',en:'Invalid backup',es:'Copia no válida'},
+  'stats.manualCopyTitle':{pl:'Skopiuj ten tekst ręcznie',en:'Copy this text manually',es:'Copia este texto manualmente'},
+  'stats.pasteTitle':{pl:'Wklej kopię zapasową (zastąpi obecne dane)',en:'Paste backup (will overwrite current data)',es:'Pega la copia (sobrescribirá los datos actuales)'},
+  'stats.pastePlaceholder':{pl:'Kopia',en:'Backup',es:'Copia'},
+
+  'settings.title':{pl:'Ustawienia',en:'Settings',es:'Ajustes'},
+  'settings.sync':{pl:'Synchronizacja',en:'Sync',es:'Sincronización'},
+  'settings.loggedIn':{pl:'Zalogowano: {email}',en:'Signed in: {email}',es:'Sesión: {email}'},
+  'settings.notLoggedIn':{pl:'Nie zalogowano.',en:'Not signed in.',es:'Sin sesión.'},
+  'settings.logout':{pl:'Wyloguj',en:'Sign out',es:'Cerrar sesión'},
+  'settings.newLimit':{pl:'Limit nowych fiszek na sesję',en:'New cards per session limit',es:'Límite de tarjetas nuevas por sesión'},
+  'settings.newLimitInfo':{pl:'Maksymalna liczba nowych kart dodawanych do jednej sesji nauki.',en:'Max number of new cards added to a study session.',es:'Número máximo de tarjetas nuevas por sesión.'},
+  'settings.save':{pl:'Zapisz ustawienia',en:'Save settings',es:'Guardar ajustes'},
+  'settings.back':{pl:'← Wróć do nauki',en:'← Back to study',es:'← Volver al estudio'},
+  'settings.saved':{pl:'Zapisano ustawienia',en:'Settings saved',es:'Ajustes guardados'},
+  'settings.loggedOut':{pl:'Wylogowano',en:'Signed out',es:'Sesión cerrada'},
+
+  'common.cancel':{pl:'Anuluj',en:'Cancel',es:'Cancelar'},
+  'common.ok':{pl:'OK',en:'OK',es:'OK'}
+};
+
+let UI=(()=>{
+  try{const v=localStorage.getItem('fiszki-uilang');if(v&&TR['nav.study'][v])return v}catch(e){}
+  const n=(navigator.language||'pl').slice(0,2).toLowerCase();
+  return TR['nav.study'][n]?n:'pl';
+})();
+const t=k=>{const e=TR[k];return e?(e[UI]||e.pl||k):k};
+function setUI(l){
+  if(!TR['nav.study'][l])return;
+  UI=l;
+  try{localStorage.setItem('fiszki-uilang',l)}catch(e){}
+  document.documentElement.lang=l;
+  if($('#login')){
+    const e=$('#lemail')?.value||'',p=$('#lpass')?.value||'';
+    showLogin(true);
+    if($('#lemail'))$('#lemail').value=e;
+    if($('#lpass'))$('#lpass').value=p;
+  }else{
+    render();
+  }
+}
+function uiLangSelect(){
+  const opts=[['pl','Polski'],['en','English'],['es','Español']]
+    .map(([v,n])=>`<option value="${v}"${UI===v?' selected':''}>${n}</option>`).join('');
+  return `<select onchange="setUI(this.value)">${opts}</select>`;
+}
+
+/* ---- Supabase ---- */
 const SUPABASE_URL='https://icwmcoxscwpswrhmfiht.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_saVIwdtGphXww4eraJIr-w_0qy5ShrO';
-const createSupabaseClient=()=>{try{return SUPABASE_URL&&SUPABASE_ANON_KEY&&window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null}catch(e){console.error('Nieprawidłowa konfiguracja Supabase',e);return null}};
+const createSupabaseClient=()=>{try{return SUPABASE_URL&&SUPABASE_ANON_KEY&&window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null}catch(e){console.error('Invalid Supabase config',e);return null}};
+
 let Sync=null;
 let S=null;
 try{S=JSON.parse(localStorage.getItem('fiszki-v1'))}catch(e){}
@@ -99,32 +277,44 @@ S.cards.forEach(c=>{if(typeof c.imageEnabled!=='boolean')c.imageEnabled=false;})
 S.ratings=S.ratings||{};
 save();
 
-function showLogin(){
+function showLogin(force){
   document.body.classList.add('locked');
-  if($('#login'))return;
+  if($('#login')){
+    if(!force)return;
+    $('#login').remove();
+  }
   const d=document.createElement('div');d.id='login';
-  d.innerHTML=`<div class="box"><h2>Zaloguj się</h2>
-  <p class="mu">Aplikacja wymaga konta (synchronizacja przez Supabase).</p>
-  <input id="lemail" type="email" placeholder="E-mail" autocomplete="email">
-  <input id="lpass" type="password" minlength="6" placeholder="Hasło (min. 6 znaków)" autocomplete="current-password">
-  <button class="p" id="lbtn">Zaloguj</button>
-  <button class="s" id="rbtn" style="width:100%">Załóż konto</button>
-  <p class="mu" id="lerr" style="color:#e5484d"></p></div>`;
+  d.innerHTML=`<div class="box">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+      <select id="langsel" style="width:auto;margin:0" onchange="setUI(this.value)">
+        <option value="pl"${UI==='pl'?' selected':''}>Polski</option>
+        <option value="en"${UI==='en'?' selected':''}>English</option>
+        <option value="es"${UI==='es'?' selected':''}>Español</option>
+      </select>
+    </div>
+    <h2>${t('login.title')}</h2>
+    <p class="mu">${t('login.subtitle')}</p>
+    <input id="lemail" type="email" placeholder="${t('login.email')}" autocomplete="email">
+    <input id="lpass" type="password" minlength="6" placeholder="${t('login.password')}" autocomplete="current-password">
+    <button class="p" id="lbtn">${t('login.login')}</button>
+    <button class="s" id="rbtn" style="width:100%">${t('login.signup')}</button>
+    <p class="mu" id="lerr" style="color:#e5484d"></p>
+  </div>`;
   document.body.appendChild(d);
   const go=async(signUp)=>{
     const e=$('#lemail').value.trim(),p=$('#lpass').value;
     const err=$('#lerr');
     err.textContent='';
-    if(!Sync?.client){err.textContent='Synchronizacja nie jest skonfigurowana.';return}
-    if(!e||p.length<6){err.textContent='Podaj e-mail i hasło (min. 6 znaków).';return}
+    if(!Sync?.client){err.textContent=t('login.err.notConfig');return}
+    if(!e||p.length<6){err.textContent=t('login.err.creds');return}
     const r=signUp?await Sync.client.auth.signUp({email:e,password:p}):await Sync.client.auth.signInWithPassword({email:e,password:p});
     if(r.error){err.textContent=r.error.message;return}
-    if(signUp&&!r.data.session){err.textContent='Sprawdź e-mail, aby potwierdzić konto, potem zaloguj się.';return}
+    if(signUp&&!r.data.session){err.textContent=t('login.err.confirm');return}
     Sync.user=r.data.user||r.data.session?.user;
     await Sync.download();
     hideLogin();
     render();
-    toast(signUp?'Konto utworzone':'Zalogowano');
+    toast(signUp?t('login.toast.registered'):t('login.toast.logged'));
   };
   $('#lbtn').onclick=()=>go(false);
   $('#rbtn').onclick=()=>go(true);
@@ -150,11 +340,14 @@ Sync={
   async download(){const {data}=await this.client.from('app_states').select('state').eq('user_id',this.user.id).maybeSingle();if(data?.state&&(+data.state.updatedAt||0)>(+S.updatedAt||0)){S=data.state;localStorage.setItem('fiszki-v1',JSON.stringify(S));render()}},
   queueUpload(){if(!this.client||!this.user)return;clearTimeout(this.timer);this.timer=setTimeout(()=>this.upload(),800)},
   async upload(){if(!this.client||!this.user)return;await this.client.from('app_states').upsert({user_id:this.user.id,state:S,updated_at:new Date().toISOString()})},
-  async signIn(email,password,signUp){if(!this.client){toast('Uzupełnij konfigurację Supabase w index.html');return}const r=signUp?await this.client.auth.signUp({email,password}):await this.client.auth.signInWithPassword({email,password});if(r.error){toast(r.error.message);return}this.user=r.data.user||r.data.session?.user;await this.download();hideLogin();render();toast(signUp?'Sprawdź e-mail, aby potwierdzić konto':'Zalogowano i zsynchronizowano')},
-  async signOut(){if(this.client)await this.client.auth.signOut();this.user=null;showLogin();toast('Wylogowano')}
+  async signOut(){if(this.client)await this.client.auth.signOut();this.user=null;showLogin();toast(t('settings.loggedOut'))}
 };
 
 function render(){
+  document.documentElement.lang=UI;
+  document.querySelectorAll('nav span[data-nav]').forEach(s=>{
+    s.textContent=t('nav.'+s.dataset.nav);
+  });
   if(!Sync?.user){showLogin();return}
   document.body.classList.toggle('reviewing',tab==='study'&&!!sess);
   ({study:vStudy,add:vAdd,cards:vCards,stats:vStats,settings:vSettings})[tab]($('#v'));
@@ -187,21 +380,27 @@ document.addEventListener('keydown',e=>{
 
 function vStudy(v){
   if(sess){
-    if(!sess.q.length){v.innerHTML=`<div class="c" style="text-align:center"><h2>Gotowe! 🎉</h2><p class="mu">Sesja ukończona. Zajrzyj do zakładki Postępy.</p><button class="p" onclick="sess=null;render()">Wróć</button></div>`;return}
+    if(!sess.q.length){v.innerHTML=`<div class="c" style="text-align:center"><h2>${t('sess.done')}</h2><p class="mu">${t('sess.doneSub')}</p><button class="p" onclick="sess=null;render()">${t('sess.back')}</button></div>`;return}
     const c=S.cards.find(x=>x.id==sess.q[0]);
     const prompt=c.contextSentence?`<div class="sentence">${esc(c.contextSentence).replace(/\{\{.*?\}\}/,'<span class="blank">_____</span>')}</div>`:`<div class="f">${esc(c.front)}</div>`;
-    v.innerHTML=`<div class="prog">Pozostało: ${sess.q.length} <button class="s" style="float:right" onclick="sess=null;render()">Zakończ</button></div><div class="card" style="margin-top:12px" onclick="flip=true;render()">${prompt}${flip?`<hr><div class="f">${esc(c.front)}</div><div class="b">${esc(c.back)}</div>${c.contextSentence?'<p class="mu">'+esc(c.contextSentence).replace(/\{\{(.*?)\}\}/,'<b>$1</b>')+'</p>':''}${imageRevealed?'<div id="imghost" class="mu">Szukam obrazu…</div>':'<button class="s" style="margin-top:18px" onclick="event.stopPropagation();revealImage(&quot;'+c.id+'&quot;)">🖼 Pokaż obraz</button>'}`:'<div class="hint" style="margin-top:20px">Dotknij lub naciśnij spację, aby odkryć</div>'}</div>
-    <div class="row" style="margin-top:10px"><button class="s" onclick="say('${c.id}')">🔊 Wymowa</button><button class="s" onclick="undoAnswer()">↶ Cofnij odpowiedź</button></div>`+
-    (flip?`<div class="g"><button style="background:#e5484d" onclick="ans(0)">Znowu (1)</button><button style="background:#f08c00" onclick="ans(1)">Trudne (2)</button><button style="background:#30a46c" onclick="ans(2)">Dobrze (3)</button><button style="background:#3b82f6" onclick="ans(3)">Łatwe (4)</button></div><p class="hint" style="text-align:center;margin-top:8px">Klawisze: spacja odkryj · 1–4 ocena · z cofnij · o obraz · m wymowa</p>`:'');
+    v.innerHTML=`<div class="prog">${t('sess.remaining')} ${sess.q.length} <button class="s" style="float:right" onclick="sess=null;render()">${t('sess.end')}</button></div>
+    <div class="card" style="margin-top:12px" onclick="flip=true;render()">${prompt}${flip?`<hr><div class="f">${esc(c.front)}</div><div class="b">${esc(c.back)}</div>${c.contextSentence?'<p class="mu">'+esc(c.contextSentence).replace(/\{\{(.*?)\}\}/,'<b>$1</b>')+'</p>':''}${imageRevealed?'<div id="imghost" class="mu"></div>':'<button class="s" style="margin-top:18px" onclick="event.stopPropagation();revealImage(&quot;'+c.id+'&quot;)">'+t('sess.image')+'</button>'}`:'<div class="hint" style="margin-top:20px">'+t('sess.discover')+'</div>'}</div>
+    <div class="row" style="margin-top:10px"><button class="s" onclick="say('${c.id}')">${t('sess.say')}</button><button class="s" onclick="undoAnswer()">${t('sess.undo')}</button></div>`+
+    (flip?`<div class="g"><button style="background:#e5484d" onclick="ans(0)">${t('sess.again')}</button><button style="background:#f08c00" onclick="ans(1)">${t('sess.hard')}</button><button style="background:#30a46c" onclick="ans(2)">${t('sess.good')}</button><button style="background:#3b82f6" onclick="ans(3)">${t('sess.easy')}</button></div><p class="hint" style="text-align:center;margin-top:8px">${t('sess.keysHint')}</p>`:'');
     if(flip&&imageRevealed)loadCardImage(c);
     return;
   }
   const a=due(sd),nw=a.filter(isNew).length,rv=a.length-nw;
-  v.innerHTML=`<h2>Nauka</h2><select onchange="sd=this.value;render()"><option value="">Wszystkie decki</option>${deckOpts(sd)}</select>
-  <div class="row"><button class="s" onclick="tab='settings';render()">⚙️ Ustawienia</button><button class="s" onclick="shuffleNewInDeck()">🔀 Losuj nowe</button></div>
-  <div class="c"><div class="st"><div><div class="n">${rv}</div><span class="mu">do powtórki</span></div><div><div class="n">${Math.min(nw,S.settings.newLimit)}</div><span class="mu">nowe (limit ${S.settings.newLimit})</span></div><div><div class="n">${(S.daily[dk(new Date())]||[]).length}</div><span class="mu">fiszek dziś</span></div></div>
-  <button class="p" ${a.length?'':'disabled style="opacity:.4"'} onclick="start()">Zacznij naukę</button>
-  ${S.cards.length?'':'<p class="mu">Nie masz jeszcze fiszek – dodaj je w zakładce „Dodaj”.</p>'}</div>`;
+  v.innerHTML=`<h2>${t('study.title')}</h2>
+  <select onchange="sd=this.value;render()"><option value="">${t('study.allDecks')}</option>${deckOpts(sd)}</select>
+  <div class="row"><button class="s" onclick="tab='settings';render()">${t('study.settings')}</button><button class="s" onclick="shuffleNewInDeck()">${t('study.shuffle')}</button></div>
+  <div class="c"><div class="st">
+    <div><div class="n">${rv}</div><span class="mu">${t('study.due')}</span></div>
+    <div><div class="n">${Math.min(nw,S.settings.newLimit)}</div><span class="mu">${t('study.newLimit').replace('{n}',S.settings.newLimit)}</span></div>
+    <div><div class="n">${(S.daily[dk(new Date())]||[]).length}</div><span class="mu">${t('study.today')}</span></div>
+  </div>
+  <button class="p" ${a.length?'':'disabled style="opacity:.4"'} onclick="start()">${t('study.start')}</button>
+  ${S.cards.length?'':`<p class="mu">${t('study.noCards')}</p>`}</div>`;
   const sel=v.querySelector('select');sel.value=sd;
 }
 function start(){
@@ -210,18 +409,17 @@ function start(){
 }
 function shuffleNewInDeck(){
   const pool=S.cards.map((c,i)=>({c,i})).filter(x=>(!sd||x.c.deck===sd)&&isNew(x.c));
-  if(pool.length<2){toast('Za mało nowych kart do wylosowania');return}
+  if(pool.length<2){toast(t('study.tooFewNew'));return}
   const shuffled=pool.map(x=>x.c);
   for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]}
   pool.forEach((x,k)=>{S.cards[x.i]=shuffled[k]});
   save();
-  const shown=Math.min(S.settings.newLimit,pool.length);
-  toast('Wylosowano '+shown+' nowych kart do kolejki');
+  toast(t('study.shuffled').replace('{n}',Math.min(S.settings.newLimit,pool.length)));
   render();
 }
 function say(id){
   const c=S.cards.find(x=>x.id==id),d=S.decks.find(x=>x.id==c.deck);
-  try{const u=new SpeechSynthesisUtterance(c.front);u.lang=(L[d&&d.lang]||L.es)[2];speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}
+  try{const u=new SpeechSynthesisUtterance(c.front);u.lang=(L[d&&d.lang]||L.es).tts;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}
 }
 function grade(c,g){
   if(g==0){c.lapses++;c.ease=Math.max(1.3,c.ease-.2);c.int=0;c.due=Date.now();return}
@@ -246,40 +444,44 @@ function ans(g){
 }
 
 function vSettings(v){
-  const account=Sync?.user?`<p class="mu">Zalogowano: ${esc(Sync.user.email||'konto')}</p><button class="s" onclick="Sync.signOut()">Wyloguj</button>`:'<p class="mu">Nie zalogowano.</p>';
-  v.innerHTML=`<h2>Ustawienia</h2><div class="c"><h3>Synchronizacja</h3>${account}</div><div class="c"><label for="nlmt"><b>Limit nowych fiszek na sesję</b></label>
-  <p class="mu">Maksymalna liczba nowych kart dodawanych do jednej sesji nauki.</p>
+  const account=Sync?.user
+    ?`<p class="mu">${t('settings.loggedIn').replace('{email}',esc(Sync.user.email||'—'))}</p><button class="s" onclick="Sync.signOut()">${t('settings.logout')}</button>`
+    :`<p class="mu">${t('settings.notLoggedIn')}</p>`;
+  v.innerHTML=`<h2>${t('settings.title')}</h2>
+  <div class="c"><h3>${t('settings.sync')}</h3>${account}</div>
+  <div class="c"><h3>${t('ui.lang')}</h3>${uiLangSelect()}</div>
+  <div class="c"><label for="nlmt"><b>${t('settings.newLimit')}</b></label>
+  <p class="mu">${t('settings.newLimitInfo')}</p>
   <input id="nlmt" type="number" min="1" max="500" value="${S.settings.newLimit}">
-  <button class="p" onclick="saveSettings()">Zapisz ustawienia</button></div>
-  <button class="s" onclick="tab='study';render()">← Wróć do nauki</button>`;
+  <button class="p" onclick="saveSettings()">${t('settings.save')}</button></div>
+  <button class="s" onclick="tab='study';render()">${t('settings.back')}</button>`;
 }
-function signIn(signUp){const e=$('#semail').value.trim(),p=$('#spass').value;if(!e||p.length<6){toast('Podaj e-mail i hasło (min. 6 znaków)');return}Sync.signIn(e,p,signUp)}
 function saveSettings(){
   const n=Math.max(1,Math.min(500,parseInt($('#nlmt').value,10)||20));
-  S.settings.newLimit=n;save();toast('Zapisano ustawienia');tab='study';render();
+  S.settings.newLimit=n;save();toast(t('settings.saved'));tab='study';render();
 }
 function undoAnswer(){
-  if(!undoState){toast('Nie ma odpowiedzi do cofnięcia');return}
+  if(!undoState){toast(t('sess.noUndo'));return}
   const c=S.cards.find(x=>x.id===undoState.cardId);
   if(c)Object.assign(c,undoState.card);
   sess.q=[...undoState.queue];flip=undoState.flip;S.log=undoState.log;S.daily=undoState.daily;
   if(undoState.ratings)S.ratings=undoState.ratings;
-  undoState=null;save();render();toast('Cofnięto ostatnią odpowiedź');
+  undoState=null;save();render();toast(t('sess.undone'));
 }
 async function loadCardImage(c){
   const host=$('#imghost');if(!host)return;
-  if(c.imageUrl){host.innerHTML=`<img class="review-image" alt="${esc(c.front)}" src="${esc(c.imageUrl)}"><div class="mu">Obraz poglądowy · Wikimedia Commons</div>`;return}
-  host.textContent='Szukam obrazu…';
+  if(c.imageUrl){host.innerHTML=`<img class="review-image" alt="${esc(c.front)}" src="${esc(c.imageUrl)}"><div class="mu">${t('sess.imgCredit')}</div>`;return}
+  host.textContent=t('sess.imgSearch');
   try{
     const q=encodeURIComponent(c.front);
     const url=`https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${q}&gsrnamespace=6&gsrlimit=8&prop=imageinfo&iiprop=url|mime&iiurlwidth=900&format=json&origin=*`;
     const r=await fetch(url);if(!r.ok)throw Error('network');
     const j=await r.json();
     const pages=Object.values(j.query?.pages||{}).filter(p=>p.imageinfo?.[0]?.thumburl&&/^image\/(jpeg|png|webp)/.test(p.imageinfo[0].mime||''));
-    if(!pages.length){host.textContent='Nie znaleziono pasującego obrazu.';return}
+    if(!pages.length){host.textContent=t('sess.imgNotFound');return}
     const best=pages[0].imageinfo[0].thumburl;c.imageUrl=best;save();
-    host.innerHTML=`<img class="review-image" alt="${esc(c.front)}" src="${esc(best)}"><div class="mu">Obraz poglądowy · Wikimedia Commons</div>`;
-  }catch(e){host.textContent='Obraz niedostępny — sprawdź połączenie z internetem.'}
+    host.innerHTML=`<img class="review-image" alt="${esc(c.front)}" src="${esc(best)}"><div class="mu">${t('sess.imgCredit')}</div>`;
+  }catch(e){host.textContent=t('sess.imgError')}
 }
 function revealImage(id){
   const c=S.cards.find(x=>x.id===id);if(!c)return;
@@ -287,61 +489,70 @@ function revealImage(id){
 }
 
 function vAdd(v){
-  v.innerHTML=`<h2>Nowa fiszka</h2><select id="dk" onchange="lastDeck=this.value">${deckOpts(lastDeck||(S.decks[0]||{}).id)}</select>
-  <textarea id="fr" placeholder="Przód (np. słowo)" onchange="suggest()" oninput="plink()"></textarea>
-  <div class="row" style="margin-bottom:10px"><button class="s" onclick="suggest()">✨ Podpowiedz tłumaczenie</button><a class="s" id="pl" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">Otwórz w PONS</a></div>
+  v.innerHTML=`<h2>${t('add.title')}</h2>
+  <select id="dk" onchange="lastDeck=this.value">${deckOpts(lastDeck||(S.decks[0]||{}).id)}</select>
+  <textarea id="fr" placeholder="${t('add.front')}" onchange="suggest()" oninput="plink()"></textarea>
+  <div class="row" style="margin-bottom:10px"><button class="s" onclick="suggest()">${t('add.suggest')}</button><a class="s" id="pl" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">${t('add.pons')}</a></div>
   <div id="sg" class="chips"></div>
-  <textarea id="bk" placeholder="Tył (np. tłumaczenie)"></textarea>
-  <button class="p" onclick="addCard()">Dodaj fiszkę</button>`;
+  <textarea id="bk" placeholder="${t('add.back')}"></textarea>
+  <button class="p" onclick="addCard()">${t('add.add')}</button>`;
   plink();
 }
 function plink(){
-  const d=S.decks.find(x=>x.id==$('#dk').value),l=(L[d&&d.lang]||L.es)[1];
+  const d=S.decks.find(x=>x.id==$('#dk').value),l=(L[d&&d.lang]||L.es).pons;
   $('#pl').href=`https://pl.pons.com/tłumaczenie?q=${encodeURIComponent($('#fr').value.trim())}&l=${l}`;
 }
 async function suggest(){
   const f=$('#fr').value.trim(),box=$('#sg');
   if(!f)return;
   const d=S.decks.find(x=>x.id==$('#dk').value),ln=L[d&&d.lang]||L.es;
-  box.innerHTML='<span class="mu">Szukam…</span>';
+  box.innerHTML=`<span class="mu">${t('add.sg.search')}</span>`;
   try{
     const nb=window.webkit&&webkit.messageHandlers&&webkit.messageHandlers.tr;
     const sm=nb?null:(window.claude&&await claude.use('sample'));
-    if(!nb&&!sm){box.innerHTML='<span class="mu">Podpowiedzi niedostępne w tym widoku – użyj przycisku PONS.</span>';return}
-    const r=nb?await nb.postMessage({q:f,lang:d.lang}):await sm.json(`Działasz jak słownik polsko-${ln[0]}. Hasło: „${f}”. Jeśli hasło jest po polsku, podaj do 4 najczęstszych tłumaczeń na język: ${ln[0]}. W przeciwnym razie podaj do 4 najczęstszych polskich tłumaczeń. Przy rzeczownikach w języku obcym dodaj rodzajnik, jeśli istnieje. Odpowiedz wyłącznie tablicą JSON z krótkimi stringami, bez komentarzy.`);
+    if(!nb&&!sm){box.innerHTML=`<span class="mu">${t('add.sg.unavailable')}</span>`;return}
+    const r=nb?await nb.postMessage({q:f,lang:d.lang}):await sm.json(`Działasz jak słownik polsko-${ln.name.pl}. Hasło: „${f}”. Jeśli hasło jest po polsku, podaj do 4 najczęstszych tłumaczeń na język: ${ln.name.pl}. W przeciwnym razie podaj do 4 najczęstszych polskich tłumaczeń. Przy rzeczownikach w języku obcym dodaj rodzajnik, jeśli istnieje. Odpowiedz wyłącznie tablicą JSON z krótkimi stringami, bez komentarzy.`);
     const arr=(Array.isArray(r)?r:[]).slice(0,4);
     box.innerHTML='';
-    arr.forEach(t=>{const b=document.createElement('button');b.textContent=String(t);b.onclick=()=>{const k=$('#bk');k.value=k.value?k.value+', '+t:t};box.appendChild(b)});
-    if(!arr.length)box.innerHTML='<span class="mu">Brak podpowiedzi.</span>';
-  }catch(e){box.innerHTML='<span class="mu">Nie udało się pobrać podpowiedzi – użyj przycisku PONS.</span>'}
+    arr.forEach(tn=>{const b=document.createElement('button');b.textContent=String(tn);b.onclick=()=>{const k=$('#bk');k.value=k.value?k.value+', '+tn:tn};box.appendChild(b)});
+    if(!arr.length)box.innerHTML=`<span class="mu">${t('add.sg.noResults')}</span>`;
+  }catch(e){box.innerHTML=`<span class="mu">${t('add.sg.error')}</span>`}
 }
 function addCard(){
   const f=$('#fr').value.trim(),b=$('#bk').value.trim();
-  if(!f||!b){toast('Uzupełnij obie strony');return}
+  if(!f||!b){toast(t('add.bothSides'));return}
   S.cards.push({id:uid(),deck:$('#dk').value,front:f,back:b,imageEnabled:false,ease:2.5,int:0,reps:0,lapses:0,due:0});
-  save();$('#fr').value='';$('#bk').value='';$('#sg').innerHTML='';plink();$('#fr').focus();toast('Dodano ✓');
+  save();$('#fr').value='';$('#bk').value='';$('#sg').innerHTML='';plink();$('#fr').focus();toast(t('add.added'));
 }
 
 function vCards(v){
-  v.innerHTML=`<h2>Karty</h2><input id="q" placeholder="Szukaj…" oninput="renderCards()"><select id="fd" onchange="renderCards()"><option value="">Wszystkie decki</option>${deckOpts('')}</select><div id="ls"></div>
-  <h3>Decki</h3><div id="dl"></div>
-  <div class="row"><input id="nn" placeholder="Nazwa nowego decku"><select id="nl">${Object.entries(L).map(([k,x])=>`<option value="${k}">${x[0]}</option>`).join('')}</select></div>
-  <button class="p" onclick="addDeck()">Utwórz deck</button>
-  <h3>Import CSV (np. z Noji)</h3><select id="idk">${deckOpts('')}</select><input id="cf" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain"><div class="row"><input id="c1" type="number" value="1" min="1"><input id="c2" type="number" value="2" min="1"></div><p class="mu" style="margin-top:-4px">Numery kolumn: przód · tył</p><button class="p" onclick="importCSV()">Importuj</button>`;
+  v.innerHTML=`<h2>${t('cards.title')}</h2>
+  <input id="q" placeholder="${t('cards.search')}" oninput="renderCards()">
+  <select id="fd" onchange="renderCards()"><option value="">${t('study.allDecks')}</option>${deckOpts('')}</select>
+  <div id="ls"></div>
+  <h3>${t('cards.decksTitle')}</h3><div id="dl"></div>
+  <div class="row"><input id="nn" placeholder="${t('cards.newDeckPlaceholder')}"><select id="nl">${Object.entries(L).map(([k,x])=>`<option value="${k}">${x.name[UI]||k}</option>`).join('')}</select></div>
+  <button class="p" onclick="addDeck()">${t('cards.createDeck')}</button>
+  <h3>${t('cards.importTitle')}</h3>
+  <select id="idk">${deckOpts('')}</select>
+  <input id="cf" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain">
+  <div class="row"><input id="c1" type="number" value="1" min="1"><input id="c2" type="number" value="2" min="1"></div>
+  <p class="mu" style="margin-top:-4px">${t('cards.colsHint')}</p>
+  <button class="p" onclick="importCSV()">${t('cards.importBtn')}</button>`;
   renderCards();dlist();
 }
 function renderCards(){
   if(!$('#q')||!$('#fd')||!$('#ls'))return;
-  const q=$('#q').value.trim().toLocaleLowerCase('pl'),d=$('#fd').value;
-  const a=S.cards.filter(c=>(!d||c.deck==d)&&(c.front+' '+c.back).toLocaleLowerCase('pl').includes(q));
-  $('#ls').innerHTML=a.slice(0,200).map(c=>`<div class="it"><div><b>${esc(c.front)}</b><br><span class="mu">${esc(c.back)}</span></div><button aria-label="Edytuj fiszkę" onclick="editCard('${c.id}')">✎</button><button aria-label="Usuń fiszkę" onclick="delCard('${c.id}')">🗑</button></div>`).join('')||'<p class="mu">Brak kart.</p>';
+  const q=$('#q').value.trim().toLocaleLowerCase(),d=$('#fd').value;
+  const a=S.cards.filter(c=>(!d||c.deck==d)&&(c.front+' '+c.back).toLocaleLowerCase().includes(q));
+  $('#ls').innerHTML=a.slice(0,200).map(c=>`<div class="it"><div><b>${esc(c.front)}</b><br><span class="mu">${esc(c.back)}</span></div><button aria-label="${t('cards.edit')}" onclick="editCard('${c.id}')">✎</button><button aria-label="${t('cards.del')}" onclick="delCard('${c.id}')">🗑</button></div>`).join('')||`<p class="mu">${t('cards.noCards')}</p>`;
 }
 function dlist(){
-  $('#dl').innerHTML=S.decks.map(d=>`<div class="it"><div>${esc(d.name)} <span class="mu">· ${L[d.lang][0]} · ${S.cards.filter(c=>c.deck==d.id).length} kart</span></div><button onclick="delDeck('${d.id}')">🗑</button></div>`).join('');
+  $('#dl').innerHTML=S.decks.map(d=>`<div class="it"><div>${esc(d.name)} <span class="mu">· ${langName(d.lang)} · ${t('cards.deckCount').replace('{n}',S.cards.filter(c=>c.deck==d.id).length)}</span></div><button onclick="delDeck('${d.id}')">🗑</button></div>`).join('');
 }
 function modal(title,fields,ok){
   const m=document.createElement('div');m.id='md';
-  m.innerHTML=`<div class="mb"><h3>${esc(title)}</h3>${fields.map(f=>`<textarea placeholder="${esc(f.ph||'')}">${esc(f.v||'')}</textarea>`).join('')}<div class="row"><button class="s" id="mc">Anuluj</button><button class="p" id="mo" style="margin:0">OK</button></div></div>`;
+  m.innerHTML=`<div class="mb"><h3>${esc(title)}</h3>${fields.map(f=>`<textarea placeholder="${esc(f.ph||'')}">${esc(f.v||'')}</textarea>`).join('')}<div class="row"><button class="s" id="mc">${t('common.cancel')}</button><button class="p" id="mo" style="margin:0">${t('common.ok')}</button></div></div>`;
   document.body.appendChild(m);
   m.querySelector('#mc').onclick=()=>m.remove();
   m.querySelector('#mo').onclick=()=>{const v=[...m.querySelectorAll('textarea')].map(x=>x.value);m.remove();ok(v)};
@@ -349,11 +560,15 @@ function modal(title,fields,ok){
 function editCard(id){
   const c=S.cards.find(x=>x.id==id);
   if(!c)return;
-  modal('Edytuj fiszkę',[{v:c.front,ph:'Przód'},{v:c.back,ph:'Tył'}],v=>{if(!v[0].trim()||!v[1].trim()){toast('Obie strony muszą być uzupełnione');return}const front=v[0].trim();if(front!==c.front)delete c.imageUrl;c.front=front;c.back=v[1].trim();save();renderCards()});
+  modal(t('cards.editTitle'),[{v:c.front,ph:t('cards.front')},{v:c.back,ph:t('cards.back')}],v=>{
+    if(!v[0].trim()||!v[1].trim()){toast(t('cards.bothRequired'));return}
+    const front=v[0].trim();if(front!==c.front)delete c.imageUrl;
+    c.front=front;c.back=v[1].trim();save();renderCards();
+  });
 }
 function delCard(id){
   if(!S.cards.some(c=>c.id===id))return;
-  modal('Usunąć fiszkę?',[],()=>{S.cards=S.cards.filter(c=>c.id!==id);if(sess)sess.q=sess.q.filter(x=>x!==id);save();renderCards();dlist();toast('Usunięto fiszkę')});
+  modal(t('cards.deleteCard'),[],()=>{S.cards=S.cards.filter(c=>c.id!==id);if(sess)sess.q=sess.q.filter(x=>x!==id);save();renderCards();dlist();toast(t('cards.cardDeleted'))});
 }
 function parseCSV(t){
   t=t.replace(/^\uFEFF/,'');
@@ -369,21 +584,21 @@ function parseCSV(t){
   return rows.filter(r=>r.some(x=>x.trim()));
 }
 async function importCSV(){
-  const fl=$('#cf').files[0];if(!fl){toast('Wybierz plik');return}
+  const fl=$('#cf').files[0];if(!fl){toast(t('cards.selectFile'));return}
   const cl=s=>(s||'').replace(/<br\s*\/?>/gi,'; ').replace(/<[^>]+>/g,'').trim();
   const rows=parseCSV(await fl.text()),a=Math.max(1,+$('#c1').value||1)-1,b=Math.max(1,+$('#c2').value||2)-1,d=$('#idk').value;
   if(rows.length&&/^(front|back|przód|przod|tył|tyl|question|answer|term|definition|pytanie|odpowiedź)/i.test(cl(rows[0][a])))rows.shift();
   const have=new Set(S.cards.filter(c=>c.deck==d).map(c=>c.front.toLowerCase()));let n=0;
   rows.forEach(r=>{const x=cl(r[a]),y=cl(r[b]);if(x&&y&&!have.has(x.toLowerCase())){have.add(x.toLowerCase());S.cards.push({id:uid(),deck:d,front:x,back:y,ease:2.5,int:0,reps:0,lapses:0,due:0});n++}});
-  save();toast('Zaimportowano: '+n);renderCards();dlist();
+  save();toast(t('cards.imported').replace('{n}',n));renderCards();dlist();
 }
 function addDeck(){
   const n=$('#nn').value.trim();if(!n)return;
   S.decks.push({id:uid(),name:n,lang:$('#nl').value});save();render();
 }
 function delDeck(id){
-  if(S.decks.length<2){toast('Musi zostać co najmniej jeden deck');return}
-  modal('Usunąć deck wraz z kartami?',[],()=>{S.decks=S.decks.filter(d=>d.id!=id);S.cards=S.cards.filter(c=>c.deck!=id);if(sd==id)sd='';save();render()});
+  if(S.decks.length<2){toast(t('cards.keepOneDeck'));return}
+  modal(t('cards.deleteDeck'),[],()=>{S.decks=S.decks.filter(d=>d.id!=id);S.cards=S.cards.filter(c=>c.deck!=id);if(sd==id)sd='';save();render()});
 }
 
 function vStats(v){
@@ -427,41 +642,46 @@ function vStats(v){
     return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end"><div style="font-size:12px;color:var(--mu);margin-bottom:4px">${n}</div><div style="width:70%;background:${col};border-radius:4px 4px 0 0;min-height:2px;height:${h}px"></div><div style="font-size:11px;color:var(--mu);margin-top:4px">${label}</div></div>`;
   };
 
-  v.innerHTML=`<h2>Postępy</h2>
-  <h3>Teraz</h3>
+  v.innerHTML=`<h2>${t('stats.title')}</h2>
+  <h3>${t('stats.now')}</h3>
   <div class="st">
-    <div class="c"><div class="n">${C.length}</div><span class="mu">wszystkich kart</span></div>
-    <div class="c"><div class="n">${mast}</div><span class="mu">opanowane (≥21 dni)</span></div>
-    <div class="c"><div class="n">${lr}</div><span class="mu">w trakcie nauki</span></div>
-    <div class="c"><div class="n">${nw}</div><span class="mu">nowe</span></div>
-    <div class="c"><div class="n">${due('').length}</div><span class="mu">do powtórki teraz</span></div>
-    <div class="c"><div class="n">${today}</div><span class="mu">fiszek dziś</span></div>
+    <div class="c"><div class="n">${C.length}</div><span class="mu">${t('stats.all')}</span></div>
+    <div class="c"><div class="n">${mast}</div><span class="mu">${t('stats.mastered')}</span></div>
+    <div class="c"><div class="n">${lr}</div><span class="mu">${t('stats.learning')}</span></div>
+    <div class="c"><div class="n">${nw}</div><span class="mu">${t('stats.new')}</span></div>
+    <div class="c"><div class="n">${due('').length}</div><span class="mu">${t('stats.dueNow')}</span></div>
+    <div class="c"><div class="n">${today}</div><span class="mu">${t('stats.today')}</span></div>
   </div>
-  <h3>Łącznie</h3>
+  <h3>${t('stats.total')}</h3>
   <div class="st">
-    <div class="c"><div class="n">${totalReviews}</div><span class="mu">wszystkich odpowiedzi</span></div>
-    <div class="c"><div class="n">${reviewedEver}</div><span class="mu">kart powtórzonych</span></div>
-    <div class="c"><div class="n">${retention}</div><span class="mu">skuteczność (Dobrze+Łatwe)</span></div>
-    <div class="c"><div class="n">${activeDays}</div><span class="mu">dni nauki łącznie</span></div>
-    <div class="c"><div class="n">${streak}🔥</div><span class="mu">dni z rzędu</span></div>
-    <div class="c"><div class="n">${longest}</div><span class="mu">najdłuższa seria</span></div>
+    <div class="c"><div class="n">${totalReviews}</div><span class="mu">${t('stats.allAnswers')}</span></div>
+    <div class="c"><div class="n">${reviewedEver}</div><span class="mu">${t('stats.reviewedCards')}</span></div>
+    <div class="c"><div class="n">${retention}</div><span class="mu">${t('stats.retention')}</span></div>
+    <div class="c"><div class="n">${activeDays}</div><span class="mu">${t('stats.daysTotal')}</span></div>
+    <div class="c"><div class="n">${streak}🔥</div><span class="mu">${t('stats.streak')}</span></div>
+    <div class="c"><div class="n">${longest}</div><span class="mu">${t('stats.longestStreak')}</span></div>
   </div>
-  <div class="c"><b>Odpowiedzi wg oceny</b>
+  <div class="c"><b>${t('stats.byRating')}</b>
     <div style="display:flex;gap:8px;height:110px;margin-top:10px">
-      ${gb('Znowu',tA,'#e5484d')}${gb('Trudne',tH,'#f08c00')}${gb('Dobrze',tG,'#30a46c')}${gb('Łatwe',tE,'#3b82f6')}
+      ${gb(t('stats.again'),tA,'#e5484d')}${gb(t('stats.hard'),tH,'#f08c00')}${gb(t('stats.good'),tG,'#30a46c')}${gb(t('stats.easy'),tE,'#3b82f6')}
     </div>
   </div>
-  <div class="c"><b>Ostatnie 30 dni</b><div class="bars" style="margin-top:10px;height:70px;gap:2px">${chart.map(n=>`<div><i style="height:${Math.round(n/mx*50)}px"></i></div>`).join('')}</div></div>
-  <h3>Per deck</h3>
-  ${perDeck.map(deck=>`<div class="it"><div><b>${esc(deck.name)}</b><br><span class="mu">${deck.total} kart · ${deck.new} nowych · ${deck.mastered} opanowanych</span></div></div>`).join('')||'<p class="mu">Brak decków.</p>'}
-  <h3>Kopia zapasowa</h3><p class="mu">Dane są tylko w tej przeglądarce/aplikacji. Zrób kopię przed zmianą telefonu.</p>
-  <div class="row"><button class="s" onclick="bkp()">Kopiuj kopię</button><button class="s" onclick="rst()">Wklej kopię</button></div>`;
+  <div class="c"><b>${t('stats.last30')}</b><div class="bars" style="margin-top:10px;height:70px;gap:2px">${chart.map(n=>`<div><i style="height:${Math.round(n/mx*50)}px"></i></div>`).join('')}</div></div>
+  <h3>${t('stats.perDeck')}</h3>
+  ${perDeck.map(deck=>`<div class="it"><div><b>${esc(deck.name)}</b><br><span class="mu">${t('stats.deckLine').replace('{total}',deck.total).replace('{new}',deck.new).replace('{mastered}',deck.mastered)}</span></div></div>`).join('')||`<p class="mu">${t('cards.noCards')}</p>`}
+  <h3>${t('stats.backup')}</h3><p class="mu">${t('stats.backupInfo')}</p>
+  <div class="row"><button class="s" onclick="bkp()">${t('stats.copyBackup')}</button><button class="s" onclick="rst()">${t('stats.pasteBackup')}</button></div>`;
 }
-async function bkp(){try{await navigator.clipboard.writeText(JSON.stringify(S));toast('Skopiowano do schowka')}catch(e){modal('Skopiuj ten tekst ręcznie',[{v:JSON.stringify(S)}],()=>{})}}
+async function bkp(){
+  try{await navigator.clipboard.writeText(JSON.stringify(S));toast(t('stats.copied'))}
+  catch(e){modal(t('stats.manualCopyTitle'),[{v:JSON.stringify(S)}],()=>{})}
+}
 function rst(){
-  modal('Wklej kopię zapasową (zastąpi obecne dane)',[{ph:'Kopia'}],v=>{
-    try{const o=JSON.parse(v[0]);if(!o.decks||!o.cards)throw 0;S=o;save();render();toast('Przywrócono')}catch(e){toast('Nieprawidłowa kopia')}
+  modal(t('stats.pasteTitle'),[{ph:t('stats.pastePlaceholder')}],v=>{
+    try{const o=JSON.parse(v[0]);if(!o.decks||!o.cards)throw 0;S=o;save();render();toast(t('stats.restored'))}
+    catch(e){toast(t('stats.invalidBackup'))}
   });
 }
+
 render();Sync.init();
 </script></body></html>
