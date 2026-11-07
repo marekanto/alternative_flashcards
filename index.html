@@ -179,8 +179,9 @@ document.addEventListener('keydown',e=>{
   if(!c)return;
   if(key==='m'){say(c.id);e.preventDefault();return}
   if(!flip){
-    // przed odkryciem tylko m i o są sensowne; "o" odkryje kartę pokazując obraz po odkryciu
-    if(key==='o'){e.preventDefault();flip=true;revealImage(c.id);}
+    // przed odkryciem: spacja lub o odkrywa kartę (o dodatkowo pokazuje obraz)
+    if(key===' '||key==='spacebar'||e.code==='Space'){e.preventDefault();flip=true;render();return}
+    if(key==='o'){e.preventDefault();flip=true;revealImage(c.id);return}
     return;
   }
   if(key==='1'){e.preventDefault();ans(0)}
@@ -196,9 +197,9 @@ function vStudy(v){
     if(!sess.q.length){v.innerHTML=`<div class="c" style="text-align:center"><h2>Gotowe! 🎉</h2><p class="mu">Sesja ukończona. Zajrzyj do zakładki Postępy.</p><button class="p" onclick="sess=null;render()">Wróć</button></div>`;return}
     const c=S.cards.find(x=>x.id==sess.q[0]);
     const prompt=c.contextSentence?`<div class="sentence">${esc(c.contextSentence).replace(/\{\{.*?\}\}/,'<span class="blank">_____</span>')}</div>`:`<div class="f">${esc(c.front)}</div>`;
-    v.innerHTML=`<div class="prog">Pozostało: ${sess.q.length} <button class="s" style="float:right" onclick="sess=null;render()">Zakończ</button></div><div class="card" style="margin-top:12px" onclick="flip=true;render()">${prompt}${flip?`<hr><div class="f">${esc(c.front)}</div><div class="b">${esc(c.back)}</div>${c.contextSentence?'<p class="mu">'+esc(c.contextSentence).replace(/\{\{(.*?)\}\}/,'<b>$1</b>')+'</p>':''}${imageRevealed?'<div id="imghost" class="mu">Szukam obrazu…</div>':'<button class="s" style="margin-top:18px" onclick="event.stopPropagation();revealImage(&quot;'+c.id+'&quot;)">🖼 Pokaż obraz</button>'}`:'<div class="hint" style="margin-top:20px">Dotknij, aby odkryć</div>'}</div>
+    v.innerHTML=`<div class="prog">Pozostało: ${sess.q.length} <button class="s" style="float:right" onclick="sess=null;render()">Zakończ</button></div><div class="card" style="margin-top:12px" onclick="flip=true;render()">${prompt}${flip?`<hr><div class="f">${esc(c.front)}</div><div class="b">${esc(c.back)}</div>${c.contextSentence?'<p class="mu">'+esc(c.contextSentence).replace(/\{\{(.*?)\}\}/,'<b>$1</b>')+'</p>':''}${imageRevealed?'<div id="imghost" class="mu">Szukam obrazu…</div>':'<button class="s" style="margin-top:18px" onclick="event.stopPropagation();revealImage(&quot;'+c.id+'&quot;)">🖼 Pokaż obraz</button>'}`:'<div class="hint" style="margin-top:20px">Dotknij lub naciśnij spację, aby odkryć</div>'}</div>
     <div class="row" style="margin-top:10px"><button class="s" onclick="say('${c.id}')">🔊 Wymowa</button><button class="s" onclick="undoAnswer()">↶ Cofnij odpowiedź</button></div>`+
-    (flip?`<div class="g"><button style="background:#e5484d" onclick="ans(0)">Znowu (1)</button><button style="background:#f08c00" onclick="ans(1)">Trudne (2)</button><button style="background:#30a46c" onclick="ans(2)">Dobrze (3)</button><button style="background:#3b82f6" onclick="ans(3)">Łatwe (4)</button></div><p class="hint" style="text-align:center;margin-top:8px">Klawisze: 1–4 ocena · z cofnij · o obraz · m wymowa</p>`:'');
+    (flip?`<div class="g"><button style="background:#e5484d" onclick="ans(0)">Znowu (1)</button><button style="background:#f08c00" onclick="ans(1)">Trudne (2)</button><button style="background:#30a46c" onclick="ans(2)">Dobrze (3)</button><button style="background:#3b82f6" onclick="ans(3)">Łatwe (4)</button></div><p class="hint" style="text-align:center;margin-top:8px">Klawisze: spacja odkryj · 1–4 ocena · z cofnij · o obraz · m wymowa</p>`:'');
     if(flip&&imageRevealed)loadCardImage(c);
     return;
   }
@@ -335,4 +336,5 @@ function vCards(v){
   <h3>Decki</h3><div id="dl"></div>
   <div class="row"><input id="nn" placeholder="Nazwa nowego decku"><select id="nl">${Object.entries(L).map(([k,x])=>`<option value="${k}">${x[0]}</option>`).join('')}</select></div>
   <button class="p" onclick="addDeck()">Utwórz deck</button>
-  <h3>Zdania z lukami</h3><select id="cdk">${deckOpts('')}</select><p class="mu">Generator doda krótkie zdanie do kart, które jeszcze go nie mają.</p><button class="p
+  <h3>Zdania z lukami</h3><select id="cdk">${deckOpts('')}</select><p class="mu">Generator doda krótkie zdanie do kart, które jeszcze go nie mają.</p><button class="p" onclick="generateContexts()">✨ Wygeneruj zdania dla decku</button>
+  <h3>Import CSV (np. z Noji)</h3><select id="idk">${deckOpts('')}</select><input id="cf" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain"><div class="row"><input id="c1" type="number" value="1" min="1"><input id="c2" type="number" value="2" min="1"></div><p class="mu" style="margin-top:-4px">Numery kolumn: przód · tył</p><button class="p" onclick="importCSV
