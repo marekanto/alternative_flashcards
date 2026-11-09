@@ -52,7 +52,7 @@
 * { box-sizing: border-box; }
 html, body {
   height: 100%; margin: 0; padding: 0;
-  overflow: hidden; /* Zapobiega rozjeżdżaniu się całej strony */
+  overflow: hidden;
   background: var(--bg); color: var(--tx);
   font: 16px/1.5 -apple-system, system-ui, "Helvetica Neue", sans-serif;
   -webkit-tap-highlight-color: transparent;
@@ -193,7 +193,7 @@ body.locked #t { display: none !important; }
 <nav>
 <button data-t="study"><b>🧠</b><span data-nav="study">Nauka</span></button>
 <button data-t="add"><b>＋</b><span data-nav="add">Dodaj</span></button>
-<button data-t="cards"><b>🗂</b><span data-nav="cards">Karty</span></button>
+<button data-t="cards"><b>🗂</b><span data-nav="cards">Talie</span></button>
 <button data-t="stats"><b>📊</b><span data-nav="stats">Postępy</span></button>
 </nav>
 <div id="t"></div>
@@ -214,7 +214,7 @@ const langName=code=>(L[code]?.name?.[UI])||code;
 const TR={
   'nav.study':{pl:'Nauka',en:'Study',es:'Estudio'},
   'nav.add':{pl:'Dodaj',en:'Add',es:'Añadir'},
-  'nav.cards':{pl:'Karty',en:'Cards',es:'Tarjetas'},
+  'nav.cards':{pl:'Talie',en:'Decks',es:'Mazos'},
   'nav.stats':{pl:'Postępy',en:'Progress',es:'Progreso'},
   'ui.lang':{pl:'Język interfejsu',en:'Interface language',es:'Idioma de la interfaz'},
   'login.title':{pl:'AltCards',en:'AltCards',es:'AltCards'},
@@ -271,9 +271,9 @@ const TR={
   'add.sg.unavailable':{pl:'Użyj PONS.',en:'Use PONS.',es:'Usa PONS.'},
   'add.sg.noResults':{pl:'Brak.',en:'None.',es:'Ninguna.'},
   'add.sg.error':{pl:'Błąd.',en:'Error.',es:'Error.'},
-  'cards.title':{pl:'Karty',en:'Cards',es:'Tarjetas'},
-  'cards.search':{pl:'Szukaj…',en:'Search…',es:'Buscar…'},
-  'cards.decksTitle':{pl:'Talie',en:'Decks',es:'Mazos'},
+  'cards.title':{pl:'Talie',en:'Decks',es:'Mazos'},
+  'cards.search':{pl:'Szukaj fiszki…',en:'Search cards…',es:'Buscar tarjetas…'},
+  'cards.decksTitle':{pl:'Zarządzaj taliami',en:'Manage decks',es:'Gestionar mazos'},
   'cards.newDeckPlaceholder':{pl:'Nowa talia',en:'New deck',es:'Nuevo mazo'},
   'cards.createDeck':{pl:'Utwórz talię',en:'Create deck',es:'Crear mazo'},
   'cards.importTitle':{pl:'Import CSV',en:'Import CSV',es:'Importar CSV'},
@@ -608,13 +608,12 @@ Sync={
         if(!S.daily)S.daily={};
         if(!S.ratings)S.ratings={};
         
-        // Migracja danych z chmury (jeśli w chmurze były stare tablice dzienne)
         const cloudMigrated = migrateState(S);
         
         localStorage.setItem('altcards-v1',JSON.stringify(S));
         render();
         
-        if (cloudMigrated) this.queueUpload(); // Jeśli zmigrowano, zapisz nowy format do chmury
+        if (cloudMigrated) this.queueUpload(); 
         return true;
       }
     }else{
@@ -841,7 +840,10 @@ function addCard(){
 }
 
 function vCards(v){
-  v.innerHTML=`<h2>${t('cards.title')}</h2>
+  v.innerHTML=`<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+    <h2 style="margin:0">${t('cards.title')}</h2>
+    <button class="p" style="width:auto; padding:10px 16px; margin:0; border-radius:14px; font-size:14px; box-shadow:none" onclick="goToAdd()">＋ ${t('add.add')}</button>
+  </div>
   <input id="q" placeholder="${t('cards.search')}" oninput="renderCards()">
   <select id="fd" onchange="renderCards()"><option value="">${t('study.allDecks')}</option>${deckOpts('')}</select>
   <div id="ls"></div>
@@ -855,6 +857,12 @@ function vCards(v){
   <p class="mu" style="margin-top:-4px">${t('cards.colsHint')}</p>
   <button class="p" onclick="importCSV()">${t('cards.importBtn')}</button>`;
   renderCards();dlist();
+}
+function goToAdd() {
+  const selectedDeck = $('#fd') ? $('#fd').value : '';
+  if (selectedDeck) lastDeck = selectedDeck;
+  tab = 'add';
+  render();
 }
 function renderCards(){
   if(!$('#q')||!$('#fd')||!$('#ls'))return;
