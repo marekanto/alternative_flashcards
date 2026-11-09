@@ -110,10 +110,10 @@ button { font: inherit; cursor: pointer; }
   position: relative; overflow: hidden;
 }
 .card:active { transform: scale(0.98); }
-.f { font-size: 32px; font-weight: 800; word-break: break-word; letter-spacing: -0.5px; margin: 0; }
-.b { font-size: 24px; color: var(--ac); word-break: break-word; font-weight: 600; margin-top: 8px; }
-.sentence { font-size: 24px; line-height: 1.5; word-break: break-word; font-weight: 500;}
-.blank { font-weight: 800; letter-spacing: 2px; border-bottom: 3px solid var(--ac); }
+.f { font-size: 32px; font-weight: 500; word-break: break-word; overflow-wrap: anywhere; hyphens: auto; letter-spacing: -0.02em; margin: 0; line-height: 1.25; }
+.b { font-size: 24px; color: var(--ac); word-break: break-word; overflow-wrap: anywhere; hyphens: auto; font-weight: 500; margin-top: 8px; line-height: 1.3; }
+.sentence { font-size: 24px; line-height: 1.5; word-break: break-word; overflow-wrap: anywhere; hyphens: auto; font-weight: 500;}
+.blank { font-weight: 700; letter-spacing: 2px; border-bottom: 3px solid var(--ac); }
 .hint, .prog, .mu { color: var(--mu); font-size: 14px; font-weight: 500;}
 hr { width: 80%; border: 0; border-top: 1px dashed var(--bd); margin: 24px auto; }
 
@@ -156,8 +156,8 @@ h3 { margin: 20px 0 10px; font-size: 18px; font-weight: 700; }
 
 /* Tryb nauki (reviewing) */
 body.reviewing main { max-width: none; padding: clamp(16px, 4vw, 42px); display: flex; flex-direction: column; }
-body.reviewing #v { width: 100%; max-width: 900px; margin: 0 auto; flex: 1; display: flex; flex-direction: column; justify-content: center; }
-body.reviewing .card { flex: 1; min-height: 50vh; font-size: 1.15em; }
+body.reviewing #v { width: 100%; max-width: 900px; margin: 0 auto; flex: 1; display: flex; flex-direction: column; justify-content: safe center; overflow-y: auto; }
+body.reviewing .card { flex: 1; min-height: 50vh; overflow-y: auto; font-size: 1.15em; }
 body.reviewing .card .f { font-size: clamp(32px, 6vw, 56px); }
 body.reviewing .card .b { font-size: clamp(26px, 5vw, 44px); }
 .review-image { display: block; max-width: 100%; max-height: 32vh; object-fit: contain; margin: 20px auto 0; border-radius: 16px; box-shadow: var(--shadow); }
@@ -377,6 +377,18 @@ function uiLangSelect(){
   const opts=[['pl','Polski'],['en','English'],['es','Español']]
     .map(([v,n])=>`<option value="${v}"${UI===v?' selected':''}>${n}</option>`).join('');
   return `<select onchange="setUI(this.value)" style="margin:0">${opts}</select>`;
+}
+
+// --- ADAPTACYJNY ROZMIAR CZCIONKI ---
+function fitSize(text, base) {
+  const len = (text || '').length;
+  if (len <= 12) return base + 'px';
+  if (len <= 20) return Math.round(base * 0.78) + 'px';
+  if (len <= 30) return Math.round(base * 0.62) + 'px';
+  if (len <= 45) return Math.round(base * 0.5) + 'px';
+  if (len <= 60) return Math.round(base * 0.42) + 'px';
+  if (len <= 90) return Math.round(base * 0.35) + 'px';
+  return Math.round(base * 0.28) + 'px';
 }
 
 const SUPABASE_URL='https://icwmcoxscwpswrhmfiht.supabase.co';
@@ -671,12 +683,16 @@ function vStudy(v){
   if(sess){
     if(!sess.q.length){v.innerHTML=`<div class="c" style="text-align:center"><h2>${t('sess.done')}</h2><p class="mu">${t('sess.doneSub')}</p><button class="p" onclick="sess=null;render()">${t('sess.back')}</button></div>`;return}
     const c=S.cards.find(x=>x.id==sess.q[0]);
-    const prompt=c.contextSentence?`<div class="sentence">${esc(c.contextSentence).replace(/\{\{.*?\}\}/,'<span class="blank">_____</span>')}</div>`:`<div class="f">${esc(c.front)}</div>`;
+    const fStyle = `font-size:${fitSize(c.front, 56)}`;
+    const bStyle = `font-size:${fitSize(c.back, 44)}`;
+    const prompt = c.contextSentence
+      ? `<div class="sentence">${esc(c.contextSentence).replace(/\{\{.*?\}\}/,'<span class="blank">_____</span>')}</div>`
+      : `<div class="f" style="${fStyle}">${esc(c.front)}</div>`;
     v.innerHTML=`<div class="prog" style="display:flex; justify-content:space-between; align-items:center">
       <span>${t('sess.remaining')} ${sess.q.length}</span> 
       <button class="s" style="padding:6px 12px; font-size:13px" onclick="sess=null;render()">${t('sess.end')}</button>
     </div>
-    <div class="card" style="margin-top:12px" onclick="flip=true;render()">${prompt}${flip?`<hr><div class="f" style="position:relative">${esc(c.front)} <button class="s" style="position:absolute; right:0; top:50%; transform:translateY(-50%); padding:6px 10px; font-size:14px; opacity:0.5; border:none; box-shadow:none" onclick="event.stopPropagation();editCard('${c.id}', true)">✎</button></div><div class="b">${esc(c.back)}</div>${c.contextSentence?'<p class="mu">'+esc(c.contextSentence).replace(/\{\{(.*?)\}\}/,'<b>$1</b>')+'</p>':''}${imageRevealed?'<div id="imghost" class="mu"></div>':'<button class="s" style="margin-top:24px" onclick="event.stopPropagation();revealImage(&quot;'+c.id+'&quot;)">'+t('sess.image')+'</button>'}`:'<div class="hint" style="margin-top:24px">'+t('sess.discover')+'</div>'}</div>
+    <div class="card" style="margin-top:12px" onclick="flip=true;render()">${prompt}${flip?`<hr><div class="f" style="position:relative;${fStyle}">${esc(c.front)} <button class="s" style="position:absolute; right:0; top:50%; transform:translateY(-50%); padding:6px 10px; font-size:14px; opacity:0.5; border:none; box-shadow:none" onclick="event.stopPropagation();editCard('${c.id}', true)">✎</button></div><div class="b" style="${bStyle}">${esc(c.back)}</div>${c.contextSentence?'<p class="mu">'+esc(c.contextSentence).replace(/\{\{(.*?)\}\}/,'<b>$1</b>')+'</p>':''}${imageRevealed?'<div id="imghost" class="mu"></div>':'<button class="s" style="margin-top:24px" onclick="event.stopPropagation();revealImage(&quot;'+c.id+'&quot;)">'+t('sess.image')+'</button>'}`:'<div class="hint" style="margin-top:24px">'+t('sess.discover')+'</div>'}</div>
     <div class="row" style="margin-top:12px"><button class="s" onclick="say('${c.id}')">${t('sess.say')}</button><button class="s" onclick="undoAnswer()">${t('sess.undo')}</button></div>`+
     (flip?`<div class="g"><button style="background:#ef4444" onclick="ans(0)">${t('sess.again')}</button><button style="background:#f59e0b" onclick="ans(1)">${t('sess.hard')}</button><button style="background:#10b981" onclick="ans(2)">${t('sess.good')}</button><button style="background:#3b82f6" onclick="ans(3)">${t('sess.easy')}</button></div><p class="hint" style="text-align:center;margin-top:12px;opacity:0.7">${t('sess.keysHint')}</p>`:'');
     if(flip&&imageRevealed)loadCardImage(c);
@@ -693,7 +709,8 @@ function vStudy(v){
     <div><div class="n">${todayCount}</div><span class="mu">${t('study.today')}</span></div>
   </div>
   <button class="p" ${a.length?'':'disabled style="opacity:.4"'} onclick="start()">${t('study.start')}</button>
-  ${S.cards.length?'':`<p class="mu" style="text-align:center">${t('study.noCards')}</p>`}</div>`;
+  ${S.cards.length?'':`<p class="mu" style="text-align:center">${t('study.noCards')}</p>`}</div>
+  <button class="s" style="width:100%; margin-top:10px" onclick="showFeedbackModal()">${t('feedback.title')}</button>`;
   const sel=v.querySelector('select');sel.value=sd;
 }
 function start(){
@@ -758,8 +775,7 @@ function vSettings(v){
   <button class="p" onclick="saveSettings()">${t('settings.save')}</button></div>
   
   <div class="c" style="text-align:center">
-    <button class="s" style="margin-bottom:10px; width:100%" onclick="localStorage.removeItem('altcards-tut'); showTutorial()">${t('settings.showTut')}</button>
-    <button class="s" style="width:100%" onclick="showFeedbackModal()">${t('feedback.title')}</button>
+    <button class="s" style="width:100%" onclick="localStorage.removeItem('altcards-tut'); showTutorial()">${t('settings.showTut')}</button>
   </div>
 
   <button class="s" style="width:100%; margin-top:10px" onclick="tab='study';render()">${t('settings.back')}</button>`;
