@@ -399,13 +399,20 @@ if(!S){
 }
 
 // --- MIGRACJA STARYCH DANYCH (tablice dzienne -> liczniki) ---
-let needsSave = false;
-Object.keys(S.daily || {}).forEach(k => {
-  if (Array.isArray(S.daily[k])) {
-    S.daily[k] = S.daily[k].length;
-    needsSave = true;
+function migrateState(state) {
+  if(!state) return false;
+  let changed = false;
+  if(state.daily) {
+    Object.keys(state.daily).forEach(k => {
+      if (Array.isArray(state.daily[k])) {
+        state.daily[k] = state.daily[k].length;
+        changed = true;
+      }
+    });
   }
-});
+  return changed;
+}
+let needsSave = migrateState(S);
 
 function pruneOldStats() {
   const limit = new Date();
@@ -600,8 +607,14 @@ Sync={
         if(!S.settings)S.settings={...defaults};
         if(!S.daily)S.daily={};
         if(!S.ratings)S.ratings={};
+        
+        // Migracja danych z chmury (jeśli w chmurze były stare tablice dzienne)
+        const cloudMigrated = migrateState(S);
+        
         localStorage.setItem('altcards-v1',JSON.stringify(S));
         render();
+        
+        if (cloudMigrated) this.queueUpload(); // Jeśli zmigrowano, zapisz nowy format do chmury
         return true;
       }
     }else{
@@ -673,13 +686,14 @@ function vStudy(v){
     return;
   }
   const a=due(sd),nw=a.filter(isNew).length,rv=a.length-nw;
+  const todayCount = Array.isArray(S.daily[dk(new Date())]) ? S.daily[dk(new Date())].length : (S.daily[dk(new Date())]||0);
   v.innerHTML=`<h2>${t('study.title')}</h2>
   <select onchange="sd=this.value;render()"><option value="">${t('study.allDecks')}</option>${deckOpts(sd)}</select>
   <div class="row"><button class="s" onclick="tab='settings';render()">${t('study.settings')}</button><button class="s" onclick="shuffleNewInDeck()">${t('study.shuffle')}</button></div>
   <div class="c" style="margin-top:20px"><div class="st">
     <div><div class="n">${rv}</div><span class="mu">${t('study.due')}</span></div>
     <div><div class="n">${Math.min(nw,S.settings.newLimit)}</div><span class="mu">${t('study.newLimit').replace('{n}',S.settings.newLimit)}</span></div>
-    <div><div class="n">${(S.daily[dk(new Date())]||0)}</div><span class="mu">${t('study.today')}</span></div>
+    <div><div class="n">${todayCount}</div><span class="mu">${t('study.today')}</span></div>
   </div>
   <button class="p" ${a.length?'':'disabled style="opacity:.4"'} onclick="start()">${t('study.start')}</button>
   ${S.cards.length?'':`<p class="mu" style="text-align:center">${t('study.noCards')}</p>`}</div>`;
@@ -907,7 +921,7 @@ function delDeck(id){
 function vStats(v){
   const C=S.cards,todayKey=dk(new Date());
   const mast=C.filter(c=>c.int>=21).length,nw=C.filter(isNew).length,lr=C.length-mast-nw;
-  const today=(S.daily[todayKey]||0);
+  const today = Array.isArray(S.daily[todayKey]) ? S.daily[todayKey].length : (S.daily[todayKey] || 0);
   const reviewedEver=C.filter(c=>c.reps>0).length;
   let streak=0;const d=new Date();
   if(!S.log[dk(d)])d.setDate(d.getDate()-1);
