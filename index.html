@@ -7,60 +7,149 @@
 <meta name="apple-mobile-web-app-title" content="Fiszki">
 <title>Fiszki</title>
 <style>
-:root{--bg:#f5f5f7;--sf:#fff;--tx:#1c1c1e;--mu:#6e6e73;--ac:#4f46e5;--bd:#d8d8de;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--sf:#1c1c1e;--tx:#f2f2f7;--mu:#98989f;--ac:#818cf8;--bd:#3a3a3c;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#000;--sf:#1c1c1e;--tx:#f2f2f7;--mu:#98989f;--ac:#818cf8;--bd:#3a3a3c;color-scheme:dark}
-*{box-sizing:border-box}
-html,body{height:100%;margin:0}
-body{display:flex;flex-direction:column;background:var(--bg);color:var(--tx);font:16px/1.4 -apple-system,system-ui,"Helvetica Neue",sans-serif;-webkit-tap-highlight-color:transparent}
-main{flex:1;overflow-y:auto;padding:16px;max-width:560px;width:100%;margin:0 auto}
-nav{display:flex;border-top:1px solid var(--bd);background:var(--sf)}
-nav button{flex:1;border:0;background:none;color:var(--mu);padding:10px 0 8px;font-size:12px}
-nav button b{display:block;font-size:20px;font-weight:400}
-nav button.on{color:var(--ac)}
-input,select,textarea{width:100%;padding:12px;margin:0 0 10px;border:1px solid var(--bd);border-radius:12px;background:var(--sf);color:var(--tx);font:inherit}
-textarea{min-height:70px;resize:vertical}
-button{font:inherit;cursor:pointer}
-.p{width:100%;padding:14px;border:0;border-radius:12px;background:var(--ac);color:#fff;font-weight:600;margin:4px 0 10px}
-.s{padding:10px 14px;border:1px solid var(--bd);border-radius:10px;background:var(--sf);color:var(--tx)}
-.c{background:var(--sf);border-radius:16px;padding:18px;margin-bottom:12px}
-.card{background:var(--sf);border-radius:20px;padding:28px 18px;min-height:240px;text-align:center;display:flex;flex-direction:column;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,.08)}
-.f{font-size:28px;font-weight:600;word-break:break-word}
-.b{font-size:22px;color:var(--ac);word-break:break-word}
-.sentence{font-size:24px;line-height:1.55;word-break:break-word}.blank{font-weight:700;letter-spacing:2px;border-bottom:2px solid var(--ac)}
-.hint,.prog,.mu{color:var(--mu);font-size:14px}
-hr{width:60%;border:0;border-top:1px solid var(--bd);margin:18px auto}
-.g{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
-.g button{padding:14px 0;border:0;border-radius:12px;color:#fff;font-weight:600;font-size:14px}
-.row{display:flex;gap:8px}.row>*{flex:1}
-.it{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--bd)}
-.it div{flex:1;min-width:0;overflow-wrap:anywhere}
-.it button{border:0;background:none;font-size:18px}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
-.chips button{padding:8px 12px;border:1px solid var(--ac);border-radius:20px;background:none;color:var(--ac)}
-.bars{display:flex;align-items:flex-end;gap:6px;height:90px}
-.bars div{flex:1;text-align:center;font-size:11px;color:var(--mu)}
-.bars i{display:block;background:var(--ac);border-radius:4px 4px 0 0;min-height:2px}
-.n{font-size:30px;font-weight:700}
-.st{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
-#t{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:#333;color:#fff;padding:8px 16px;border-radius:20px;display:none}
-a{color:var(--ac)}
-h3{margin:18px 0 8px}
-body.reviewing main{max-width:none;width:100%;padding:clamp(16px,4vw,42px);display:flex;flex-direction:column}
-body.reviewing #v{width:100%;max-width:900px;margin:0 auto;flex:1;display:flex;flex-direction:column;justify-content:center}
-body.reviewing .card{flex:1;min-height:50vh;font-size:1.15em;cursor:pointer}
-body.reviewing .card .f{font-size:clamp(30px,5vw,48px)}
-body.reviewing .card .b{font-size:clamp(24px,4vw,36px)}
-.review-image{display:block;max-width:100%;max-height:32vh;object-fit:contain;margin:18px auto 0;border-radius:14px}
-body.reviewing nav{display:none}
-body.reviewing #t{bottom:20px}
-#md{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:9}
-.mb{background:var(--sf);border-radius:16px;padding:18px;width:100%;max-width:420px}
-.mb textarea{min-height:50px}.mb h3{margin-top:0}
-#login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}
-#login .box{width:100%;max-width:380px}
-body.locked main,body.locked nav{display:none}
-body.locked #t{display:none!important}
+:root {
+  --bg: #f0f2f5;
+  --sf: #ffffff;
+  --sf-trans: rgba(255, 255, 255, 0.85);
+  --tx: #1c1c1e;
+  --mu: #8e8e93;
+  --ac: #4f46e5;
+  --ac-grad: linear-gradient(135deg, #6366f1, #4f46e5);
+  --bd: #e5e5ea;
+  --shadow: 0 8px 24px rgba(0,0,0,0.06);
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000;
+    --sf: #1c1c1e;
+    --sf-trans: rgba(28, 28, 30, 0.85);
+    --tx: #f2f2f7;
+    --mu: #98989f;
+    --ac: #818cf8;
+    --ac-grad: linear-gradient(135deg, #818cf8, #6366f1);
+    --bd: #3a3a3c;
+    --shadow: 0 8px 24px rgba(0,0,0,0.4);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #000000;
+  --sf: #1c1c1e;
+  --sf-trans: rgba(28, 28, 30, 0.85);
+  --tx: #f2f2f7;
+  --mu: #98989f;
+  --ac: #818cf8;
+  --ac-grad: linear-gradient(135deg, #818cf8, #6366f1);
+  --bd: #3a3a3c;
+  --shadow: 0 8px 24px rgba(0,0,0,0.4);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  display: flex; flex-direction: column; background: var(--bg); color: var(--tx);
+  font: 16px/1.5 -apple-system, system-ui, "Helvetica Neue", sans-serif;
+  -webkit-tap-highlight-color: transparent; transition: background 0.3s;
+}
+main { flex: 1; overflow-y: auto; padding: 16px; max-width: 560px; width: 100%; margin: 0 auto; }
+nav {
+  display: flex; border-top: 1px solid var(--bd); background: var(--sf-trans);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+nav button {
+  flex: 1; border: 0; background: none; color: var(--mu); padding: 12px 0 10px;
+  font-size: 12px; transition: color 0.2s; font-weight: 500;
+}
+nav button b { display: block; font-size: 22px; font-weight: 400; margin-bottom: 4px; transition: transform 0.2s; }
+nav button:active b { transform: scale(0.9); }
+nav button.on { color: var(--ac); }
+input, select, textarea {
+  width: 100%; padding: 14px 16px; margin: 0 0 12px; border: 1px solid var(--bd);
+  border-radius: 14px; background: var(--sf); color: var(--tx); font: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--ac); box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+textarea { min-height: 80px; resize: vertical; }
+button { font: inherit; cursor: pointer; }
+.p {
+  width: 100%; padding: 16px; border: 0; border-radius: 14px; background: var(--ac-grad);
+  color: #fff; font-weight: 600; margin: 6px 0 12px; box-shadow: 0 4px 12px rgba(79,70,229,0.3);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.p:active { transform: translateY(2px); box-shadow: 0 2px 6px rgba(79,70,229,0.2); }
+.s {
+  padding: 12px 16px; border: 1px solid var(--bd); border-radius: 12px;
+  background: var(--sf); color: var(--tx); font-weight: 500; transition: background 0.2s;
+}
+.s:active { background: var(--bd); }
+.c { background: var(--sf); border-radius: 20px; padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); }
+.card {
+  background: var(--sf); border-radius: 24px; padding: 32px 24px; min-height: 260px;
+  text-align: center; display: flex; flex-direction: column; justify-content: center;
+  box-shadow: var(--shadow); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+  position: relative; overflow: hidden;
+}
+.card:active { transform: scale(0.98); }
+.f { font-size: 32px; font-weight: 700; word-break: break-word; letter-spacing: -0.5px; }
+.b { font-size: 24px; color: var(--ac); word-break: break-word; font-weight: 500; }
+.sentence { font-size: 24px; line-height: 1.5; word-break: break-word; }
+.blank { font-weight: 800; letter-spacing: 2px; border-bottom: 3px solid var(--ac); }
+.hint, .prog, .mu { color: var(--mu); font-size: 14px; }
+hr { width: 80%; border: 0; border-top: 1px dashed var(--bd); margin: 20px auto; }
+.g { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 16px; }
+.g button {
+  padding: 16px 0; border: 0; border-radius: 14px; color: #fff; font-weight: 600;
+  font-size: 14px; transition: transform 0.1s, opacity 0.1s;
+}
+.g button:active { transform: scale(0.95); opacity: 0.8; }
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+.it { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--bd); }
+.it div { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.it button { border: 0; background: none; font-size: 20px; padding: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.chips button {
+  padding: 8px 14px; border: 1px solid var(--ac); border-radius: 20px; background: none;
+  color: var(--ac); font-size: 14px; transition: background 0.2s;
+}
+.chips button:active { background: rgba(79,70,229,0.1); }
+.bars { display: flex; align-items: flex-end; gap: 4px; height: 100px; }
+.bars div { flex: 1; text-align: center; font-size: 11px; color: var(--mu); }
+.bars i { display: block; background: var(--ac-grad); border-radius: 6px 6px 0 0; min-height: 2px; }
+.n { font-size: 32px; font-weight: 800; }
+.st { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+#t {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: 100px;
+  background: rgba(0,0,0,0.8); color: #fff; padding: 10px 20px; border-radius: 30px;
+  display: none; font-size: 14px; backdrop-filter: blur(8px); z-index: 100;
+}
+a { color: var(--ac); text-decoration: none; }
+h2 { margin: 0 0 16px; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+h3 { margin: 20px 0 10px; font-size: 18px; font-weight: 700; }
+body.reviewing main { max-width: none; width: 100%; padding: clamp(16px, 4vw, 42px); display: flex; flex-direction: column; }
+body.reviewing #v { width: 100%; max-width: 900px; margin: 0 auto; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+body.reviewing .card { flex: 1; min-height: 50vh; font-size: 1.15em; }
+body.reviewing .card .f { font-size: clamp(32px, 6vw, 56px); }
+body.reviewing .card .b { font-size: clamp(26px, 5vw, 44px); }
+.review-image { display: block; max-width: 100%; max-height: 32vh; object-fit: contain; margin: 20px auto 0; border-radius: 16px; }
+body.reviewing nav { display: none; }
+body.reviewing #t { bottom: 20px; }
+#md { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; backdrop-filter: blur(4px); }
+.mb { background: var(--sf); border-radius: 20px; padding: 24px; width: 100%; max-width: 420px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+.mb textarea { min-height: 60px; } .mb h3 { margin-top: 0; }
+#login { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 60; }
+#login .box { width: 100%; max-width: 380px; background: var(--sf); padding: 32px; border-radius: 24px; box-shadow: var(--shadow); }
+body.locked main, body.locked nav { display: none; }
+body.locked #t { display: none !important; }
+.pass-wrap { position: relative; }
+.pass-wrap input { padding-right: 48px; }
+.pass-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); border: 0; background: none; font-size: 20px; cursor: pointer; opacity: 0.5; }
+.pass-toggle:active { opacity: 1; }
 </style></head><body>
 <main id="v"></main>
 <nav>
@@ -68,7 +157,6 @@ body.locked #t{display:none!important}
 <button data-t="add"><b>＋</b><span data-nav="add">Dodaj</span></button>
 <button data-t="cards"><b>🗂</b><span data-nav="cards">Karty</span></button>
 <button data-t="stats"><b>📊</b><span data-nav="stats">Postępy</span></button>
-<button data-t="teacher"><b>🎓</b><span data-nav="teacher">Klasa</span></button>
 </nav>
 <div id="t"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
@@ -76,7 +164,6 @@ body.locked #t{display:none!important}
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-/* ---- Języki fiszek ---- */
 const L={
   es:{name:{pl:'hiszpański',en:'Spanish',es:'Español'},pons:'espl',tts:'es-ES'},
   en:{name:{pl:'angielski',en:'English',es:'Inglés'},pons:'enpl',tts:'en-GB'},
@@ -86,18 +173,16 @@ const L={
 };
 const langName=code=>(L[code]?.name?.[UI])||code;
 
-/* ---- Tłumaczenia ---- */
 const TR={
   'nav.study':{pl:'Nauka',en:'Study',es:'Estudio'},
   'nav.add':{pl:'Dodaj',en:'Add',es:'Añadir'},
   'nav.cards':{pl:'Karty',en:'Cards',es:'Tarjetas'},
   'nav.stats':{pl:'Postępy',en:'Progress',es:'Progreso'},
-  'nav.teacher':{pl:'Klasa',en:'Class',es:'Clase'},
   'ui.lang':{pl:'Język interfejsu',en:'Interface language',es:'Idioma de la interfaz'},
   'login.title':{pl:'Zaloguj się',en:'Sign in',es:'Iniciar sesión'},
-  'login.subtitle':{pl:'Aplikacja wymaga konta.',en:'The app requires an account.',es:'La aplicación requiere una cuenta.'},
+  'login.subtitle':{pl:'Zaloguj się, aby zsynchronizować fiszki.',en:'Sign in to sync your cards.',es:'Inicia sesión para sincronizar.'},
   'login.email':{pl:'E-mail',en:'Email',es:'Correo'},
-  'login.password':{pl:'Hasło (min. 6 znaków)',en:'Password (min. 6 chars)',es:'Contraseña (mín. 6 caracteres)'},
+  'login.password':{pl:'Hasło (min. 6 znaków)',en:'Password (min. 6)',es:'Contraseña (mín. 6)'},
   'login.login':{pl:'Zaloguj',en:'Sign in',es:'Entrar'},
   'login.signup':{pl:'Załóż konto',en:'Create account',es:'Crear cuenta'},
   'login.err.notConfig':{pl:'Brak konfiguracji.',en:'Not configured.',es:'No configurado.'},
@@ -106,14 +191,14 @@ const TR={
   'login.toast.logged':{pl:'Zalogowano',en:'Signed in',es:'Sesión iniciada'},
   'login.toast.registered':{pl:'Konto utworzone',en:'Account created',es:'Cuenta creada'},
   'study.title':{pl:'Nauka',en:'Study',es:'Estudio'},
-  'study.allDecks':{pl:'Wszystkie decki',en:'All decks',es:'Todos los mazos'},
+  'study.allDecks':{pl:'Wszystkie talie',en:'All decks',es:'Todos los mazos'},
   'study.settings':{pl:'⚙️ Ustawienia',en:'⚙️ Settings',es:'⚙️ Ajustes'},
-  'study.shuffle':{pl:'🔀 Losuj nowe',en:'🔀 Shuffle new',es:'🔀 Barajar nuevas'},
+  'study.shuffle':{pl:'🔀 Losuj',en:'🔀 Shuffle',es:'🔀 Barajar'},
   'study.due':{pl:'do powtórki',en:'to review',es:'por repasar'},
   'study.newLimit':{pl:'nowe (limit {n})',en:'new (limit {n})',es:'nuevas (límite {n})'},
   'study.today':{pl:'fiszek dziś',en:'cards today',es:'tarjetas hoy'},
   'study.start':{pl:'Zacznij naukę',en:'Start studying',es:'Empezar a estudiar'},
-  'study.noCards':{pl:'Nie masz jeszcze fiszek.',en:"No cards yet.",es:'Aún no tienes tarjetas.'},
+  'study.noCards':{pl:'Brak fiszek. Dodaj je w zakładce "Dodaj".',en:"No cards. Add some in the Add tab.",es:'Sin tarjetas. Añádelas en Añadir.'},
   'study.tooFewNew':{pl:'Za mało nowych kart.',en:'Not enough new cards.',es:'No hay suficientes tarjetas.'},
   'study.shuffled':{pl:'Wylosowano {n} kart.',en:'Shuffled {n} cards.',es:'Se barajaron {n} tarjetas.'},
   'sess.remaining':{pl:'Pozostało:',en:'Remaining:',es:'Quedan:'},
@@ -137,10 +222,10 @@ const TR={
   'sess.imgError':{pl:'Błąd obrazu.',en:'Image error.',es:'Error de imagen.'},
   'sess.imgCredit':{pl:'Wikimedia Commons',en:'Wikimedia Commons',es:'Wikimedia Commons'},
   'add.title':{pl:'Nowa fiszka',en:'New card',es:'Nueva tarjeta'},
-  'add.front':{pl:'Przód',en:'Front',es:'Frente'},
+  'add.front':{pl:'Przód (np. słowo)',en:'Front (e.g. word)',es:'Frente (p. ej. palabra)'},
   'add.suggest':{pl:'✨ Podpowiedz',en:'✨ Suggest',es:'✨ Sugerir'},
   'add.pons':{pl:'PONS',en:'PONS',es:'PONS'},
-  'add.back':{pl:'Tył',en:'Back',es:'Reverso'},
+  'add.back':{pl:'Tył (np. tłumaczenie)',en:'Back (e.g. translation)',es:'Reverso (p. ej. traducción)'},
   'add.add':{pl:'Dodaj fiszkę',en:'Add card',es:'Añadir tarjeta'},
   'add.bothSides':{pl:'Uzupełnij obie strony',en:'Fill both sides',es:'Completa ambos lados'},
   'add.added':{pl:'Dodano ✓',en:'Added ✓',es:'Añadida ✓'},
@@ -150,9 +235,9 @@ const TR={
   'add.sg.error':{pl:'Błąd.',en:'Error.',es:'Error.'},
   'cards.title':{pl:'Karty',en:'Cards',es:'Tarjetas'},
   'cards.search':{pl:'Szukaj…',en:'Search…',es:'Buscar…'},
-  'cards.decksTitle':{pl:'Decki',en:'Decks',es:'Mazos'},
-  'cards.newDeckPlaceholder':{pl:'Nowy deck',en:'New deck',es:'Nuevo mazo'},
-  'cards.createDeck':{pl:'Utwórz deck',en:'Create deck',es:'Crear mazo'},
+  'cards.decksTitle':{pl:'Talie',en:'Decks',es:'Mazos'},
+  'cards.newDeckPlaceholder':{pl:'Nowa talia',en:'New deck',es:'Nuevo mazo'},
+  'cards.createDeck':{pl:'Utwórz talię',en:'Create deck',es:'Crear mazo'},
   'cards.importTitle':{pl:'Import CSV',en:'Import CSV',es:'Importar CSV'},
   'cards.colsHint':{pl:'Kolumny: przód · tył',en:'Cols: front · back',es:'Columnas: frente · reverso'},
   'cards.importBtn':{pl:'Importuj',en:'Import',es:'Importar'},
@@ -161,8 +246,8 @@ const TR={
   'cards.imported':{pl:'Zaimportowano: {n}',en:'Imported: {n}',es:'Importadas: {n}'},
   'cards.editTitle':{pl:'Edytuj',en:'Edit',es:'Editar'},
   'cards.deleteCard':{pl:'Usunąć fiszkę?',en:'Delete card?',es:'¿Eliminar tarjeta?'},
-  'cards.deleteDeck':{pl:'Usunąć deck?',en:'Delete deck?',es:'¿Eliminar mazo?'},
-  'cards.keepOneDeck':{pl:'Musi zostać 1 deck',en:'Keep at least 1 deck',es:'Debe quedar 1 mazo'},
+  'cards.deleteDeck':{pl:'Usunąć talię?',en:'Delete deck?',es:'¿Eliminar mazo?'},
+  'cards.keepOneDeck':{pl:'Musi zostać 1 talia',en:'Keep at least 1 deck',es:'Debe quedar 1 mazo'},
   'cards.cardDeleted':{pl:'Usunięto',en:'Deleted',es:'Eliminado'},
   'cards.front':{pl:'Przód',en:'Front',es:'Frente'},
   'cards.back':{pl:'Tył',en:'Back',es:'Reverso'},
@@ -191,7 +276,7 @@ const TR={
   'stats.good':{pl:'Dobrze',en:'Good',es:'Bien'},
   'stats.easy':{pl:'Łatwe',en:'Easy',es:'Fácil'},
   'stats.last30':{pl:'Ostatnie 30 dni',en:'Last 30 days',es:'Últimos 30 días'},
-  'stats.perDeck':{pl:'Per deck',en:'Per deck',es:'Por mazo'},
+  'stats.perDeck':{pl:'Per talia',en:'Per deck',es:'Por mazo'},
   'stats.deckLine':{pl:'{total} · {new} nowych · {mastered} opan.',en:'{total} · {new} new · {mastered} mastered',es:'{total} · {new} nuevas · {mastered} dominadas'},
   'stats.backup':{pl:'Kopia',en:'Backup',es:'Copia'},
   'stats.backupInfo':{pl:'Zrób kopię na wypadek zmiany telefonu.',en:'Backup before switching phones.',es:'Copia antes de cambiar de móvil.'},
@@ -214,27 +299,15 @@ const TR={
   'settings.back':{pl:'← Wróć',en:'← Back',es:'← Volver'},
   'settings.saved':{pl:'Zapisano',en:'Saved',es:'Guardado'},
   'settings.loggedOut':{pl:'Wylogowano',en:'Signed out',es:'Sesión cerrada'},
-  'teacher.title':{pl:'Panel nauczyciela',en:'Teacher panel',es:'Panel del profesor'},
-  'teacher.createClass':{pl:'Utwórz klasę',en:'Create class',es:'Crear clase'},
-  'teacher.className':{pl:'Nazwa klasy',en:'Class name',es:'Nombre de la clase'},
-  'teacher.students':{pl:'uczniów',en:'students',es:'alumnos'},
-  'teacher.activeToday':{pl:'dziś aktywnych',en:'active today',es:'activos hoy'},
-  'teacher.totalReviews':{pl:'odpowiedzi',en:'total answers',es:'respuestas'},
-  'teacher.showStudents':{pl:'Pokaż uczniów',en:'Show students',es:'Mostrar alumnos'},
-  'teacher.noStudents':{pl:'Brak uczniów.',en:'No students.',es:'Sin alumnos.'},
-  'teacher.join':{pl:'Dołącz do klasy',en:'Join class',es:'Unirse a clase'},
-  'teacher.joinInfo':{pl:'Wpisz kod od nauczyciela.',en:'Enter teacher code.',es:'Introduce el código.'},
-  'teacher.nickname':{pl:'Twój nick',en:'Nickname',es:'Apodo'},
-  'teacher.code':{pl:'Kod klasy',en:'Class code',es:'Código de clase'},
-  'teacher.joinBtn':{pl:'Dołącz',en:'Join',es:'Unirse'},
-  'teacher.joined':{pl:'Dołączono',en:'Joined',es:'Unido'},
-  'teacher.created':{pl:'Kod: {code}',en:'Code: {code}',es:'Código: {code}'},
-  'teacher.youAreIn':{pl:'Jesteś w:',en:'You are in:',es:'Estás en:'},
-  'teacher.lastActive':{pl:'ostatnio',en:'last',es:'último'},
-  'teacher.noActivity':{pl:'brak',en:'no activity',es:'sin actividad'},
-  'teacher.empty':{pl:'Brak klas.',en:'No classes.',es:'Sin clases.'},
+  'settings.feedback':{pl:'✉️ Wyślij opinię',en:'✉️ Send feedback',es:'✉️ Enviar opinión'},
+  'settings.showTut':{pl:'📖 Pokaż instrukcję',en:'📖 Show tutorial',es:'📖 Mostrar tutorial'},
   'common.cancel':{pl:'Anuluj',en:'Cancel',es:'Cancelar'},
-  'common.ok':{pl:'OK',en:'OK',es:'OK'}
+  'common.ok':{pl:'OK',en:'OK',es:'OK'},
+  'tut.title':{pl:'Witaj w Fiszki! 👋',en:'Welcome to Flashcards! 👋',es:'¡Bienvenido a Fichas! 👋'},
+  'tut.step1':{pl:'➕ <b>Dodawaj karty</b> – wpisz słowo i tłumaczenie. Możesz też importować z Excela (CSV).',en:'➕ <b>Add cards</b> – enter word and translation. You can also import CSV.',es:'➕ <b>Añade tarjetas</b> – escribe palabra y traducción. También puedes importar CSV.'},
+  'tut.step2':{pl:'🧠 <b>Ucz się</b> – apka sama przypomni Ci, kiedy powtórzyć materiał. Używaj przycisków lub klawiszy 1-4.',en:'🧠 <b>Study</b> – the app reminds you when to review. Use buttons or keys 1-4.',es:'🧠 <b>Estudia</b> – la app te recuerda cuándo repasar. Usa botones o teclas 1-4.'},
+  'tut.step3':{pl:'☁️ <b>Synchronizuj</b> – Twoje postępy zapisują się automatycznie w chmurze.',en:'☁️ <b>Sync</b> – your progress is saved automatically in the cloud.',es:'☁️ <b>Sincroniza</b> – tu progreso se guarda automáticamente.'},
+  'tut.btn':{pl:'Zaczynamy! 🚀',en:'Let\'s start! 🚀',es:'¡Empecemos! 🚀'}
 };
 
 let UI=(()=>{
@@ -265,7 +338,7 @@ function uiLangSelect(){
 
 const SUPABASE_URL='https://icwmcoxscwpswrhmfiht.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_saVIwdtGphXww4eraJIr-w_0qy5ShrO';
-const createSupabaseClient=()=>{try{return SUPABASE_URL&&SUPABASE_ANON_KEY&&window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null}catch(e){console.error('Invalid Supabase',e);return null}};
+const createSupabaseClient=()=>{try{return SUPABASE_URL&&SUPABASE_ANON_KEY&&window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null}catch(e){return null}};
 
 let Sync=null;
 let S=null;
@@ -281,7 +354,7 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const pad=n=>String(n).padStart(2,'0');
 const dk=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const sod=()=>{const d=new Date();d.setHours(0,0,0,0);return d.getTime()};
-const toast=m=>{const t=$('#t');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',1600)};
+const toast=m=>{const t=$('#t');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2000)};
 const deckOpts=sel=>S.decks.map(d=>`<option value="${d.id}"${d.id==sel?' selected':''}>${esc(d.name)}</option>`).join('');
 const isNew=c=>!(c.reps>0||c.lapses>0);
 const due=d=>S.cards.filter(c=>(!d||c.deck==d)&&c.due<=Date.now());
@@ -293,6 +366,22 @@ S.cards.forEach(c=>{if(typeof c.imageEnabled!=='boolean')c.imageEnabled=false;})
 S.ratings=S.ratings||{};
 if(!isFreshInstall) save();
 
+// --- TUTORIAL ---
+function showTutorial(){
+  const m=document.createElement('div');m.id='md';
+  m.innerHTML=`<div class="mb" style="text-align:center">
+    <h2 style="margin-bottom:16px">${t('tut.title')}</h2>
+    <div style="text-align:left; display:flex; flex-direction:column; gap:16px; margin-bottom:24px">
+      <div style="display:flex; gap:12px; align-items:flex-start"><span style="font-size:24px">1️⃣</span><p style="margin:0">${t('tut.step1')}</p></div>
+      <div style="display:flex; gap:12px; align-items:flex-start"><span style="font-size:24px">2️⃣</span><p style="margin:0">${t('tut.step2')}</p></div>
+      <div style="display:flex; gap:12px; align-items:flex-start"><span style="font-size:24px">3️⃣</span><p style="margin:0">${t('tut.step3')}</p></div>
+    </div>
+    <button class="p" onclick="document.getElementById('md').remove(); localStorage.setItem('fiszki-tut','1')">${t('tut.btn')}</button>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+// --- LOGIN ---
 function showLogin(force){
   document.body.classList.add('locked');
   if($('#login')){
@@ -302,19 +391,22 @@ function showLogin(force){
   const d=document.createElement('div');d.id='login';
   d.innerHTML=`<div class="box">
     <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-      <select id="langsel" style="width:auto;margin:0" onchange="setUI(this.value)">
+      <select id="langsel" style="width:auto;margin:0;padding:8px 12px" onchange="setUI(this.value)">
         <option value="pl"${UI==='pl'?' selected':''}>Polski</option>
         <option value="en"${UI==='en'?' selected':''}>English</option>
         <option value="es"${UI==='es'?' selected':''}>Español</option>
       </select>
     </div>
-    <h2>${t('login.title')}</h2>
-    <p class="mu">${t('login.subtitle')}</p>
+    <h2 style="text-align:center;margin-bottom:4px;font-size:32px">Fiszki</h2>
+    <p class="mu" style="text-align:center;margin-bottom:24px">${t('login.subtitle')}</p>
     <input id="lemail" type="email" placeholder="${t('login.email')}" autocomplete="email">
-    <input id="lpass" type="password" minlength="6" placeholder="${t('login.password')}" autocomplete="current-password">
+    <div class="pass-wrap">
+      <input id="lpass" type="password" minlength="6" placeholder="${t('login.password')}" autocomplete="current-password">
+      <button class="pass-toggle" type="button" onclick="const p=document.getElementById('lpass'); p.type = p.type==='password'?'text':'password'; this.textContent = p.type==='password'?'👁️':'🙈';">👁️</button>
+    </div>
     <button class="p" id="lbtn">${t('login.login')}</button>
-    <button class="s" id="rbtn" style="width:100%">${t('login.signup')}</button>
-    <p class="mu" id="lerr" style="color:#e5484d"></p>
+    <button class="s" id="rbtn" style="width:100%; border:none; background:transparent; color:var(--ac)">${t('login.signup')}</button>
+    <p class="mu" id="lerr" style="color:#e5484d; text-align:center; margin-top:12px"></p>
   </div>`;
   document.body.appendChild(d);
   const go=async(signUp)=>{
@@ -322,15 +414,22 @@ function showLogin(force){
     const err=$('#lerr');
     err.textContent='';
     if(!Sync?.client){err.textContent=t('login.err.notConfig');return}
-    if(!e||p.length<6){err.textContent=t('login.err.creds');return}
+    if(!e||!e.includes('@')){err.textContent='Wpisz poprawny e-mail.';return}
+    if(!p){err.textContent='Wpisz hasło.';return}
+    if(signUp && p.length<6){err.textContent='Hasło musi mieć min. 6 znaków.';return}
+    
+    const btn = signUp ? $('#rbtn') : $('#lbtn');
+    const orig = btn.textContent; btn.textContent = '...';
     const r=signUp?await Sync.client.auth.signUp({email:e,password:p}):await Sync.client.auth.signInWithPassword({email:e,password:p});
+    btn.textContent = orig;
+    
     if(r.error){err.textContent=r.error.message;return}
     if(signUp&&!r.data.session){err.textContent=t('login.err.confirm');return}
     Sync.user=r.data.user||r.data.session?.user;
     await Sync.download(true);
-    await Sync.loadClasses();
     hideLogin();
     render();
+    if(!localStorage.getItem('fiszki-tut')) showTutorial();
     toast(signUp?t('login.toast.registered'):t('login.toast.logged'));
   };
   $('#lbtn').onclick=()=>go(false);
@@ -348,21 +447,13 @@ Sync={
     this.user=session?.user||null;
     if(!this.user){showLogin();return}
     await this.download(true);
-    await this.loadClasses();
     render();
-    if(this.myMemberOf?.length)this.pushProgress();
+    if(!localStorage.getItem('fiszki-tut')) showTutorial();
+    
     this.client.auth.onAuthStateChange(async(_e,s)=>{
       this.user=s?.user||null;
-      if(this.user){
-        await this.download(true);
-        await this.loadClasses();
-        hideLogin();
-        render();
-        if(this.myMemberOf?.length)this.pushProgress();
-      }else{
-        showLogin();
-        document.body.classList.add('locked');
-      }
+      if(this.user){await this.download(true);hideLogin();render()}
+      else{showLogin();document.body.classList.add('locked')}
     });
   },
   async download(force=false){
@@ -386,7 +477,7 @@ Sync={
     }
     return false;
   },
-  queueUpload(){if(!this.client||!this.user)return;clearTimeout(this.timer);this.timer=setTimeout(()=>{this.upload();if(this.myMemberOf?.length)this.pushProgress()},800)},
+  queueUpload(){if(!this.client||!this.user)return;clearTimeout(this.timer);this.timer=setTimeout(()=>this.upload(),800)},
   async upload(){
     if(!this.client||!this.user)return;
     if(S.cards.length===0){
@@ -398,57 +489,7 @@ Sync={
     }
     await this.client.from('app_states').upsert({user_id:this.user.id,state:S,updated_at:new Date().toISOString()});
   },
-  async signOut(){if(this.client)await this.client.auth.signOut();this.user=null;this.myClasses=[];this.myMemberOf=[];showLogin();toast(t('settings.loggedOut'))},
-  myClasses:[],myMemberOf:[],
-  async loadClasses(){
-    if(!this.client||!this.user)return;
-    const {data:teacher}=await this.client.from('classes').select('id,code,name,created_at').order('created_at',{ascending:false});
-    this.myClasses=teacher||[];
-    const {data:member}=await this.client.from('class_members').select('class_id,classes(name,code)').eq('student_id',this.user.id);
-    this.myMemberOf=(member||[]).map(m=>({id:m.class_id,name:m.classes?.name||'',code:m.classes?.code||''}));
-  },
-  async createClass(name){
-    const code=Math.random().toString(36).slice(2,8).toUpperCase();
-    const {error}=await this.client.from('classes').insert({code,name,teacher_id:this.user.id});
-    if(error){toast(error.message);return null}
-    await this.loadClasses();return code;
-  },
-  async joinClass(code,nickname){
-    const {error}=await this.client.rpc('join_class',{p_code:code.trim().toUpperCase(),p_nickname:nickname||''});
-    if(error){toast(error.message);return false}
-    await this.loadClasses();await this.pushProgress();return true;
-  },
-  async getClassStudents(classId){
-    const {data:members}=await this.client.from('class_members').select('student_id,nickname').eq('class_id',classId);
-    if(!members?.length)return [];
-    const ids=members.map(m=>m.student_id);
-    const {data:prog}=await this.client.from('class_progress').select('*').eq('class_id',classId).in('student_id',ids);
-    const by={};
-    members.forEach(m=>by[m.student_id]={student_id:m.student_id,nickname:m.nickname||m.student_id.slice(0,8),total:0,mastered:0,streak:0,last:null});
-    (prog||[]).forEach(p=>{
-      if(!by[p.student_id])return;
-      by[p.student_id].total+=p.reviews||0;
-      by[p.student_id].mastered=Math.max(by[p.student_id].mastered,p.mastered||0);
-      by[p.student_id].streak=Math.max(by[p.student_id].streak,p.streak||0);
-      if(!by[p.student_id].last||p.date>by[p.student_id].last)by[p.student_id].last=p.date;
-    });
-    return Object.values(by);
-  },
-  async pushProgress(){
-    if(!this.client||!this.user||!this.myMemberOf?.length)return;
-    const date=dk(new Date());
-    const mastered=S.cards.filter(c=>c.int>=21).length;
-    const todayReviews=(S.ratings[date]||[]).reduce((a,b)=>a+b,0);
-    let streak=0;const d=new Date();
-    if(!S.log[dk(d)])d.setDate(d.getDate()-1);
-    while(S.log[dk(d)]){streak++;d.setDate(d.getDate()-1)}
-    for(const cls of this.myMemberOf){
-      await this.client.from('class_progress').upsert({
-        class_id:cls.id,student_id:this.user.id,date,
-        reviews:todayReviews,mastered,streak,updated_at:new Date().toISOString()
-      },{onConflict:'class_id,student_id,date'});
-    }
-  }
+  async signOut(){if(this.client)await this.client.auth.signOut();this.user=null;showLogin();toast(t('settings.loggedOut'))}
 };
 
 function render(){
@@ -456,7 +497,7 @@ function render(){
   document.querySelectorAll('nav span[data-nav]').forEach(s=>{s.textContent=t('nav.'+s.dataset.nav)});
   if(!Sync?.user){showLogin();return}
   document.body.classList.toggle('reviewing',tab==='study'&&!!sess);
-  ({study:vStudy,add:vAdd,cards:vCards,stats:vStats,settings:vSettings,teacher:vTeacher})[tab]($('#v'));
+  ({study:vStudy,add:vAdd,cards:vCards,stats:vStats,settings:vSettings})[tab]($('#v'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==tab));
 }
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()});
@@ -489,10 +530,13 @@ function vStudy(v){
     if(!sess.q.length){v.innerHTML=`<div class="c" style="text-align:center"><h2>${t('sess.done')}</h2><p class="mu">${t('sess.doneSub')}</p><button class="p" onclick="sess=null;render()">${t('sess.back')}</button></div>`;return}
     const c=S.cards.find(x=>x.id==sess.q[0]);
     const prompt=c.contextSentence?`<div class="sentence">${esc(c.contextSentence).replace(/\{\{.*?\}\}/,'<span class="blank">_____</span>')}</div>`:`<div class="f">${esc(c.front)}</div>`;
-    v.innerHTML=`<div class="prog">${t('sess.remaining')} ${sess.q.length} <button class="s" style="float:right" onclick="sess=null;render()">${t('sess.end')}</button></div>
-    <div class="card" style="margin-top:12px" onclick="flip=true;render()">${prompt}${flip?`<hr><div class="f">${esc(c.front)}</div><div class="b">${esc(c.back)}</div>${c.contextSentence?'<p class="mu">'+esc(c.contextSentence).replace(/\{\{(.*?)\}\}/,'<b>$1</b>')+'</p>':''}${imageRevealed?'<div id="imghost" class="mu"></div>':'<button class="s" style="margin-top:18px" onclick="event.stopPropagation();revealImage(&quot;'+c.id+'&quot;)">'+t('sess.image')+'</button>'}`:'<div class="hint" style="margin-top:20px">'+t('sess.discover')+'</div>'}</div>
-    <div class="row" style="margin-top:10px"><button class="s" onclick="say('${c.id}')">${t('sess.say')}</button><button class="s" onclick="undoAnswer()">${t('sess.undo')}</button></div>`+
-    (flip?`<div class="g"><button style="background:#e5484d" onclick="ans(0)">${t('sess.again')}</button><button style="background:#f08c00" onclick="ans(1)">${t('sess.hard')}</button><button style="background:#30a46c" onclick="ans(2)">${t('sess.good')}</button><button style="background:#3b82f6" onclick="ans(3)">${t('sess.easy')}</button></div><p class="hint" style="text-align:center;margin-top:8px">${t('sess.keysHint')}</p>`:'');
+    v.innerHTML=`<div class="prog" style="display:flex; justify-content:space-between; align-items:center">
+      <span>${t('sess.remaining')} ${sess.q.length}</span> 
+      <button class="s" style="padding:6px 12px" onclick="sess=null;render()">${t('sess.end')}</button>
+    </div>
+    <div class="card" style="margin-top:12px" onclick="flip=true;render()">${prompt}${flip?`<hr><div class="f" style="position:relative">${esc(c.front)} <button class="s" style="position:absolute; right:0; top:50%; transform:translateY(-50%); padding:6px 10px; font-size:14px; opacity:0.6" onclick="event.stopPropagation();editCard('${c.id}', true)">✎</button></div><div class="b">${esc(c.back)}</div>${c.contextSentence?'<p class="mu">'+esc(c.contextSentence).replace(/\{\{(.*?)\}\}/,'<b>$1</b>')+'</p>':''}${imageRevealed?'<div id="imghost" class="mu"></div>':'<button class="s" style="margin-top:24px" onclick="event.stopPropagation();revealImage(&quot;'+c.id+'&quot;)">'+t('sess.image')+'</button>'}`:'<div class="hint" style="margin-top:24px">'+t('sess.discover')+'</div>'}</div>
+    <div class="row" style="margin-top:12px"><button class="s" onclick="say('${c.id}')">${t('sess.say')}</button><button class="s" onclick="undoAnswer()">${t('sess.undo')}</button></div>`+
+    (flip?`<div class="g"><button style="background:#ef4444" onclick="ans(0)">${t('sess.again')}</button><button style="background:#f59e0b" onclick="ans(1)">${t('sess.hard')}</button><button style="background:#10b981" onclick="ans(2)">${t('sess.good')}</button><button style="background:#3b82f6" onclick="ans(3)">${t('sess.easy')}</button></div><p class="hint" style="text-align:center;margin-top:12px">${t('sess.keysHint')}</p>`:'');
     if(flip&&imageRevealed)loadCardImage(c);
     return;
   }
@@ -506,7 +550,7 @@ function vStudy(v){
     <div><div class="n">${(S.daily[dk(new Date())]||[]).length}</div><span class="mu">${t('study.today')}</span></div>
   </div>
   <button class="p" ${a.length?'':'disabled style="opacity:.4"'} onclick="start()">${t('study.start')}</button>
-  ${S.cards.length?'':`<p class="mu">${t('study.noCards')}</p>`}</div>`;
+  ${S.cards.length?'':`<p class="mu" style="text-align:center">${t('study.noCards')}</p>`}</div>`;
   const sel=v.querySelector('select');sel.value=sd;
 }
 function start(){
@@ -525,7 +569,12 @@ function shuffleNewInDeck(){
 }
 function say(id){
   const c=S.cards.find(x=>x.id==id),d=S.decks.find(x=>x.id==c.deck);
-  try{const u=new SpeechSynthesisUtterance(c.front);u.lang=(L[d&&d.lang]||L.es).tts;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}
+  try{
+    const u=new SpeechSynthesisUtterance(c.front);
+    u.lang=(L[d?.lang]||L['es']).tts;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  }catch(e){}
 }
 function grade(c,g){
   if(g==0){c.lapses++;c.ease=Math.max(1.3,c.ease-.2);c.int=0;c.due=Date.now();return}
@@ -543,8 +592,8 @@ function ans(g){
   if(!S.ratings)S.ratings={};
   if(!S.ratings[k])S.ratings[k]=[0,0,0,0];
   S.ratings[k][g]=(S.ratings[k][g]||0)+1;
-  if(!S.daily[k])S.daily[k]=[];
-  if(!S.daily[k].includes(id))S.daily[k].push(id);
+  if(!S.daily[k])S.daily[k]=0;
+  S.daily[k]++;
   if(g==0)sess.q.splice(Math.min(3,sess.q.length),0,id);
   save();flip=false;imageRevealed=false;render();
 }
@@ -564,7 +613,13 @@ function vSettings(v){
   <p class="mu">${t('settings.newLimitInfo')}</p>
   <input id="nlmt" type="number" min="1" max="500" value="${S.settings.newLimit}">
   <button class="p" onclick="saveSettings()">${t('settings.save')}</button></div>
-  <button class="s" onclick="tab='study';render()">${t('settings.back')}</button>`;
+  
+  <div class="c" style="text-align:center">
+    <button class="s" style="margin-bottom:8px; width:100%" onclick="localStorage.removeItem('fiszki-tut'); showTutorial()">${t('settings.showTut')}</button>
+    <a href="mailto:twoj.email@example.com" class="s" style="display:block; width:100%">${t('settings.feedback')}</a>
+  </div>
+
+  <button class="s" style="width:100%" onclick="tab='study';render()">${t('settings.back')}</button>`;
 }
 function saveSettings(){
   const n=Math.max(1,Math.min(500,parseInt($('#nlmt').value,10)||20));
@@ -600,22 +655,26 @@ function revealImage(id){
 
 function vAdd(v){
   v.innerHTML=`<h2>${t('add.title')}</h2>
-  <select id="dk" onchange="lastDeck=this.value">${deckOpts(lastDeck||(S.decks[0]||{}).id)}</select>
+  <select id="dk" onchange="lastDeck=this.value; plink()">${deckOpts(lastDeck||(S.decks[0]||{}).id)}</select>
   <textarea id="fr" placeholder="${t('add.front')}" onchange="suggest()" oninput="plink()"></textarea>
-  <div class="row" style="margin-bottom:10px"><button class="s" onclick="suggest()">${t('add.suggest')}</button><a class="s" id="pl" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">${t('add.pons')}</a></div>
+  <div class="row" style="margin-bottom:12px">
+    <button class="s" onclick="suggest()">${t('add.suggest')}</button>
+    <a class="s" id="pl" target="_blank" rel="noopener" style="text-decoration:none;text-align:center;padding:12px">${t('add.pons')}</a>
+  </div>
   <div id="sg" class="chips"></div>
   <textarea id="bk" placeholder="${t('add.back')}"></textarea>
   <button class="p" onclick="addCard()">${t('add.add')}</button>`;
   plink();
 }
 function plink(){
-  const d=S.decks.find(x=>x.id==$('#dk').value),l=(L[d&&d.lang]||L.es).pons;
-  $('#pl').href=`https://pl.pons.com/tłumaczenie?q=${encodeURIComponent($('#fr').value.trim())}&l=${l}`;
+  const el = $('#pl'); if(!el) return;
+  const d=S.decks.find(x=>x.id==$('#dk').value),l=(L[d&&d.lang]||L['es']).pons;
+  el.href=`https://pl.pons.com/tłumaczenie?q=${encodeURIComponent($('#fr').value.trim())}&l=${l}`;
 }
 async function suggest(){
   const f=$('#fr').value.trim(),box=$('#sg');
   if(!f)return;
-  const d=S.decks.find(x=>x.id==$('#dk').value),ln=L[d&&d.lang]||L.es;
+  const d=S.decks.find(x=>x.id==$('#dk').value),ln=L[d&&d.lang]||L['es'];
   box.innerHTML=`<span class="mu">${t('add.sg.search')}</span>`;
   try{
     const nb=window.webkit&&webkit.messageHandlers&&webkit.messageHandlers.tr;
@@ -667,13 +726,14 @@ function modal(title,fields,ok){
   m.querySelector('#mc').onclick=()=>m.remove();
   m.querySelector('#mo').onclick=()=>{const v=[...m.querySelectorAll('textarea')].map(x=>x.value);m.remove();ok(v)};
 }
-function editCard(id){
+function editCard(id, fromStudy=false){
   const c=S.cards.find(x=>x.id==id);
   if(!c)return;
   modal(t('cards.editTitle'),[{v:c.front,ph:t('cards.front')},{v:c.back,ph:t('cards.back')}],v=>{
     if(!v[0].trim()||!v[1].trim()){toast(t('cards.bothRequired'));return}
     const front=v[0].trim();if(front!==c.front)delete c.imageUrl;
-    c.front=front;c.back=v[1].trim();save();renderCards();
+    c.front=front;c.back=v[1].trim();save();
+    if(fromStudy) render(); else renderCards();
   });
 }
 function delCard(id){
@@ -766,7 +826,7 @@ function vStats(v){
   </div>
   <div class="c"><b>${t('stats.byRating')}</b>
     <div style="display:flex;gap:8px;height:110px;margin-top:10px">
-      ${gb(t('stats.again'),tA,'#e5484d')}${gb(t('stats.hard'),tH,'#f08c00')}${gb(t('stats.good'),tG,'#30a46c')}${gb(t('stats.easy'),tE,'#3b82f6')}
+      ${gb(t('stats.again'),tA,'#ef4444')}${gb(t('stats.hard'),tH,'#f59e0b')}${gb(t('stats.good'),tG,'#10b981')}${gb(t('stats.easy'),tE,'#3b82f6')}
     </div>
   </div>
   <div class="c"><b>${t('stats.last30')}</b><div class="bars" style="margin-top:10px;height:70px;gap:2px">${chart.map(n=>`<div><i style="height:${Math.round(n/mx*50)}px"></i></div>`).join('')}</div></div>
@@ -784,61 +844,6 @@ function rst(){
     try{const o=JSON.parse(v[0]);if(!o.decks||!o.cards)throw 0;S=o;save();render();toast(t('stats.restored'))}
     catch(e){toast(t('stats.invalidBackup'))}
   });
-}
-
-async function vTeacher(v){
-  v.innerHTML=`<h2>${t('teacher.title')}</h2><p class="mu">…</p>`;
-  await Sync.loadClasses();
-  const classes=Sync.myClasses||[];
-  const data=classes.length?await Promise.all(classes.map(async c=>({c,students:await Sync.getClassStudents(c.id)}))):[];
-  const today=dk(new Date());
-  let html=`<h2>${t('teacher.title')}</h2>
-  <div class="c"><h3>${t('teacher.createClass')}</h3>
-    <input id="clname" placeholder="${t('teacher.className')}">
-    <button class="p" onclick="createClassUI()">${t('teacher.createClass')}</button>
-  </div>`;
-  if(!classes.length){
-    html+=`<p class="mu">${t('teacher.empty')}</p>`;
-  }else{
-    html+=data.map(({c,students})=>{
-      const activeToday=students.filter(s=>s.last===today).length;
-      const totalReviews=students.reduce((a,s)=>a+s.total,0);
-      return `<div class="c">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-          <b style="flex:1">${esc(c.name)}</b>
-          <span class="mu" style="font-family:monospace;font-size:18px;background:var(--bg);padding:4px 10px;border-radius:8px">${c.code}</span>
-        </div>
-        <p class="mu">${students.length} ${t('teacher.students')} · ${activeToday} ${t('teacher.activeToday')} · ${totalReviews} ${t('teacher.totalReviews')}</p>
-        <details><summary style="cursor:pointer">${t('teacher.showStudents')}</summary>
-          <div style="margin-top:8px">
-            ${students.length?students.map(s=>`<div class="it">
-              <div><b>${esc(s.nickname)}</b><br>
-              <span class="mu">${s.total} odp. · ${s.mastered} opan. · ${s.streak}🔥 · ${s.last?t('teacher.lastActive')+' '+s.last:t('teacher.noActivity')}</span></div>
-            </div>`).join(''):`<p class="mu">${t('teacher.noStudents')}</p>`}
-          </div>
-        </details>
-      </div>`;
-    }).join('');
-  }
-  html+=`<div class="c"><h3>${t('teacher.join')}</h3>
-    <p class="mu">${t('teacher.joinInfo')}</p>
-    <input id="joinnick" placeholder="${t('teacher.nickname')}">
-    <input id="joincode" placeholder="${t('teacher.code')}" style="text-transform:uppercase">
-    <button class="p" onclick="joinClassUI()">${t('teacher.joinBtn')}</button>
-    ${Sync.myMemberOf?.length?`<p class="mu">${t('teacher.youAreIn')} ${Sync.myMemberOf.map(m=>esc(m.name)).join(', ')}</p>`:''}
-  </div>`;
-  v.innerHTML=html;
-}
-async function createClassUI(){
-  const n=$('#clname').value.trim();
-  if(!n){toast(t('cards.bothRequired'));return}
-  const code=await Sync.createClass(n);
-  if(code){toast(t('teacher.created').replace('{code}',code));render()}
-}
-async function joinClassUI(){
-  const c=$('#joincode').value.trim(),n=$('#joinnick').value.trim();
-  if(!c){toast(t('cards.bothRequired'));return}
-  if(await Sync.joinClass(c,n)){toast(t('teacher.joined'));render()}
 }
 
 async function forceSyncFromCloud(){
