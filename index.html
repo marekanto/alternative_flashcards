@@ -192,7 +192,6 @@ body.locked #t { display: none !important; }
 <main id="v"></main>
 <nav>
 <button data-t="study"><b>🧠</b><span data-nav="study">Nauka</span></button>
-<button data-t="add"><b>＋</b><span data-nav="add">Dodaj</span></button>
 <button data-t="cards"><b>🗂</b><span data-nav="cards">Talie</span></button>
 <button data-t="stats"><b>📊</b><span data-nav="stats">Postępy</span></button>
 </nav>
@@ -213,7 +212,6 @@ const langName=code=>(L[code]?.name?.[UI])||code;
 
 const TR={
   'nav.study':{pl:'Nauka',en:'Study',es:'Estudio'},
-  'nav.add':{pl:'Dodaj',en:'Add',es:'Añadir'},
   'nav.cards':{pl:'Talie',en:'Decks',es:'Mazos'},
   'nav.stats':{pl:'Postępy',en:'Progress',es:'Progreso'},
   'ui.lang':{pl:'Język interfejsu',en:'Interface language',es:'Idioma de la interfaz'},
@@ -236,7 +234,7 @@ const TR={
   'study.newLimit':{pl:'nowe (limit {n})',en:'new (limit {n})',es:'nuevas (límite {n})'},
   'study.today':{pl:'fiszek dziś',en:'cards today',es:'tarjetas hoy'},
   'study.start':{pl:'Zacznij naukę',en:'Start studying',es:'Empezar a estudiar'},
-  'study.noCards':{pl:'Brak fiszek. Dodaj je w zakładce "Dodaj".',en:"No cards. Add some in the Add tab.",es:'Sin tarjetas. Añádelas en Añadir.'},
+  'study.noCards':{pl:'Brak fiszek. Dodaj je w zakładce "Talie".',en:"No cards. Add some in the Decks tab.",es:'Sin tarjetas. Añádelas en Mazos.'},
   'study.tooFewNew':{pl:'Za mało nowych kart.',en:'Not enough new cards.',es:'No hay suficientes tarjetas.'},
   'study.shuffled':{pl:'Wylosowano {n} kart.',en:'Shuffled {n} cards.',es:'Se barajaron {n} tarjetas.'},
   'sess.remaining':{pl:'Pozostało:',en:'Remaining:',es:'Quedan:'},
@@ -808,7 +806,8 @@ function vAdd(v){
   </div>
   <div id="sg" class="chips"></div>
   <textarea id="bk" placeholder="${t('add.back')}"></textarea>
-  <button class="p" onclick="addCard()">${t('add.add')}</button>`;
+  <button class="p" onclick="addCard()">${t('add.add')}</button>
+  <button class="s" style="width:100%; margin-top:10px" onclick="tab='cards';render()">${t('settings.back')}</button>`;
   plink();
 }
 function plink(){
