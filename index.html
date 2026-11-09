@@ -178,6 +178,13 @@ body.reviewing #t { bottom: 20px; }
 }
 @keyframes scaleUp { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
+/* Specyficzne dla długiej instrukcji */
+.mb.long { max-height: 80vh; overflow-y: auto; }
+.mb h3 { margin-top: 0; font-size: 22px; }
+.mb p, .mb ul { font-size: 15px; line-height: 1.6; color: var(--tx); }
+.mb ul { padding-left: 20px; margin-bottom: 16px; }
+.mb li { margin-bottom: 8px; }
+
 #login { background: var(--bg); z-index: 60; }
 #login .box { max-width: 400px; padding: 36px; border-radius: 28px; }
 body.locked main, body.locked nav { display: none; }
@@ -343,6 +350,13 @@ const TR={
   'tut.step2':{pl:'🧠 <b>Ucz się</b> – apka sama przypomni Ci, kiedy powtórzyć materiał. Używaj przycisków lub klawiszy 1-4.',en:'🧠 <b>Study</b> – the app reminds you when to review. Use buttons or keys 1-4.',es:'🧠 <b>Estudia</b> – la app te recuerda cuándo repasar. Usa botones o teclas 1-4.'},
   'tut.step3':{pl:'☁️ <b>Synchronizuj</b> – Twoje postępy zapisują się automatycznie w chmurze.',en:'☁️ <b>Sync</b> – your progress is saved automatically in the cloud.',es:'☁️ <b>Sincroniza</b> – tu progreso se guarda automáticamente.'},
   'tut.btn':{pl:'Zaczynamy! 🚀',en:'Let\'s start! 🚀',es:'¡Empecemos! 🚀'},
+  'tut.moreBtn':{pl:'📚 Szczegółowa instrukcja',en:'📚 Detailed guide',es:'📚 Guía detallada'},
+  'tut.g.back':{pl:'← Wróć do wstępu',en:'← Back to intro',es:'← Volver a la introducción'},
+  'tut.g.study':{pl:'<b>🧠 Zakładka NAUKA</b><br>Kliknij „Zacznij naukę”, aby rozpocząć sesję. Aplikacja pokaże Ci przód fiszki. Kliknij na nią (lub naciśnij spację), aby zobaczyć tył. Następnie oceń, jak dobrze ją pamiętasz (1 - Znowu, 2 - Trudne, 3 - Dobrze, 4 - Łatwe). Aplikacja automatycznie zaplanuje kolejną powtórkę.',en:'<b>🧠 STUDY Tab</b><br>Click "Start studying" to begin. The app shows the front. Tap it (or press space) to see the back. Then grade how well you remembered it (1 - Again, 2 - Hard, 3 - Good, 4 - Easy). The app will automatically schedule the next review.',es:'<b>🧠 Pestaña ESTUDIO</b><br>Haz clic en "Empezar a estudiar". La app muestra el frente. Tócalo (o pulsa espacio) para ver el reverso. Luego califica qué tan bien lo recordaste (1 - Otra vez, 2 - Difícil, 3 - Bien, 4 - Fácil). La app programará la próxima revisión.'},
+  'tut.g.decks':{pl:'<b>🗂 Zakładka TALIE</b><br>Tutaj mieszkają Twoje fiszki. Możesz tworzyć nowe talie (np. „Hiszpański – jedzenie”), edytować (✎) lub usuwać (🗑) karty. Aby dodać nową kartę, kliknij pomarańczowy przycisk „＋ Dodaj fiszkę”. Jeśli masz listę słówek w Excelu, możesz ją zaimportować używając sekcji „Import CSV”.',en:'<b>🗂 DECKS Tab</b><br>Your flashcards live here. You can create new decks (e.g. "Spanish - food"), edit (✎) or delete (🗑) cards. To add a new card, click the orange "＋ Add card" button. If you have an Excel list, you can import it using the "Import CSV" section.',es:'<b>🗂 Pestaña MAZOS</b><br>Tus tarjetas viven aquí. Puedes crear mazos nuevos (ej. "Español - comida"), editar (✎) o eliminar (🗑) tarjetas. Para añadir una, haz clic en el botón naranja "＋ Añadir tarjeta". Si tienes una lista en Excel, impórtala con "Importar CSV".'},
+  'tut.g.stats':{pl:'<b>📊 Zakładka POSTĘPY</b><br>Tutaj znajdziesz swoje statystyki. Zobaczysz, ile fiszek już opanowałeś, jaka jest Twoja skuteczność i ile dni z rzędu uczysz się (tzw. streak 🔥). Świetna motywacja!',en:'<b>📊 PROGRESS Tab</b><br>Here are your stats. See how many cards you have mastered, your accuracy, and your daily streak 🔥. Great motivation!',es:'<b>📊 Pestaña PROGRESO</b><br>Aquí están tus estadísticas. Mira cuántas tarjetas has dominado, tu precisión y tu racha 🔥. ¡Gran motivación!'},
+  'tut.g.settings':{pl:'<b>⚙️ Ustawienia</b><br>Kliknij zębatkę w zakładce Nauka. Możesz zmienić język interfejsu (PL/EN/ES), ustawić limit nowych fiszek na dzień, wylogować się, lub wymusić synchronizację (przydatne, gdy używasz apki na telefonie i komputerze).',en:'<b>⚙️ Settings</b><br>Click the gear in the Study tab. You can change the interface language (PL/EN/ES), set the daily limit for new cards, log out, or force a sync (useful if you use the app on both phone and PC).',es:'<b>⚙️ Ajustes</b><br>Haz clic en el engranaje en la pestaña Estudio. Puedes cambiar el idioma (PL/EN/ES), establecer el límite diario de tarjetas, cerrar sesión o forzar la sincronización (útil si usas la app en móvil y PC).'},
+  'tut.g.shortcuts':{pl:'<b>⌨️ Skróty klawiszowe (na komputerze)</b><br>Spacja – odkryj fiszkę<br>1, 2, 3, 4 – oceń fiszkę<br>Z – cofnij ostatnią odpowiedź<br>O – pokaż obrazek<br>M – odsłuchaj wymowę',en:'<b>⌨️ Keyboard shortcuts (on PC)</b><br>Space – reveal card<br>1, 2, 3, 4 – grade card<br>Z – undo last answer<br>O – show image<br>M – play audio',es:'<b>⌨️ Atajos de teclado (en PC)</b><br>Espacio – revelar tarjeta<br>1, 2, 3, 4 – calificar tarjeta<br>Z – deshacer última respuesta<br>O – mostrar imagen<br>M – reproducir audio'},
   'feedback.title':{pl:'✉️ Wyślij opinię',en:'✉️ Send feedback',es:'✉️ Enviar opinión'},
   'feedback.desc':{pl:'Co możemy poprawić? Czego brakuje? Dzięki Twoim opiniom apka staje się lepsza!',en:'What can we improve? What is missing? Your feedback helps us grow!',es:'¿Qué podemos mejorar? ¿Qué falta? ¡Tu opinión nos ayuda a crecer!'},
   'feedback.placeholder':{pl:'Twoja wiadomość...',en:'Your message...',es:'Tu mensaje...'},
@@ -518,6 +532,27 @@ function showTutorial(){
       <div style="display:flex; gap:14px; align-items:flex-start"><span style="font-size:24px">3️⃣</span><p style="margin:0; line-height:1.5">${t('tut.step3')}</p></div>
     </div>
     <button class="p" onclick="document.getElementById('md').remove(); localStorage.setItem('altcards-tut','1')">${t('tut.btn')}</button>
+    <button class="s" style="width:100%; margin-top:10px" onclick="showDetailedGuide()">${t('tut.moreBtn')}</button>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+function showDetailedGuide(){
+  if($('#md')) $('#md').remove();
+  const m=document.createElement('div');m.id='md';
+  m.innerHTML=`<div class="mb long">
+    <h3 style="text-align:center; margin-bottom:20px">${t('tut.moreBtn')}</h3>
+    <div style="display:flex; flex-direction:column; gap:16px; margin-bottom:24px">
+      <p style="margin:0">${t('tut.g.study')}</p>
+      <p style="margin:0">${t('tut.g.decks')}</p>
+      <p style="margin:0">${t('tut.g.stats')}</p>
+      <p style="margin:0">${t('tut.g.settings')}</p>
+      <p style="margin:0">${t('tut.g.shortcuts')}</p>
+    </div>
+    <div class="row">
+      <button class="s" style="margin:0" onclick="showTutorial()">${t('tut.g.back')}</button>
+      <button class="p" style="margin:0" onclick="document.getElementById('md').remove(); localStorage.setItem('altcards-tut','1')">${t('tut.btn')}</button>
+    </div>
   </div>`;
   document.body.appendChild(m);
 }
