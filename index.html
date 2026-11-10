@@ -178,7 +178,6 @@ body.reviewing #t { bottom: 20px; }
 }
 @keyframes scaleUp { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
-/* Specyficzne dla długiej instrukcji */
 .mb.long { max-height: 80vh; overflow-y: auto; }
 .mb h3 { margin-top: 0; font-size: 22px; }
 .mb p, .mb ul { font-size: 15px; line-height: 1.6; color: var(--tx); }
@@ -336,6 +335,11 @@ const TR={
   'settings.loggedIn':{pl:'Zalogowano: {email}',en:'Signed in: {email}',es:'Sesión: {email}'},
   'settings.notLoggedIn':{pl:'Nie zalogowano.',en:'Not signed in.',es:'Sin sesión.'},
   'settings.logout':{pl:'Wyloguj',en:'Sign out',es:'Cerrar sesión'},
+  'settings.deleteAccount':{pl:'Usuń konto',en:'Delete account',es:'Eliminar cuenta'},
+  'settings.deleteAccountTitle':{pl:'Usunąć konto?',en:'Delete account?',es:'¿Eliminar cuenta?'},
+  'settings.deleteAccountConfirm':{pl:'Czy na pewno chcesz bezpowrotnie usunąć swoje konto i wszystkie fiszki? Tej operacji nie można cofnąć.',en:'Are you sure you want to permanently delete your account and all flashcards? This cannot be undone.',es:'¿Estás seguro de que quieres eliminar permanentemente tu cuenta y todas las tarjetas? Esto no se puede deshacer.'},
+  'settings.deleteConfirmBtn':{pl:'Tak, usuń konto',en:'Yes, delete account',es:'Sí, eliminar cuenta'},
+  'settings.deleted':{pl:'Konto zostało usunięte.',en:'Account deleted.',es:'Cuenta eliminada.'},
   'settings.newLimit':{pl:'Limit nowych fiszek',en:'New cards limit',es:'Límite de nuevas'},
   'settings.newLimitInfo':{pl:'Maksymalna liczba nowych kart na sesję.',en:'Max new cards per session.',es:'Máximo de tarjetas nuevas.'},
   'settings.save':{pl:'Zapisz',en:'Save',es:'Guardar'},
@@ -557,6 +561,22 @@ function showDetailedGuide(){
   document.body.appendChild(m);
 }
 
+// --- DELETE ACCOUNT MODAL ---
+function showDeleteAccountModal() {
+  if($('#md')) $('#md').remove();
+  const m = document.createElement('div');
+  m.id = 'md';
+  m.innerHTML = `<div class="mb">
+    <h3 style="color:#ef4444">${t('settings.deleteAccountTitle')}</h3>
+    <p class="mu" style="margin-bottom:20px; font-size:15px">${t('settings.deleteAccountConfirm')}</p>
+    <div class="row">
+      <button class="s" onclick="document.getElementById('md').remove()">${t('common.cancel')}</button>
+      <button class="p" id="delbtn" style="background:#ef4444; box-shadow:none; margin:0" onclick="Sync.executeDeleteAccount()">${t('settings.deleteConfirmBtn')}</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+}
+
 // --- LOGIN ---
 function showLogin(force){
   document.body.classList.add('locked');
@@ -608,12 +628,19 @@ function showLogin(force){
     
     if(r.error){err.textContent=r.error.message;return}
     if(signUp&&!r.data.session){err.textContent=t('login.err.confirm');return}
+    
     Sync.user=r.data.user||r.data.session?.user;
+    
+    // KLUCZOWE: Wyczyszczenie pamięci przed pobraniem danych nowego użytkownika
+    S = null;
+    localStorage.removeItem('altcards-v1');
+    
     await Sync.download(true);
     hideLogin();
     render();
     
-    if(signUp && !localStorage.getItem('altcards-tut')) showTutorial();
+    // Tutorial od razu po rejestracji
+    if(signUp) showTutorial();
     
     toast(signUp?t('login.toast.registered'):t('login.toast.logged'));
   };
@@ -643,32 +670,29 @@ Sync={
   async download(force=false){
     if(!this.client||!this.user)return false;
     const {data}=await this.client.from('app_states').select('state').eq('user_id',this.user.id).maybeSingle();
+    
     if(data?.state){
-      const cloudState=data.state;
-      const cloudHasCards=(cloudState.cards&&cloudState.cards.length>0);
-      const localHasCards=(S.cards&&S.cards.length>0);
-      if(force || (cloudHasCards&&!localHasCards) || (+cloudState.updatedAt||0)>(+S.updatedAt||0)){
-        S=cloudState;
-        if(!S.settings)S.settings={...defaults};
-        if(!S.daily)S.daily={};
-        if(!S.ratings)S.ratings={};
-        
-        const cloudMigrated = migrateState(S);
-        
-        localStorage.setItem('altcards-v1',JSON.stringify(S));
-        render();
-        
-        if (cloudMigrated) this.queueUpload(); 
-        return true;
-      }
-    }else{
+      S=data.state;
+      if(!S.settings)S.settings={...defaults};
+      if(!S.daily)S.daily={};
+      if(!S.ratings)S.ratings={};
+      migrateState(S);
+      localStorage.setItem('altcards-v1',JSON.stringify(S));
+    } else {
+      // Brak danych w chmurze – nowe konto
+      S = { decks:[{id:'d1',name:'Hiszpański',lang:'es'}], cards:[], log:{} };
+      S.settings = { ...defaults };
+      S.daily = {};
+      S.ratings = {};
+      localStorage.setItem('altcards-v1',JSON.stringify(S));
       this.queueUpload();
     }
-    return false;
+    render();
+    return true;
   },
   queueUpload(){if(!this.client||!this.user)return;clearTimeout(this.timer);this.timer=setTimeout(()=>this.upload(),800)},
   async upload(){
-    if(!this.client||!this.user)return;
+    if(!this.client||!this.user||!S)return;
     if(S.cards.length===0){
       const {data}=await this.client.from('app_states').select('state').eq('user_id',this.user.id).maybeSingle();
       if(data?.state?.cards?.length>0){
@@ -678,7 +702,38 @@ Sync={
     }
     await this.client.from('app_states').upsert({user_id:this.user.id,state:S,updated_at:new Date().toISOString()});
   },
-  async signOut(){if(this.client)await this.client.auth.signOut();this.user=null;showLogin();toast(t('settings.loggedOut'))}
+  async signOut(){
+    if(this.client)await this.client.auth.signOut();
+    this.user=null;
+    S = null;
+    localStorage.removeItem('altcards-v1');
+    showLogin();
+    toast(t('settings.loggedOut'));
+  },
+  async executeDeleteAccount(){
+    const btn = document.getElementById('delbtn');
+    if(btn) { btn.textContent = '⏳'; btn.disabled = true; }
+
+    try {
+      const { error } = await this.client.rpc('delete_user_account');
+      if(error){ 
+        toast(error.message); 
+        if(btn){btn.textContent = t('settings.deleteConfirmBtn'); btn.disabled = false;} 
+        return; 
+      }
+      
+      await this.client.auth.signOut();
+      this.user=null;
+      S = null;
+      localStorage.removeItem('altcards-v1');
+      document.getElementById('md')?.remove();
+      showLogin();
+      toast(t('settings.deleted'));
+    } catch (e) {
+      toast('Error: ' + e.message);
+      if(btn){btn.textContent = t('settings.deleteConfirmBtn'); btn.disabled = false;}
+    }
+  }
 };
 
 function render(){
@@ -796,10 +851,11 @@ function ans(g){
 function vSettings(v){
   const account=Sync?.user
     ?`<p class="mu">${t('settings.loggedIn').replace('{email}',esc(Sync.user.email||'—'))}</p>
-      <div class="row">
+      <div class="row" style="margin-bottom:10px">
         <button class="s" onclick="Sync.signOut()">${t('settings.logout')}</button>
         <button class="s" onclick="forceSyncFromCloud()">⬇️ Wymuś sync</button>
-      </div>`
+      </div>
+      <button class="s" style="width:100%; border-color:#ef4444; color:#ef4444" onclick="showDeleteAccountModal()">${t('settings.deleteAccount')}</button>`
     :`<p class="mu">${t('settings.notLoggedIn')}</p>`;
   v.innerHTML=`<h2>${t('settings.title')}</h2>
   <div class="c"><h3>${t('settings.sync')}</h3>${account}</div>
