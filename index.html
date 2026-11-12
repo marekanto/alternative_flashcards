@@ -154,6 +154,12 @@ a { color: var(--ac); text-decoration: none; font-weight: 600; }
 h2 { margin: 0 0 20px; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
 h3 { margin: 20px 0 10px; font-size: 18px; font-weight: 700; }
 
+/* Progress Bar (Dog & House) */
+.progress-bar-container { position: relative; height: 30px; margin-bottom: 12px; }
+.house { position: absolute; right: 0; bottom: -4px; font-size: 24px; }
+.track { position: absolute; left: 0; right: 30px; top: 50%; transform: translateY(-50%); height: 6px; background: var(--bd); border-radius: 3px; }
+.dog { position: absolute; top: 50%; transform: translate(-50%, -50%); font-size: 26px; transition: left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 2; }
+
 /* Tryb nauki (reviewing) */
 body.reviewing main { max-width: none; padding: clamp(16px, 4vw, 42px); display: flex; flex-direction: column; }
 body.reviewing #v { width: 100%; max-width: 900px; margin: 0 auto; flex: 1; display: flex; flex-direction: column; justify-content: safe center; overflow-y: auto; }
@@ -194,6 +200,157 @@ body.locked #t { display: none !important; }
 .pass-wrap input { padding-right: 48px; margin-bottom: 16px;}
 .pass-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-65%); border: 0; background: none; font-size: 20px; cursor: pointer; opacity: 0.5; padding: 4px;}
 .pass-toggle:active { opacity: 1; }
+
+/* ============ FEEDBACK WIDGET v1.0 ============ */
+.fbx-fab {
+  position: fixed;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px)); /* Przesunięte nad dolną nawigację */
+  right: 20px;
+  z-index: 9998;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff;
+  font: 600 14px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(79, 70, 229, .35);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+body.reviewing .fbx-fab { bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+.fbx-fab:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(79,70,229,.45); }
+.fbx-fab:active { transform: translateY(0); }
+
+.fbx-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(15, 23, 42, .55);
+  backdrop-filter: blur(4px);
+  display: grid; place-items: center;
+  padding: 16px;
+  animation: fbx-fade .15s ease;
+}
+.fbx-overlay[hidden] { display: none; }
+@keyframes fbx-fade { from { opacity: 0 } to { opacity: 1 } }
+
+.fbx-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px;
+  width: min(520px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 60px rgba(0,0,0,.35);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #0f172a;
+  animation: fbx-pop .18s ease;
+}
+@keyframes fbx-pop { from { transform: scale(.96); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+
+.fbx-modal h2 {
+  margin: 0 0 20px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.fbx-close {
+  position: absolute; top: 14px; right: 14px;
+  width: 32px; height: 32px;
+  border: 0; border-radius: 50%;
+  background: #f1f5f9; color: #475569;
+  font-size: 18px; cursor: pointer;
+  display: grid; place-items: center;
+  transition: background .15s;
+}
+.fbx-close:hover { background: #e2e8f0; }
+.fbx-relative { position: relative; }
+
+.fbx-field { margin-bottom: 16px; }
+.fbx-field label {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  color: #334155;
+  margin-bottom: 6px;
+}
+.fbx-field textarea,
+.fbx-field input[type="email"] {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font: inherit;
+  color: #0f172a;
+  background: #f8fafc;
+  transition: border-color .15s, background .15s;
+  box-sizing: border-box;
+}
+.fbx-field textarea:focus,
+.fbx-field input[type="email"]:focus {
+  outline: none;
+  border-color: #4f46e5;
+  background: #fff;
+}
+.fbx-field textarea { min-height: 120px; resize: vertical; margin-bottom: 0; }
+
+.fbx-hp {
+  position: absolute !important;
+  left: -9999px !important;
+  width: 1px; height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fbx-actions {
+  display: flex; gap: 10px; justify-content: flex-end;
+  margin-top: 8px;
+}
+.fbx-btn {
+  padding: 10px 20px;
+  border: 0; border-radius: 10px;
+  font: 600 14px/1 inherit;
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+}
+.fbx-btn:active { transform: scale(.98); }
+.fbx-btn:disabled { opacity: .55; cursor: not-allowed; }
+.fbx-cancel { background: #f1f5f9; color: #475569; }
+.fbx-cancel:hover { background: #e2e8f0; }
+.fbx-submit {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff;
+}
+.fbx-submit:hover:not(:disabled) { opacity: .92; }
+
+.fbx-status {
+  margin-top: 12px;
+  font-size: 13px;
+  min-height: 18px;
+  color: #475569;
+}
+.fbx-status.ok { color: #15803d; font-weight: 600; }
+.fbx-status.err { color: #b91c1c; font-weight: 600; }
+
+@media (prefers-color-scheme: dark) {
+  .fbx-modal { background: #1e293b; color: #e2e8f0; }
+  .fbx-modal h2 { color: #f1f5f9; }
+  .fbx-field label { color: #cbd5e1; }
+  .fbx-field textarea,
+  .fbx-field input[type="email"] {
+    background: #0f172a; color: #e2e8f0; border-color: #334155;
+  }
+  .fbx-cancel { background: #334155; color: #cbd5e1; }
+  .fbx-close { background: #334155; color: #cbd5e1; }
+  .fbx-status { color: #94a3b8; }
+}
+
+@media (max-width: 480px) {
+  .fbx-fab { padding: 12px 16px; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); right: 16px; }
+  body.reviewing .fbx-fab { bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+  .fbx-modal { padding: 22px 18px; border-radius: 14px; }
+}
 </style></head><body>
 <main id="v"></main>
 <nav>
@@ -202,6 +359,35 @@ body.locked #t { display: none !important; }
 <button data-t="stats"><b>📊</b><span data-nav="stats">Postępy</span></button>
 </nav>
 <div id="t"></div>
+
+<!-- ============ FEEDBACK WIDGET HTML ============ -->
+<button class="fbx-fab" onclick="openFbx()">
+  <span>💬</span> <span data-nav="feedback">Opinia</span>
+</button>
+
+<div class="fbx-overlay" id="fbx-overlay" hidden>
+  <div class="fbx-modal fbx-relative">
+    <button class="fbx-close" onclick="closeFbx()">✕</button>
+    <h2>${t('feedback.title')}</h2>
+    <p class="mu" style="margin-bottom:20px;font-size:14px">${t('feedback.desc')}</p>
+    <form id="fbx-form" onsubmit="submitFbx(event)">
+      <!-- Honeypot (Anti-bot) -->
+      <input type="checkbox" name="botcheck" class="fbx-hp" tabindex="-1" autocomplete="off">
+      
+      <div class="fbx-field">
+        <textarea name="message" id="fbx-msg" placeholder="${t('feedback.placeholder')}" required></textarea>
+      </div>
+      
+      <div class="fbx-actions">
+        <button type="button" class="fbx-btn fbx-cancel" onclick="closeFbx()">${t('common.cancel')}</button>
+        <button type="submit" class="fbx-btn fbx-submit" id="fbx-submit">${t('feedback.send')}</button>
+      </div>
+      
+      <div class="fbx-status" id="fbx-status"></div>
+    </form>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
 (()=>{const c=document.createElement('canvas');c.width=c.height=180;const x=c.getContext('2d');x.fillStyle='#4f46e5';x.beginPath();x.roundRect(0,0,180,180,[40]);x.fill();x.fillStyle='#fff';x.font='bold 110px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('A',90,95);const l=document.createElement('link');l.rel='apple-touch-icon';l.href=c.toDataURL();document.head.appendChild(l)})();
 const $=s=>document.querySelector(s);
@@ -237,12 +423,13 @@ const TR={
   'study.settings':{pl:'⚙️ Ustawienia',en:'⚙️ Settings',es:'⚙️ Ajustes'},
   'study.shuffle':{pl:'🔀 Losuj',en:'🔀 Shuffle',es:'🔀 Barajar'},
   'study.due':{pl:'do powtórki',en:'to review',es:'por repasar'},
-  'study.newLimit':{pl:'nowe (limit {n})',en:'new (limit {n})',es:'nuevas (límite {n})'},
+  'study.newLimit':{pl:'dziś (limit: {n})',en:'today (limit: {n})',es:'hoy (límite: {n})'},
   'study.today':{pl:'fiszek dziś',en:'cards today',es:'tarjetas hoy'},
   'study.start':{pl:'Zacznij naukę',en:'Start studying',es:'Empezar a estudiar'},
   'study.noCards':{pl:'Brak fiszek. Dodaj je w zakładce "Talie".',en:"No cards. Add some in the Decks tab.",es:'Sin tarjetas. Añádelas en Mazos.'},
   'study.tooFewNew':{pl:'Za mało nowych kart.',en:'Not enough new cards.',es:'No hay suficientes tarjetas.'},
   'study.shuffled':{pl:'Wylosowano {n} kart.',en:'Shuffled {n} cards.',es:'Se barajaron {n} tarjetas.'},
+  'study.noLimit':{pl:'Osiągnięto dzienny limit powtórek! Świetna robota.',en:'Daily limit reached! Great job.',es:'¡Límite diario alcanzado! Buen trabajo.'},
   'sess.remaining':{pl:'Pozostało:',en:'Remaining:',es:'Quedan:'},
   'sess.end':{pl:'Zakończ',en:'Finish',es:'Terminar'},
   'sess.discover':{pl:'Dotknij lub naciśnij spację, aby odkryć',en:'Tap or press space',es:'Toca o pulsa espacio'},
@@ -340,8 +527,8 @@ const TR={
   'settings.deleteAccountConfirm':{pl:'Czy na pewno chcesz bezpowrotnie usunąć swoje konto i wszystkie fiszki? Tej operacji nie można cofnąć.',en:'Are you sure you want to permanently delete your account and all flashcards? This cannot be undone.',es:'¿Estás seguro de que quieres eliminar permanentemente tu cuenta y todas las tarjetas? Esto no se puede deshacer.'},
   'settings.deleteConfirmBtn':{pl:'Tak, usuń konto',en:'Yes, delete account',es:'Sí, eliminar cuenta'},
   'settings.deleted':{pl:'Konto zostało usunięte.',en:'Account deleted.',es:'Cuenta eliminada.'},
-  'settings.newLimit':{pl:'Limit nowych fiszek',en:'New cards limit',es:'Límite de nuevas'},
-  'settings.newLimitInfo':{pl:'Maksymalna liczba nowych kart na sesję.',en:'Max new cards per session.',es:'Máximo de tarjetas nuevas.'},
+  'settings.newLimit':{pl:'Dzienny limit powtórek',en:'Daily review limit',es:'Límite diario de repasos'},
+  'settings.newLimitInfo':{pl:'Maksymalna liczba kart (nowych + powtórek) na jeden dzień.',en:'Max number of cards (new + reviews) per day.',es:'Número máximo de tarjetas (nuevas + repasos) por día.'},
   'settings.save':{pl:'Zapisz',en:'Save',es:'Guardar'},
   'settings.back':{pl:'← Wróć',en:'← Back',es:'← Volver'},
   'settings.saved':{pl:'Zapisano',en:'Saved',es:'Guardado'},
@@ -466,61 +653,62 @@ const deckOpts=sel=>S.decks.map(d=>`<option value="${d.id}"${d.id==sel?' selecte
 const isNew=c=>!(c.reps>0||c.lapses>0);
 const due=d=>S.cards.filter(c=>(!d||c.deck==d)&&c.due<=Date.now());
 let tab='study',sess=null,flip=false,imageRevealed=false,sd='',lastDeck='',undoState=null;
-const defaults={newLimit:20};
+const defaults={newLimit:20, xp:0};
 S.settings={...defaults,...(S.settings||{})};
 S.daily={...(S.daily||{})};
 S.cards.forEach(c=>{if(typeof c.imageEnabled!=='boolean')c.imageEnabled=false;});
 S.ratings=S.ratings||{};
 if(!isFreshInstall || needsSave) save();
 
-// --- WEB3FORMS FEEDBACK ---
-function showFeedbackModal(){
-  if($('#md')) $('#md').remove();
-  const m=document.createElement('div');m.id='md';
-  m.innerHTML=`<div class="mb">
-    <h3>${t('feedback.title')}</h3>
-    <p class="mu" style="margin-bottom:12px; font-size:14px">${t('feedback.desc')}</p>
-    <textarea id="fbmsg" placeholder="${t('feedback.placeholder')}" style="min-height:120px"></textarea>
-    <div class="row" style="margin-top:12px">
-      <button class="s" onclick="document.getElementById('md').remove()">${t('common.cancel')}</button>
-      <button class="p" id="fbsend" style="margin:0" onclick="sendFeedback()">${t('feedback.send')}</button>
-    </div>
-  </div>`;
-  document.body.appendChild(m);
+// --- FEEDBACK WIDGET LOGIC ---
+function openFbx() {
+  document.getElementById('fbx-overlay').hidden = false;
+  document.getElementById('fbx-msg').focus();
 }
-
-async function sendFeedback() {
-  const msg = document.getElementById('fbmsg').value.trim();
-  if (!msg) { toast(t('feedback.empty')); return; }
+function closeFbx() {
+  document.getElementById('fbx-overlay').hidden = true;
+  const status = document.getElementById('fbx-status');
+  status.textContent = '';
+  status.className = 'fbx-status';
+  document.getElementById('fbx-form').reset();
+  const btn = document.getElementById('fbx-submit');
+  btn.disabled = false;
+  btn.textContent = t('feedback.send');
+}
+async function submitFbx(e) {
+  e.preventDefault();
+  const msg = document.getElementById('fbx-msg').value.trim();
+  if(!msg) return;
   
-  const btn = document.getElementById('fbsend');
-  btn.textContent = t('feedback.sending');
+  const btn = document.getElementById('fbx-submit');
+  const status = document.getElementById('fbx-status');
+  
   btn.disabled = true;
-
-  const WEB3FORMS_ACCESS_KEY = "2cbdf2f1-4b1f-41d2-883b-5a67d0489e8e";
-
+  btn.textContent = t('feedback.sending');
+  status.textContent = '';
+  
+  const formData = new FormData();
+  formData.append("access_key", "2cbdf2f1-4b1f-41d2-883b-5a67d0489e8e");
+  formData.append("subject", "Nowa opinia z aplikacji AltCards");
+  formData.append("from_name", "AltCards");
+  formData.append("email", Sync?.user?.email || "Anonimowy użytkownik");
+  formData.append("message", msg);
+  
   try {
-    const formData = new FormData();
-    formData.append("access_key", WEB3FORMS_ACCESS_KEY);
-    formData.append("subject", "Nowa opinia z aplikacji AltCards");
-    formData.append("from_name", "AltCards");
-    formData.append("email", Sync?.user?.email || "Anonimowy użytkownik (Ekran logowania)");
-    formData.append("message", msg);
-
     const res = await fetch("https://api.web3forms.com/submit", { method: "POST", body: formData });
     const data = await res.json();
-    
-    if (data.success) {
-      document.getElementById('md').remove();
-      toast(t('feedback.success'));
+    if(data.success) {
+      status.textContent = t('feedback.success');
+      status.className = "fbx-status ok";
+      setTimeout(closeFbx, 2000);
     } else {
-      throw new Error(data.message || 'Error');
+      throw new Error(data.message || "Error");
     }
-  } catch (e) {
-    console.error(e);
-    toast(t('feedback.error'));
-    btn.textContent = t('feedback.send');
+  } catch(err) {
+    status.textContent = t('feedback.error');
+    status.className = "fbx-status err";
     btn.disabled = false;
+    btn.textContent = t('feedback.send');
   }
 }
 
@@ -605,7 +793,7 @@ function showLogin(force){
     <p class="mu" id="lerr" style="color:#ef4444; text-align:center; margin-top:12px; font-weight:600"></p>
     
     <div style="text-align:center; margin-top:20px; padding-top:16px; border-top:1px solid var(--bd);">
-      <a href="#" onclick="showFeedbackModal(); return false;" style="font-size:14px; color:var(--mu); font-weight:500;">${t('feedback.title')}</a>
+      <a href="#" onclick="openFbx(); return false;" style="font-size:14px; color:var(--mu); font-weight:500;">${t('feedback.title')}</a>
     </div>
   </div>`;
   document.body.appendChild(d);
@@ -631,7 +819,6 @@ function showLogin(force){
     
     Sync.user=r.data.user||r.data.session?.user;
     
-    // KLUCZOWE: Wyczyszczenie pamięci przed pobraniem danych nowego użytkownika
     S = null;
     localStorage.removeItem('altcards-v1');
     
@@ -639,7 +826,6 @@ function showLogin(force){
     hideLogin();
     render();
     
-    // Tutorial od razu po rejestracji
     if(signUp) showTutorial();
     
     toast(signUp?t('login.toast.registered'):t('login.toast.logged'));
@@ -676,10 +862,10 @@ Sync={
       if(!S.settings)S.settings={...defaults};
       if(!S.daily)S.daily={};
       if(!S.ratings)S.ratings={};
+      if(S.settings.xp === undefined) S.settings.xp = 0;
       migrateState(S);
       localStorage.setItem('altcards-v1',JSON.stringify(S));
     } else {
-      // Brak danych w chmurze – nowe konto
       S = { decks:[{id:'d1',name:'Hiszpański',lang:'es'}], cards:[], log:{} };
       S.settings = { ...defaults };
       S.daily = {};
@@ -739,6 +925,11 @@ Sync={
 function render(){
   document.documentElement.lang=UI;
   document.querySelectorAll('nav span[data-nav]').forEach(s=>{s.textContent=t('nav.'+s.dataset.nav)});
+  
+  // Aktualizacja tekstu przycisku pływającego (FAB)
+  const fabText = document.querySelector('.fbx-fab span:nth-child(2)');
+  if(fabText) fabText.textContent = t('feedback.title').replace('✉️ ', '');
+  
   if(!Sync?.user){showLogin();return}
   document.body.classList.toggle('reviewing',tab==='study'&&!!sess);
   ({study:vStudy,add:vAdd,cards:vCards,stats:vStats,settings:vSettings})[tab]($('#v'));
@@ -749,7 +940,7 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=b.dataset.
 document.addEventListener('keydown',e=>{
   const tag=(e.target.tagName||'').toLowerCase();
   if(tag==='input'||tag==='textarea'||tag==='select'||e.target.isContentEditable)return;
-  if($('#md')||$('#login'))return;
+  if($('#md')||$('#login')||$('#fbx-overlay')?.hidden===false)return;
   if(tab!=='study'||!sess)return;
   if(!sess.q.length)return;
   const key=e.key.toLowerCase();
@@ -759,6 +950,7 @@ document.addEventListener('keydown',e=>{
   if(!flip){
     if(key===' '||e.code==='Space'){e.preventDefault();flip=true;render();return}
     if(key==='o'){e.preventDefault();flip=true;revealImage(c.id);return}
+    if(key==='z'){e.preventDefault();undoAnswer();return}
     return;
   }
   if(key==='1'){e.preventDefault();ans(0)}
@@ -771,42 +963,82 @@ document.addEventListener('keydown',e=>{
 
 function vStudy(v){
   if(sess){
-    if(!sess.q.length){v.innerHTML=`<div class="c" style="text-align:center"><h2>${t('sess.done')}</h2><p class="mu">${t('sess.doneSub')}</p><button class="p" onclick="sess=null;render()">${t('sess.back')}</button></div>`;return}
+    if(!sess.q.length){
+      v.innerHTML=`<div class="c" style="text-align:center">
+        <h2>${t('sess.done')}</h2>
+        <p class="mu">${t('sess.doneSub')}</p>
+        <button class="p" onclick="sess=null;render()">${t('sess.back')}</button>
+      </div>`;
+      return;
+    }
     const c=S.cards.find(x=>x.id==sess.q[0]);
     const fStyle = `font-size:${fitSize(c.front, 56)}`;
     const bStyle = `font-size:${fitSize(c.back, 44)}`;
     const prompt = c.contextSentence
       ? `<div class="sentence">${esc(c.contextSentence).replace(/\{\{.*?\}\}/,'<span class="blank">_____</span>')}</div>`
       : `<div class="f" style="${fStyle}">${esc(c.front)}</div>`;
-    v.innerHTML=`<div class="prog" style="display:flex; justify-content:space-between; align-items:center">
-      <span>${t('sess.remaining')} ${sess.q.length}</span> 
-      <button class="s" style="padding:6px 12px; font-size:13px" onclick="sess=null;render()">${t('sess.end')}</button>
-    </div>
-    <div class="card" style="margin-top:12px" onclick="flip=true;render()">${prompt}${flip?`<hr><div class="f" style="position:relative;${fStyle}">${esc(c.front)} <button class="s" style="position:absolute; right:0; top:50%; transform:translateY(-50%); padding:6px 10px; font-size:14px; opacity:0.5; border:none; box-shadow:none" onclick="event.stopPropagation();editCard('${c.id}', true)">✎</button></div><div class="b" style="${bStyle}">${esc(c.back)}</div>${c.contextSentence?'<p class="mu">'+esc(c.contextSentence).replace(/\{\{(.*?)\}\}/,'<b>$1</b>')+'</p>':''}${imageRevealed?'<div id="imghost" class="mu"></div>':'<button class="s" style="margin-top:24px" onclick="event.stopPropagation();revealImage(&quot;'+c.id+'&quot;)">'+t('sess.image')+'</button>'}`:'<div class="hint" style="margin-top:24px">'+t('sess.discover')+'</div>'}</div>
+      
+    const total = sess.total || sess.q.length;
+    const progress = Math.max(0, ((total - sess.q.length) / total) * 100);
+    
+    v.innerHTML=`<div class="progress-bar-container">
+        <div class="track"><div class="dog" style="left:${progress}%">🐕</div></div>
+        <span class="house">🏠</span>
+      </div>
+      <div class="prog" style="display:flex; justify-content:space-between; align-items:center">
+        <span>${t('sess.remaining')} ${sess.q.length}</span> 
+        <button class="s" style="padding:6px 12px; font-size:13px" onclick="sess=null;render()">${t('sess.end')}</button>
+      </div>
+    <div class="card" style="margin-top:12px" onclick="flip=true;render()">${prompt}${flip?`<hr><div class="b" style="${bStyle}">${esc(c.back)}</div>${c.contextSentence?'<p class="mu">'+esc(c.contextSentence).replace(/\{\{(.*?)\}\}/,'<b>$1</b>')+'</p>':''}${imageRevealed?'<div id="imghost" class="mu"></div>':'<button class="s" style="margin-top:24px" onclick="event.stopPropagation();revealImage(&quot;'+c.id+'&quot;)">'+t('sess.image')+'</button>'}`:'<div class="hint" style="margin-top:24px">'+t('sess.discover')+'</div>'}</div>
     <div class="row" style="margin-top:12px"><button class="s" onclick="say('${c.id}')">${t('sess.say')}</button><button class="s" onclick="undoAnswer()">${t('sess.undo')}</button></div>`+
     (flip?`<div class="g"><button style="background:#ef4444" onclick="ans(0)">${t('sess.again')}</button><button style="background:#f59e0b" onclick="ans(1)">${t('sess.hard')}</button><button style="background:#10b981" onclick="ans(2)">${t('sess.good')}</button><button style="background:#3b82f6" onclick="ans(3)">${t('sess.easy')}</button></div><p class="hint" style="text-align:center;margin-top:12px;opacity:0.7">${t('sess.keysHint')}</p>`:'');
     if(flip&&imageRevealed)loadCardImage(c);
     return;
   }
-  const a=due(sd),nw=a.filter(isNew).length,rv=a.length-nw;
-  const todayCount = Array.isArray(S.daily[dk(new Date())]) ? S.daily[dk(new Date())].length : (S.daily[dk(new Date())]||0);
+  
+  // Study Home
+  const todayKey = dk(new Date());
+  const todayCount = S.daily[todayKey] || 0;
+  const remaining = Math.max(0, S.settings.newLimit - todayCount);
+  const allDue = due(sd);
+  const sessionSize = Math.min(allDue.length, remaining);
+  
+  const xp = S.settings.xp || 0;
+  const level = Math.floor(xp / 100) + 1;
+  
   v.innerHTML=`<h2>${t('study.title')}</h2>
+  <div class="c" style="background:var(--sf); padding:10px 20px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <span style="font-weight:700">🏆 Level ${level}</span>
+    <span class="mu">${xp % 100} / 100 XP</span>
+  </div>
   <select onchange="sd=this.value;render()"><option value="">${t('study.allDecks')}</option>${deckOpts(sd)}</select>
   <div class="row"><button class="s" onclick="tab='settings';render()">${t('study.settings')}</button><button class="s" onclick="shuffleNewInDeck()">${t('study.shuffle')}</button></div>
   <div class="c" style="margin-top:20px"><div class="st">
-    <div><div class="n">${rv}</div><span class="mu">${t('study.due')}</span></div>
-    <div><div class="n">${Math.min(nw,S.settings.newLimit)}</div><span class="mu">${t('study.newLimit').replace('{n}',S.settings.newLimit)}</span></div>
+    <div><div class="n">${allDue.length}</div><span class="mu">${t('study.due')}</span></div>
+    <div><div class="n">${sessionSize}</div><span class="mu">${t('study.newLimit').replace('{n}', S.settings.newLimit)}</span></div>
     <div><div class="n">${todayCount}</div><span class="mu">${t('study.today')}</span></div>
   </div>
-  <button class="p" ${a.length?'':'disabled style="opacity:.4"'} onclick="start()">${t('study.start')}</button>
-  ${S.cards.length?'':`<p class="mu" style="text-align:center">${t('study.noCards')}</p>`}</div>
-  <button class="s" style="width:100%; margin-top:10px" onclick="showFeedbackModal()">${t('feedback.title')}</button>`;
+  ${remaining === 0 ? `<p class="mu" style="text-align:center; color:var(--ac); font-weight:600; margin:10px 0">${t('study.noLimit')}</p>` : ''}
+  <button class="p" ${sessionSize > 0 ? '' : 'disabled style="opacity:.4"'} onclick="start()">${t('study.start')}</button>
+  ${S.cards.length?'':`<p class="mu" style="text-align:center">${t('study.noCards')}</p>`}</div>`;
   const sel=v.querySelector('select');sel.value=sd;
 }
+
 function start(){
-  const a=due(sd),rev=a.filter(c=>!isNew(c)),nw=a.filter(isNew).slice(0,S.settings.newLimit);
-  sess={q:[...rev,...nw].map(c=>c.id)};flip=false;imageRevealed=false;render();
+  const todayKey = dk(new Date());
+  const todayCount = S.daily[todayKey] || 0;
+  const remaining = Math.max(0, S.settings.newLimit - todayCount);
+  
+  const allDue = due(sd); 
+  // Priorytetyzacja: najpierw przeglądane (reps>0), potem nowe
+  allDue.sort((a,b) => (b.reps>0?1:0) - (a.reps>0?1:0));
+  
+  const queue = allDue.slice(0, remaining).map(c=>c.id);
+  
+  sess = { q: queue, total: queue.length, origQueue: [...queue] };
+  flip = false; imageRevealed = false; render();
 }
+
 function shuffleNewInDeck(){
   const pool=S.cards.map((c,i)=>({c,i})).filter(x=>(!sd||x.c.deck===sd)&&isNew(x.c));
   if(pool.length<2){toast(t('study.tooFewNew'));return}
@@ -817,6 +1049,7 @@ function shuffleNewInDeck(){
   toast(t('study.shuffled').replace('{n}',Math.min(S.settings.newLimit,pool.length)));
   render();
 }
+
 function say(id){
   const c=S.cards.find(x=>x.id==id),d=S.decks.find(x=>x.id==c.deck);
   try{
@@ -826,6 +1059,7 @@ function say(id){
     speechSynthesis.speak(u);
   }catch(e){}
 }
+
 function grade(c,g){
   if(g==0){c.lapses++;c.ease=Math.max(1.3,c.ease-.2);c.int=0;c.due=Date.now();return}
   if(g==1){c.ease=Math.max(1.3,c.ease-.15);c.int=Math.max(1,Math.round((c.int||1)*1.2))}
@@ -833,19 +1067,47 @@ function grade(c,g){
   if(g==3){c.ease+=.15;c.int=c.int<1?4:Math.round(c.int*c.ease*1.3)}
   c.reps++;c.due=sod()+c.int*864e5;
 }
+
 function ans(g){
   const id=sess.q[0],c=S.cards.find(x=>x.id==id);
-  undoState={cardId:id,card:JSON.parse(JSON.stringify(c)),queue:[...sess.q],flip,log:JSON.parse(JSON.stringify(S.log)),daily:JSON.parse(JSON.stringify(S.daily)),ratings:JSON.parse(JSON.stringify(S.ratings||{}))};
+  const todayKey = dk(new Date());
+  
+  undoState = {
+    cardId: id,
+    card: JSON.parse(JSON.stringify(c)),
+    queue: [...sess.q],
+    total: sess.total,
+    flip,
+    dailyCount: S.daily[todayKey] || 0,
+    xp: S.settings.xp || 0,
+    ratings: JSON.parse(JSON.stringify(S.ratings || {})),
+    log: JSON.parse(JSON.stringify(S.log))
+  };
+  
   sess.q.shift();
-  grade(c,g);
-  const k=dk(new Date());S.log[k]=(S.log[k]||0)+1;
-  if(!S.ratings)S.ratings={};
-  if(!S.ratings[k])S.ratings[k]=[0,0,0,0];
-  S.ratings[k][g]=(S.ratings[k][g]||0)+1;
-  if(typeof S.daily[k] !== 'number') S.daily[k] = 0;
-  S.daily[k]++;
-  if(g==0)sess.q.splice(Math.min(3,sess.q.length),0,id);
-  save();flip=false;imageRevealed=false;render();
+  grade(c, g);
+  
+  const k = todayKey;
+  S.log[k] = (S.log[k]||0) + 1;
+  
+  if(!S.ratings) S.ratings={};
+  if(!S.ratings[k]) S.ratings[k]=[0,0,0,0];
+  S.ratings[k][g] = (S.ratings[k][g]||0) + 1;
+  
+  if (typeof S.daily[k] !== 'number') S.daily[k] = 0;
+  if(g > 0) {
+    if(undoState.dailyCount === S.daily[k]) S.daily[k]++; 
+  } else {
+    // Jeśli "Znowu" i to nowa karta dzisiaj, nie zwiększamy limitu
+  }
+  
+  if(g > 0) {
+    S.settings.xp = (S.settings.xp || 0) + (g===1 ? 5 : g===2 ? 10 : 15);
+  }
+
+  if(g == 0) sess.q.splice(Math.min(3, sess.q.length), 0, id);
+  
+  save(); flip=false; imageRevealed=false; render();
 }
 
 function vSettings(v){
@@ -853,9 +1115,8 @@ function vSettings(v){
     ?`<p class="mu">${t('settings.loggedIn').replace('{email}',esc(Sync.user.email||'—'))}</p>
       <div class="row" style="margin-bottom:10px">
         <button class="s" onclick="Sync.signOut()">${t('settings.logout')}</button>
-        <button class="s" onclick="forceSyncFromCloud()">⬇️ Wymuś sync</button>
-      </div>
-      <button class="s" style="width:100%; border-color:#ef4444; color:#ef4444" onclick="showDeleteAccountModal()">${t('settings.deleteAccount')}</button>`
+        <button class="s" style="border-color:#ef4444; color:#ef4444" onclick="showDeleteAccountModal()">${t('settings.deleteAccount')}</button>
+      </div>`
     :`<p class="mu">${t('settings.notLoggedIn')}</p>`;
   v.innerHTML=`<h2>${t('settings.title')}</h2>
   <div class="c"><h3>${t('settings.sync')}</h3>${account}</div>
@@ -871,33 +1132,59 @@ function vSettings(v){
 
   <button class="s" style="width:100%; margin-top:10px" onclick="tab='study';render()">${t('settings.back')}</button>`;
 }
+
 function saveSettings(){
   const n=Math.max(1,Math.min(500,parseInt($('#nlmt').value,10)||20));
   S.settings.newLimit=n;save();toast(t('settings.saved'));tab='study';render();
 }
+
 function undoAnswer(){
   if(!undoState){toast(t('sess.noUndo'));return}
   const c=S.cards.find(x=>x.id===undoState.cardId);
   if(c)Object.assign(c,undoState.card);
-  sess.q=[...undoState.queue];flip=undoState.flip;S.log=undoState.log;S.daily=undoState.daily;
-  if(undoState.ratings)S.ratings=undoState.ratings;
+  
+  sess.q = [...undoState.queue];
+  sess.total = undoState.total;
+  flip = undoState.flip; 
+  
+  const todayKey = dk(new Date());
+  S.daily[todayKey] = undoState.dailyCount;
+  S.settings.xp = undoState.xp;
+  S.ratings = undoState.ratings;
+  S.log = undoState.log;
+  
   undoState=null;save();render();toast(t('sess.undone'));
 }
+
 async function loadCardImage(c){
   const host=$('#imghost');if(!host)return;
   if(c.imageUrl){host.innerHTML=`<img class="review-image" alt="${esc(c.front)}" src="${esc(c.imageUrl)}"><div class="mu">${t('sess.imgCredit')}</div>`;return}
   host.textContent=t('sess.imgSearch');
+  
+  const deck = S.decks.find(d => d.id === c.deck);
+  const langCode = deck ? deck.lang : 'es';
+  
+  const searchCommons = async (query) => {
+    const q = encodeURIComponent(query);
+    const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${q}&gsrnamespace=6&gsrlimit=8&prop=imageinfo&iiprop=url|mime&iiurlwidth=900&format=json&origin=*`;
+    const r = await fetch(url);
+    if(!r.ok) throw new Error('network');
+    const j = await r.json();
+    return Object.values(j.query?.pages||{}).filter(p=>p.imageinfo?.[0]?.thumburl&&/^image\/(jpeg|png|webp)/.test(p.imageinfo[0].mime||''));
+  };
+
   try{
-    const q=encodeURIComponent(c.front);
-    const url=`https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${q}&gsrnamespace=6&gsrlimit=8&prop=imageinfo&iiprop=url|mime&iiurlwidth=900&format=json&origin=*`;
-    const r=await fetch(url);if(!r.ok)throw Error('network');
-    const j=await r.json();
-    const pages=Object.values(j.query?.pages||{}).filter(p=>p.imageinfo?.[0]?.thumburl&&/^image\/(jpeg|png|webp)/.test(p.imageinfo[0].mime||''));
+    let pages = await searchCommons(c.front);
+    if(!pages.length) {
+      pages = await searchCommons(c.back); // Fallback
+    }
+    
     if(!pages.length){host.textContent=t('sess.imgNotFound');return}
     const best=pages[0].imageinfo[0].thumburl;c.imageUrl=best;save();
     host.innerHTML=`<img class="review-image" alt="${esc(c.front)}" src="${esc(best)}"><div class="mu">${t('sess.imgCredit')}</div>`;
   }catch(e){host.textContent=t('sess.imgError')}
 }
+
 function revealImage(id){
   const c=S.cards.find(x=>x.id===id);if(!c)return;
   c.imageEnabled=true;imageRevealed=true;save();render();
@@ -917,11 +1204,13 @@ function vAdd(v){
   <button class="s" style="width:100%; margin-top:10px" onclick="tab='cards';render()">${t('settings.back')}</button>`;
   plink();
 }
+
 function plink(){
   const el = $('#pl'); if(!el) return;
   const d=S.decks.find(x=>x.id==$('#dk').value),l=(L[d&&d.lang]||L['es']).pons;
   el.href=`https://pl.pons.com/tłumaczenie?q=${encodeURIComponent($('#fr').value.trim())}&l=${l}`;
 }
+
 async function suggest(){
   const f=$('#fr').value.trim(),box=$('#sg');
   if(!f)return;
@@ -938,6 +1227,7 @@ async function suggest(){
     if(!arr.length)box.innerHTML=`<span class="mu">${t('add.sg.noResults')}</span>`;
   }catch(e){box.innerHTML=`<span class="mu">${t('add.sg.error')}</span>`}
 }
+
 function addCard(){
   const f=$('#fr').value.trim(),b=$('#bk').value.trim();
   if(!f||!b){toast(t('add.bothSides'));return}
@@ -964,21 +1254,25 @@ function vCards(v){
   <button class="p" onclick="importCSV()">${t('cards.importBtn')}</button>`;
   renderCards();dlist();
 }
+
 function goToAdd() {
   const selectedDeck = $('#fd') ? $('#fd').value : '';
   if (selectedDeck) lastDeck = selectedDeck;
   tab = 'add';
   render();
 }
+
 function renderCards(){
   if(!$('#q')||!$('#fd')||!$('#ls'))return;
   const q=$('#q').value.trim().toLocaleLowerCase(),d=$('#fd').value;
   const a=S.cards.filter(c=>(!d||c.deck==d)&&(c.front+' '+c.back).toLocaleLowerCase().includes(q));
   $('#ls').innerHTML=a.slice(0,200).map(c=>`<div class="it"><div><b>${esc(c.front)}</b><br><span class="mu">${esc(c.back)}</span></div><button aria-label="${t('cards.edit')}" onclick="editCard('${c.id}')">✎</button><button aria-label="${t('cards.del')}" onclick="delCard('${c.id}')">🗑</button></div>`).join('')||`<p class="mu">${t('cards.noCards')}</p>`;
 }
+
 function dlist(){
   $('#dl').innerHTML=S.decks.map(d=>`<div class="it"><div>${esc(d.name)} <span class="mu">· ${langName(d.lang)} · ${t('cards.deckCount').replace('{n}',S.cards.filter(c=>c.deck==d.id).length)}</span></div><button onclick="delDeck('${d.id}')">🗑</button></div>`).join('');
 }
+
 function modal(title,fields,ok){
   if($('#md')) $('#md').remove();
   const m=document.createElement('div');m.id='md';
@@ -987,6 +1281,7 @@ function modal(title,fields,ok){
   m.querySelector('#mc').onclick=()=>m.remove();
   m.querySelector('#mo').onclick=()=>{const v=[...m.querySelectorAll('textarea')].map(x=>x.value);m.remove();ok(v)};
 }
+
 function editCard(id, fromStudy=false){
   const c=S.cards.find(x=>x.id==id);
   if(!c)return;
@@ -997,10 +1292,12 @@ function editCard(id, fromStudy=false){
     if(fromStudy) render(); else renderCards();
   });
 }
+
 function delCard(id){
   if(!S.cards.some(c=>c.id===id))return;
   modal(t('cards.deleteCard'),[],()=>{S.cards=S.cards.filter(c=>c.id!==id);if(sess)sess.q=sess.q.filter(x=>x!==id);save();renderCards();dlist();toast(t('cards.cardDeleted'))});
 }
+
 function parseCSV(t){
   t=t.replace(/^\uFEFF/,'');
   const first=t.split('\n')[0],sep=[';','\t',','].map(s=>[s,first.split(s).length]).sort((a,b)=>b[1]-a[1])[0][0];
@@ -1014,6 +1311,7 @@ function parseCSV(t){
   if(f||r.length){r.push(f);rows.push(r)}
   return rows.filter(r=>r.some(x=>x.trim()));
 }
+
 async function importCSV(){
   const fl=$('#cf').files[0];if(!fl){toast(t('cards.selectFile'));return}
   const cl=s=>(s||'').replace(/<br\s*\/?>/gi,'; ').replace(/<[^>]+>/g,'').trim();
@@ -1023,10 +1321,12 @@ async function importCSV(){
   rows.forEach(r=>{const x=cl(r[a]),y=cl(r[b]);if(x&&y&&!have.has(x.toLowerCase())){have.add(x.toLowerCase());S.cards.push({id:uid(),deck:d,front:x,back:y,ease:2.5,int:0,reps:0,lapses:0,due:0});n++}});
   save();toast(t('cards.imported').replace('{n}',n));renderCards();dlist();
 }
+
 function addDeck(){
   const n=$('#nn').value.trim();if(!n)return;
   S.decks.push({id:uid(),name:n,lang:$('#nl').value});save();render();
 }
+
 function delDeck(id){
   if(S.decks.length<2){toast(t('cards.keepOneDeck'));return}
   modal(t('cards.deleteDeck'),[],()=>{S.decks=S.decks.filter(d=>d.id!=id);S.cards=S.cards.filter(c=>c.deck!=id);if(sd==id)sd='';save();render()});
@@ -1096,22 +1396,17 @@ function vStats(v){
   <h3>${t('stats.backup')}</h3><p class="mu">${t('stats.backupInfo')}</p>
   <div class="row"><button class="s" onclick="bkp()">${t('stats.copyBackup')}</button><button class="s" onclick="rst()">${t('stats.pasteBackup')}</button></div>`;
 }
+
 async function bkp(){
   try{await navigator.clipboard.writeText(JSON.stringify(S));toast(t('stats.copied'))}
   catch(e){modal(t('stats.manualCopyTitle'),[{v:JSON.stringify(S)}],()=>{})}
 }
+
 function rst(){
   modal(t('stats.pasteTitle'),[{ph:t('stats.pastePlaceholder')}],v=>{
     try{const o=JSON.parse(v[0]);if(!o.decks||!o.cards)throw 0;S=o;save();render();toast(t('stats.restored'))}
     catch(e){toast(t('stats.invalidBackup'))}
   });
-}
-
-async function forceSyncFromCloud(){
-  if(!Sync?.user)return;
-  if(!confirm("To nadpisze dane na tym urządzeniu danymi z chmury. Kontynuować?"))return;
-  await Sync.download(true);
-  toast('Pobrano dane z chmury');
 }
 
 render();Sync.init();
