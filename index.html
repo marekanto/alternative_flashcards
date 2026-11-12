@@ -204,7 +204,7 @@ body.locked #t { display: none !important; }
 /* ============ FEEDBACK WIDGET v1.0 ============ */
 .fbx-fab {
   position: fixed;
-  bottom: calc(80px + env(safe-area-inset-bottom, 0px)); /* Przesunięte nad dolną nawigację */
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   right: 20px;
   z-index: 9998;
   display: inline-flex;
@@ -246,6 +246,7 @@ body.reviewing .fbx-fab { bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
   color: #0f172a;
   animation: fbx-pop .18s ease;
+  position: relative;
 }
 @keyframes fbx-pop { from { transform: scale(.96); opacity: 0 } to { transform: scale(1); opacity: 1 } }
 
@@ -265,18 +266,9 @@ body.reviewing .fbx-fab { bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   transition: background .15s;
 }
 .fbx-close:hover { background: #e2e8f0; }
-.fbx-relative { position: relative; }
 
 .fbx-field { margin-bottom: 16px; }
-.fbx-field label {
-  display: block;
-  font-weight: 600;
-  font-size: 13px;
-  color: #334155;
-  margin-bottom: 6px;
-}
-.fbx-field textarea,
-.fbx-field input[type="email"] {
+.fbx-field textarea {
   width: 100%;
   padding: 11px 13px;
   border: 1.5px solid #e2e8f0;
@@ -286,21 +278,12 @@ body.reviewing .fbx-fab { bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   background: #f8fafc;
   transition: border-color .15s, background .15s;
   box-sizing: border-box;
+  min-height: 120px; resize: vertical; margin-bottom: 0;
 }
-.fbx-field textarea:focus,
-.fbx-field input[type="email"]:focus {
+.fbx-field textarea:focus {
   outline: none;
   border-color: #4f46e5;
   background: #fff;
-}
-.fbx-field textarea { min-height: 120px; resize: vertical; margin-bottom: 0; }
-
-.fbx-hp {
-  position: absolute !important;
-  left: -9999px !important;
-  width: 1px; height: 1px;
-  opacity: 0;
-  pointer-events: none;
 }
 
 .fbx-actions {
@@ -336,9 +319,7 @@ body.reviewing .fbx-fab { bottom: calc(20px + env(safe-area-inset-bottom, 0px));
 @media (prefers-color-scheme: dark) {
   .fbx-modal { background: #1e293b; color: #e2e8f0; }
   .fbx-modal h2 { color: #f1f5f9; }
-  .fbx-field label { color: #cbd5e1; }
-  .fbx-field textarea,
-  .fbx-field input[type="email"] {
+  .fbx-field textarea {
     background: #0f172a; color: #e2e8f0; border-color: #334155;
   }
   .fbx-cancel { background: #334155; color: #cbd5e1; }
@@ -366,23 +347,18 @@ body.reviewing .fbx-fab { bottom: calc(20px + env(safe-area-inset-bottom, 0px));
 </button>
 
 <div class="fbx-overlay" id="fbx-overlay" hidden>
-  <div class="fbx-modal fbx-relative">
+  <div class="fbx-modal">
     <button class="fbx-close" onclick="closeFbx()">✕</button>
-    <h2>${t('feedback.title')}</h2>
-    <p class="mu" style="margin-bottom:20px;font-size:14px">${t('feedback.desc')}</p>
+    <h2 id="fbx-title">Wyślij opinię</h2>
+    <p class="mu" id="fbx-desc" style="margin-bottom:20px;font-size:14px"></p>
     <form id="fbx-form" onsubmit="submitFbx(event)">
-      <!-- Honeypot (Anti-bot) -->
-      <input type="checkbox" name="botcheck" class="fbx-hp" tabindex="-1" autocomplete="off">
-      
       <div class="fbx-field">
-        <textarea name="message" id="fbx-msg" placeholder="${t('feedback.placeholder')}" required></textarea>
+        <textarea name="message" id="fbx-msg" required></textarea>
       </div>
-      
       <div class="fbx-actions">
-        <button type="button" class="fbx-btn fbx-cancel" onclick="closeFbx()">${t('common.cancel')}</button>
-        <button type="submit" class="fbx-btn fbx-submit" id="fbx-submit">${t('feedback.send')}</button>
+        <button type="button" class="fbx-btn fbx-cancel" onclick="closeFbx()" id="fbx-cancel-btn">Anuluj</button>
+        <button type="submit" class="fbx-btn fbx-submit" id="fbx-submit">Wyślij 🚀</button>
       </div>
-      
       <div class="fbx-status" id="fbx-status"></div>
     </form>
   </div>
@@ -662,6 +638,12 @@ if(!isFreshInstall || needsSave) save();
 
 // --- FEEDBACK WIDGET LOGIC ---
 function openFbx() {
+  document.getElementById('fbx-title').innerHTML = t('feedback.title');
+  document.getElementById('fbx-desc').innerHTML = t('feedback.desc');
+  document.getElementById('fbx-msg').placeholder = t('feedback.placeholder');
+  document.getElementById('fbx-cancel-btn').innerHTML = t('common.cancel');
+  document.getElementById('fbx-submit').innerHTML = t('feedback.send');
+  
   document.getElementById('fbx-overlay').hidden = false;
   document.getElementById('fbx-msg').focus();
 }
@@ -926,7 +908,6 @@ function render(){
   document.documentElement.lang=UI;
   document.querySelectorAll('nav span[data-nav]').forEach(s=>{s.textContent=t('nav.'+s.dataset.nav)});
   
-  // Aktualizacja tekstu przycisku pływającego (FAB)
   const fabText = document.querySelector('.fbx-fab span:nth-child(2)');
   if(fabText) fabText.textContent = t('feedback.title').replace('✉️ ', '');
   
@@ -1000,7 +981,9 @@ function vStudy(v){
   const todayKey = dk(new Date());
   const todayCount = S.daily[todayKey] || 0;
   const remaining = Math.max(0, S.settings.newLimit - todayCount);
+  
   const allDue = due(sd);
+  const rv = allDue.filter(c => !isNew(c)).length;
   const sessionSize = Math.min(allDue.length, remaining);
   
   const xp = S.settings.xp || 0;
@@ -1014,7 +997,7 @@ function vStudy(v){
   <select onchange="sd=this.value;render()"><option value="">${t('study.allDecks')}</option>${deckOpts(sd)}</select>
   <div class="row"><button class="s" onclick="tab='settings';render()">${t('study.settings')}</button><button class="s" onclick="shuffleNewInDeck()">${t('study.shuffle')}</button></div>
   <div class="c" style="margin-top:20px"><div class="st">
-    <div><div class="n">${allDue.length}</div><span class="mu">${t('study.due')}</span></div>
+    <div><div class="n">${rv}</div><span class="mu">${t('study.due')}</span></div>
     <div><div class="n">${sessionSize}</div><span class="mu">${t('study.newLimit').replace('{n}', S.settings.newLimit)}</span></div>
     <div><div class="n">${todayCount}</div><span class="mu">${t('study.today')}</span></div>
   </div>
@@ -1030,10 +1013,11 @@ function start(){
   const remaining = Math.max(0, S.settings.newLimit - todayCount);
   
   const allDue = due(sd); 
-  // Priorytetyzacja: najpierw przeglądane (reps>0), potem nowe
-  allDue.sort((a,b) => (b.reps>0?1:0) - (a.reps>0?1:0));
+  const review = allDue.filter(c => !isNew(c));
+  const newCards = allDue.filter(c => isNew(c));
   
-  const queue = allDue.slice(0, remaining).map(c=>c.id);
+  const combined = [...review, ...newCards];
+  const queue = combined.slice(0, remaining).map(c => c.id);
   
   sess = { q: queue, total: queue.length, origQueue: [...queue] };
   flip = false; imageRevealed = false; render();
@@ -1097,8 +1081,6 @@ function ans(g){
   if (typeof S.daily[k] !== 'number') S.daily[k] = 0;
   if(g > 0) {
     if(undoState.dailyCount === S.daily[k]) S.daily[k]++; 
-  } else {
-    // Jeśli "Znowu" i to nowa karta dzisiaj, nie zwiększamy limitu
   }
   
   if(g > 0) {
@@ -1160,9 +1142,6 @@ async function loadCardImage(c){
   const host=$('#imghost');if(!host)return;
   if(c.imageUrl){host.innerHTML=`<img class="review-image" alt="${esc(c.front)}" src="${esc(c.imageUrl)}"><div class="mu">${t('sess.imgCredit')}</div>`;return}
   host.textContent=t('sess.imgSearch');
-  
-  const deck = S.decks.find(d => d.id === c.deck);
-  const langCode = deck ? deck.lang : 'es';
   
   const searchCommons = async (query) => {
     const q = encodeURIComponent(query);
