@@ -367,8 +367,8 @@ const createSupabaseClient=()=>{try{return window.supabase.createClient(SUPABASE
 let Sync=null, S=null, undoStack=[], tab='study', sess=null, flip=false, imgRev=false, sd='', lastDeck='', lbTab='day';
 
 try{S=JSON.parse(localStorage.getItem('altcards-v1'))}catch(e){}
-if(!S){ S={decks:[{id:'d1',name:'Hiszpański',lang:'es'}],cards:[],log:{}}; }
-const defaults={newLimit:200, xp:0, pet:'🐕'};
+if(!S){ S={decks:[{id:'d1',name:'Deck 1',lang:'es'}],cards:[],log:{}}; }
+const defaults={newLimit:50, xp:0, pet:'🐕'};
 S.settings={...defaults,...(S.settings||{})};
 S.daily={...(S.daily||{})};
 S.ratings=S.ratings||{};
@@ -517,7 +517,7 @@ function showLogin(){
     if(signUp&&!r.data.session){err.textContent=t('login.err.confirm');return}
     Sync.user = r.data.user || r.data.session?.user;
     await Sync.startSession();
-    if(signUp && !localStorage.getItem('altcards-tut')) showTutorial();
+    if(signUp) showTutorial(); // <--- TUTAJ PRZYWRÓCONE WYŚWIETLANIE
   };
   $('#lbtn').onclick=()=>go(false);
   $('#rbtn').onclick=()=>go(true);
@@ -561,7 +561,7 @@ Sync = {
     
     await this.checkBonuses();
     if(!this.profile) { showNicknameModal(); }
-    else { hideLogin(); render(); if(!localStorage.getItem('altcards-tut')) showTutorial(); }
+    else { hideLogin(); render(); } 
   },
   async download(){
     if(IS_DEV) return;
@@ -576,7 +576,7 @@ Sync = {
       S.cards.forEach(c=>{if(typeof c.imageEnabled!=='boolean')c.imageEnabled=false;});
       localStorage.setItem('altcards-v1',JSON.stringify(S));
     } else {
-      S = {decks:[{id:'d1',name:'Hiszpański',lang:'es'}],cards:[],log:{},settings:{...defaults},daily:{},ratings:{}};
+      S = {decks:[{id:'d1',name:'Deck 1',lang:'es'}],cards:[],log:{},settings:{...defaults},daily:{},ratings:{}};
       localStorage.setItem('altcards-v1',JSON.stringify(S));
       this.queueUpload();
     }
@@ -1144,12 +1144,12 @@ function vSettings(v){
     <div class="c"><h3>${t('settings.sync')}</h3>${account}</div>
     <div class="c"><h3>${t('ui.lang')}</h3><select onchange="UI=this.value;localStorage.setItem('altcards-uilang',this.value);render()">${langOpts}</select></div>
     <div class="c"><h3>${t('ui.pet')}</h3><select onchange="S.settings.pet=this.value;save();render()">${petOpts}</select></div>
-    <div class="c"><label><b>${t('settings.newLimit')}</b></label><p class="mu">${t('settings.newLimitInfo')}</p><input id="nlmt" type="number" min="1" max="500" value="${S.settings.newLimit}"><button class="p" onclick="saveSettings()">${t('settings.save')}</button></div>
+    <div class="c"><label><b>${t('settings.newLimit')}</b></label><p class="mu">${t('settings.newLimitInfo')}</p><input id="nlmt" type="number" min="1" max="200" value="${S.settings.newLimit}"><button class="p" onclick="saveSettings()">${t('settings.save')}</button></div>
     <div class="c" style="text-align:center"><button class="s" style="width:100%" onclick="localStorage.removeItem('altcards-tut');showTutorial()">${t('settings.showTut')}</button></div>
     <button class="s" style="width:100%;margin-top:10px" onclick="tab='study';render()">${t('settings.back')}</button>`;
 }
 function saveSettings(){
-  const n = Math.max(1,Math.min(500,parseInt($('#nlmt').value,10)||200));
+  const n = Math.max(1,Math.min(200,parseInt($('#nlmt').value,10)||50));
   S.settings.newLimit = n; save(); toast(t('settings.saved')); tab='study'; render();
 }
 
