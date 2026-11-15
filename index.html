@@ -597,8 +597,9 @@ Sync = {
   async shareDeck(deck){
     const cards = S.cards.filter(c=>c.deck===deck.id).map(c=>({front:c.front,back:c.back,contextSentence:c.contextSentence,imageUrl:c.imageUrl}));
     if(!cards.length) return "Pusta talia.";
-    const {error} = await this.client.from('shared_decks').insert({author_id:this.user.id,name:deck.name,lang:deck.lang,cards:cards});
-    if(error) return error.message;
+    const {data, error} = await this.client.from('shared_decks').insert({author_id:this.user.id,name:deck.name,lang:deck.lang,cards:cards}).select();
+    if(error) return "Błąd: " + error.message;
+    if(!data || data.length === 0) return "Insert się nie powiódł. Sprawdź politykę RLS dla 'shared_decks'.";
     return null;
   },
   async copyDeck(sharedId,name,lang,cards){
@@ -830,13 +831,18 @@ function editDeckName(id) {
     }
   });
 }
-function shareDeck(id){
+async function shareDeck(id){
   const deck = S.decks.find(x=>x.id===id);
+  if(!deck) return;
   if(!confirm(`Udostępnić "${deck.name}" publicznie? Inni będą mogli skopiować.`)) return;
-  Sync.shareDeck(deck).then(err=>{
-    if(err) toast(err);
-    else toast(t('cards.shared'));
-  });
+  toast('Udostępniam...');
+  const err = await Sync.shareDeck(deck);
+  if(err) toast(err);
+  else {
+    toast(t('cards.shared'));
+    // Opcjonalnie: przełącz na bibliotekę po chwili
+    setTimeout(()=>{ if(tab==='cards'){ tab='library'; render(); } }, 1000);
+  }
 }
 function addDeck(){
   const n = $('#nn').value.trim(); if(!n) return;
@@ -944,16 +950,24 @@ function addCard(){
 // ============ LIBRARY ============
 function vLibrary(v){
   v.innerHTML = `<h2>${t('library.title')}</h2><p class="mu" style="margin-bottom:20px">${t('library.desc')}</p><div id="lib-list"><p class="mu">${t('library.loading')}</p></div>`;
-  Sync.client.from('shared_decks').select('*, profiles(nickname)').order('created_at',{ascending:false}).then(({data})=>{
-    if(!data || !data.length){$('#lib-list').innerHTML=`<p class="mu">${t('library.empty')}</p>`;return}
-    $('#lib-list').innerHTML = data.map(d=>`
+  Sync.client.from('shared_decks').select('*').order('created_at',{ascending:false}).then(async ({data: decks, error}) => {
+    if(error) { $('#lib-list').innerHTML = `<p class="mu" style="color:#ef4444">Błąd: ${error.message}</p>`; return; }
+    if(!decks || !decks.length) { $('#lib-list').innerHTML = `<p class="mu">${t('library.empty')}</p>`; return; }
+    
+    // Krok 2: pobierz nicki autorów osobno (bez ryzykownego joina)
+    const authorIds = [...new Set(decks.map(d=>d.author_id))];
+    const {data: profiles} = await Sync.client.from('profiles').select('id,nickname').in('id', authorIds);
+    const nickMap = {};
+    (profiles||[]).forEach(p=>nickMap[p.id]=p.nickname);
+    
+    $('#lib-list').innerHTML = decks.map(d=>`
       <div class="c" style="padding:16px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
           <div style="flex:1">
             <b>${esc(d.name)}</b><br>
-            <span class="mu">${langName(d.lang)} · ${t('library.author')}: ${esc(d.profiles?.nickname||'?')} · ${d.cards.length}</span>
+            <span class="mu">${langName(d.lang)} · ${t('library.author')}: ${esc(nickMap[d.author_id]||'?')} · ${d.cards.length}</span>
           </div>
-          <button class="s" onclick='copyDeck("${d.id}","${esc(d.name).replace(/'/g,"\\'")}","${d.lang}",${JSON.stringify(d.cards)})'>${t('library.copy')}</button>
+          <button class="s" onclick='copyDeck("${d.id}","${esc(d.name).replace(/'/g,"\\'")}","${d.lang}",${JSON.stringify(d.cards).replace(/'/g,"\\'")})'>${t('library.copy')}</button>
         </div>
       </div>
     `).join('');
