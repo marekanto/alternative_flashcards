@@ -73,7 +73,7 @@ nav {
 }
 nav button {
   flex: 1; border: 0; background: none; color: var(--mu); padding: 12px 0 10px;
-  font-size: 12px; transition: color 0.2s; font-weight: 600; cursor: pointer;
+  font-size: 11px; transition: color 0.2s; font-weight: 600; cursor: pointer;
 }
 nav button b { display: block; font-size: 22px; font-weight: 400; margin-bottom: 4px; transition: transform 0.2s; }
 nav button:active b { transform: scale(0.9); }
@@ -155,20 +155,26 @@ a { color: var(--ac); text-decoration: none; font-weight: 600; }
 h2 { margin: 0 0 20px; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
 h3 { margin: 20px 0 10px; font-size: 18px; font-weight: 700; }
 
-/* Info Icon */
-.info-icon { display:inline-flex; justify-content:center; align-items:center; width:16px; height:16px; border-radius:50%; background:var(--mu); color:var(--bg); font-size:10px; font-weight:bold; cursor:pointer; margin-left:4px; vertical-align:middle; }
+.info-icon {
+  display:inline-flex; justify-content:center; align-items:center;
+  width:16px; height:16px; border-radius:50%;
+  background:var(--mu); color:var(--bg);
+  font-size:10px; font-weight:bold; cursor:pointer;
+  margin-left:4px; vertical-align:middle; user-select:none;
+}
 
-/* Progress Bar (Pet & House) */
 .progress-bar-container { position: relative; height: 30px; margin-bottom: 12px; }
 .house { position: absolute; right: 0; bottom: -4px; font-size: 24px; }
 .track { position: absolute; left: 0; right: 30px; top: 50%; transform: translateY(-50%); height: 6px; background: var(--bd); border-radius: 3px; }
 .pet { position: absolute; top: 50%; transform: translate(-50%, -50%) scaleX(-1); font-size: 26px; transition: left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 2; }
 
-/* Level Up Animation */
 @keyframes levelPulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); color: #f59e0b; } 100% { transform: scale(1); } }
 .level-up-anim { animation: levelPulse 1s ease 3; display: inline-block; }
 
-/* Tryb nauki (reviewing) */
+.tabs { display: flex; gap: 10px; margin-bottom: 16px; }
+.tabs button { flex: 1; padding: 10px; border: 1px solid var(--bd); border-radius: 12px; background: var(--sf); font-weight: 600; color: var(--mu); }
+.tabs button.on { background: var(--ac); color: #fff; border-color: var(--ac); }
+
 body.reviewing main { max-width: none; padding: clamp(16px, 4vw, 42px); display: flex; flex-direction: column; }
 body.reviewing #v { width: 100%; max-width: 900px; margin: 0 auto; flex: 1; display: flex; flex-direction: column; justify-content: safe center; overflow-y: auto; }
 body.reviewing .card { flex: 1; min-height: 50vh; overflow-y: auto; font-size: 1.15em; }
@@ -178,7 +184,6 @@ body.reviewing .card .b { font-size: clamp(26px, 5vw, 44px); }
 body.reviewing nav { display: none; }
 body.reviewing #t { bottom: 20px; }
 
-/* Modal & Login */
 #md, #login {
   position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
   padding: 20px; z-index: 50; overflow-y: auto;
@@ -203,94 +208,30 @@ body.reviewing #t { bottom: 20px; }
 body.locked main, body.locked nav { display: none; }
 body.locked #t { display: none !important; }
 
-/* Password Toggle */
 .pass-wrap { position: relative; }
 .pass-wrap input { padding-right: 48px; margin-bottom: 16px;}
 .pass-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-65%); border: 0; background: none; font-size: 20px; cursor: pointer; opacity: 0.5; padding: 4px;}
-.pass-toggle:active { opacity: 1; }
 
-/* ============ FEEDBACK WIDGET v1.0 ============ */
 .fbx-fab {
-  position: fixed;
-  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
-  right: 20px;
-  z-index: 9998;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 18px;
-  border: 0;
-  border-radius: 50px;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
-  color: #fff;
-  font: 600 14px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
-  cursor: pointer;
-  box-shadow: 0 6px 24px rgba(79, 70, 229, .35);
-  transition: transform .15s ease, box-shadow .15s ease;
+  position: fixed; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); right: 20px; z-index: 9998;
+  display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px;
+  border: 0; border-radius: 50px; background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff; font: 600 14px/1 system-ui, sans-serif; cursor: pointer;
+  box-shadow: 0 6px 24px rgba(79, 70, 229, .35); transition: transform .15s ease, box-shadow .15s ease;
 }
 body.reviewing .fbx-fab { bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
 .fbx-fab:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(79,70,229,.45); }
-.fbx-fab:active { transform: translateY(0); }
 
-.fbx-overlay {
-  position: fixed; inset: 0; z-index: 9999;
-  background: rgba(15, 23, 42, .55);
-  backdrop-filter: blur(4px);
-  display: grid; place-items: center;
-  padding: 16px;
-  animation: fbx-fade .15s ease;
-}
+.fbx-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(15, 23, 42, .55); backdrop-filter: blur(4px); display: grid; place-items: center; padding: 16px; }
 .fbx-overlay[hidden] { display: none; }
-@keyframes fbx-fade { from { opacity: 0 } to { opacity: 1 } }
-
-.fbx-modal {
-  background: #fff;
-  border-radius: 16px;
-  padding: 28px;
-  width: min(520px, 100%);
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 25px 60px rgba(0,0,0,.35);
-  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
-  color: #0f172a;
-  animation: fbx-pop .18s ease;
-  position: relative;
-}
-@keyframes fbx-pop { from { transform: scale(.96); opacity: 0 } to { transform: scale(1); opacity: 1 } }
-
-.fbx-modal h2 { margin: 0 0 20px; font-size: 20px; font-weight: 700; color: #0f172a; }
-.fbx-close {
-  position: absolute; top: 14px; right: 14px;
-  width: 32px; height: 32px;
-  border: 0; border-radius: 50%;
-  background: #f1f5f9; color: #475569;
-  font-size: 18px; cursor: pointer;
-  display: grid; place-items: center;
-  transition: background .15s;
-}
-.fbx-close:hover { background: #e2e8f0; }
-.fbx-field { margin-bottom: 16px; }
-.fbx-field textarea {
-  width: 100%;
-  padding: 11px 13px;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 10px;
-  font: inherit;
-  color: #0f172a;
-  background: #f8fafc;
-  transition: border-color .15s, background .15s;
-  box-sizing: border-box;
-  min-height: 120px; resize: vertical; margin-bottom: 0;
-}
-.fbx-field textarea:focus { outline: none; border-color: #4f46e5; background: #fff; }
+.fbx-modal { background: #fff; border-radius: 16px; padding: 28px; width: min(520px, 100%); max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 60px rgba(0,0,0,.35); color: #0f172a; position: relative; }
+.fbx-modal h2 { margin: 0 0 20px; font-size: 20px; font-weight: 700; }
+.fbx-close { position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: #f1f5f9; color: #475569; font-size: 18px; cursor: pointer; }
+.fbx-field textarea { width: 100%; padding: 11px 13px; border: 1.5px solid #e2e8f0; border-radius: 10px; color: #0f172a; background: #f8fafc; min-height: 120px; resize: vertical; }
 .fbx-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
-.fbx-btn { padding: 10px 20px; border: 0; border-radius: 10px; font: 600 14px/1 inherit; cursor: pointer; transition: opacity .15s, transform .1s; }
-.fbx-btn:active { transform: scale(.98); }
-.fbx-btn:disabled { opacity: .55; cursor: not-allowed; }
+.fbx-btn { padding: 10px 20px; border: 0; border-radius: 10px; font: 600 14px/1 inherit; cursor: pointer; }
 .fbx-cancel { background: #f1f5f9; color: #475569; }
-.fbx-cancel:hover { background: #e2e8f0; }
 .fbx-submit { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: #fff; }
-.fbx-submit:hover:not(:disabled) { opacity: .92; }
 .fbx-status { margin-top: 12px; font-size: 13px; min-height: 18px; color: #475569; }
 .fbx-status.ok { color: #15803d; font-weight: 600; }
 .fbx-status.err { color: #b91c1c; font-weight: 600; }
@@ -301,38 +242,27 @@ body.reviewing .fbx-fab { bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   .fbx-field textarea { background: #0f172a; color: #e2e8f0; border-color: #334155; }
   .fbx-cancel { background: #334155; color: #cbd5e1; }
   .fbx-close { background: #334155; color: #cbd5e1; }
-  .fbx-status { color: #94a3b8; }
-}
-@media (max-width: 480px) {
-  .fbx-fab { padding: 12px 16px; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); right: 16px; }
-  body.reviewing .fbx-fab { bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
-  .fbx-modal { padding: 22px 18px; border-radius: 14px; }
 }
 </style></head><body>
 <main id="v"></main>
 <nav>
 <button data-t="study"><b>🧠</b><span data-nav="study">Nauka</span></button>
 <button data-t="cards"><b>🗂</b><span data-nav="cards">Talie</span></button>
+<button data-t="library"><b>📚</b><span data-nav="library">Biblioteka</span></button>
 <button data-t="stats"><b>📊</b><span data-nav="stats">Postępy</span></button>
 </nav>
 <div id="t"></div>
 
-<button class="fbx-fab" onclick="openFbx()">
-  <span>💬</span> <span data-nav="feedback">Opinia</span>
-</button>
-
+<button class="fbx-fab" onclick="openFbx()"><span>💬</span> <span data-nav="feedback">Opinia</span></button>
 <div class="fbx-overlay" id="fbx-overlay" hidden>
   <div class="fbx-modal">
     <button class="fbx-close" onclick="closeFbx()">✕</button>
-    <h2 id="fbx-title">Wyślij opinię</h2>
-    <p class="mu" id="fbx-desc" style="margin-bottom:20px;font-size:14px"></p>
+    <h2 id="fbx-title"></h2>
     <form id="fbx-form" onsubmit="submitFbx(event)">
-      <div class="fbx-field">
-        <textarea name="message" id="fbx-msg" required></textarea>
-      </div>
+      <div class="fbx-field"><textarea id="fbx-msg" required></textarea></div>
       <div class="fbx-actions">
-        <button type="button" class="fbx-btn fbx-cancel" onclick="closeFbx()" id="fbx-cancel-btn">Anuluj</button>
-        <button type="submit" class="fbx-btn fbx-submit" id="fbx-submit">Wyślij 🚀</button>
+        <button type="button" class="fbx-btn fbx-cancel" onclick="closeFbx()" id="fbx-cancel">Anuluj</button>
+        <button type="submit" class="fbx-btn fbx-submit" id="fbx-send">Wyślij</button>
       </div>
       <div class="fbx-status" id="fbx-status"></div>
     </form>
@@ -340,182 +270,49 @@ body.reviewing .fbx-fab { bottom: calc(20px + env(safe-area-inset-bottom, 0px));
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
-(()=>{const c=document.createElement('canvas');c.width=c.height=180;const x=c.getContext('2d');x.fillStyle='#4f46e5';x.beginPath();x.roundRect(0,0,180,180,[40]);x.fill();x.fillStyle='#fff';x.font='bold 110px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('A',90,95);const l=document.createElement('link');l.rel='apple-touch-icon';l.href=c.toDataURL();document.head.appendChild(l)})();
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const IS_DEV = location.protocol === 'file:' || new URLSearchParams(location.search).has('dev');
 
-const L={
-  es:{name:{pl:'hiszpański',en:'Spanish',es:'Español'},pons:'espl',tts:'es-ES'},
-  en:{name:{pl:'angielski',en:'English',es:'Inglés'},pons:'enpl',tts:'en-GB'},
-  de:{name:{pl:'niemiecki',en:'German',es:'Alemán'},pons:'depl',tts:'de-DE'},
-  fr:{name:{pl:'francuski',en:'French',es:'Francés'},pons:'frpl',tts:'fr-FR'},
-  it:{name:{pl:'włoski',en:'Italian',es:'Italiano'},pons:'itpl',tts:'it-IT'}
-};
+const L={es:{name:{pl:'hiszpański',en:'Spanish',es:'Español'},pons:'espl',tts:'es-ES'},en:{name:{pl:'angielski',en:'English',es:'Inglés'},pons:'enpl',tts:'en-GB'},de:{name:{pl:'niemiecki',en:'German',es:'Alemán'},pons:'depl',tts:'de-DE'},fr:{name:{pl:'francuski',en:'French',es:'Francés'},pons:'frpl',tts:'fr-FR'},it:{name:{pl:'włoski',en:'Italian',es:'Italiano'},pons:'itpl',tts:'it-IT'}};
 const langName=code=>(L[code]?.name?.[UI])||code;
 
 const TR={
-  'nav.study':{pl:'Nauka',en:'Study',es:'Estudio'},
-  'nav.cards':{pl:'Talie',en:'Decks',es:'Mazos'},
-  'nav.stats':{pl:'Postępy',en:'Progress',es:'Progreso'},
-  'ui.lang':{pl:'Język interfejsu',en:'Interface language',es:'Idioma de la interfaz'},
-  'ui.pet':{pl:'Wybierz zwierzaka',en:'Choose pet',es:'Elegir mascota'},
-  'ui.pet.dog':{pl:'🐕 Piesek',en:'🐕 Dog',es:'🐕 Perro'},
-  'ui.pet.cat':{pl:'🐈 Kotek',en:'🐈 Cat',es:'🐈 Gato'},
-  'login.title':{pl:'AltCards',en:'AltCards',es:'AltCards'},
-  'login.subtitle':{pl:'Zaloguj się, aby zsynchronizować fiszki.',en:'Sign in to sync your cards.',es:'Inicia sesión para sincronizar.'},
-  'login.email':{pl:'E-mail',en:'Email',es:'Correo'},
-  'login.password':{pl:'Hasło (min. 6 znaków)',en:'Password (min. 6)',es:'Contraseña (mín. 6)'},
-  'login.login':{pl:'Zaloguj',en:'Sign in',es:'Entrar'},
-  'login.signup':{pl:'Załóż konto',en:'Create account',es:'Crear cuenta'},
-  'login.err.notConfig':{pl:'Brak konfiguracji.',en:'Not configured.',es:'No configurado.'},
-  'login.err.creds':{pl:'Podaj e-mail i hasło (min. 6 znaków).',en:'Enter email and password (min. 6).',es:'Introduce correo y contraseña (mín. 6).'},
-  'login.err.confirm':{pl:'Sprawdź e-mail, aby potwierdzić konto.',en:'Check your email to confirm.',es:'Revisa tu correo para confirmar.'},
-  'login.toast.logged':{pl:'Zalogowano',en:'Signed in',es:'Sesión iniciada'},
-  'login.toast.registered':{pl:'Konto utworzone',en:'Account created',es:'Cuenta creada'},
-  'study.title':{pl:'Nauka',en:'Study',es:'Estudio'},
-  'study.allDecks':{pl:'Wszystkie talie',en:'All decks',es:'Todos los mazos'},
-  'study.settings':{pl:'⚙️ Ustawienia',en:'⚙️ Settings',es:'⚙️ Ajustes'},
-  'study.shuffle':{pl:'🔀 Losuj',en:'🔀 Shuffle',es:'🔀 Barajar'},
-  'study.due':{pl:'do powtórki',en:'to review',es:'por repasar'},
-  'study.newLimit':{pl:'dziś (limit: {n})',en:'today (limit: {n})',es:'hoy (límite: {n})'},
-  'study.today':{pl:'fiszek dziś',en:'cards today',es:'tarjetas hoy'},
-  'study.start':{pl:'Zacznij naukę',en:'Start studying',es:'Empezar a estudiar'},
-  'study.noCards':{pl:'Brak fiszek. Dodaj je w zakładce "Talie".',en:"No cards. Add some in the Decks tab.",es:'Sin tarjetas. Añádelas en Mazos.'},
-  'study.tooFewNew':{pl:'Za mało nowych kart.',en:'Not enough new cards.',es:'No hay suficientes tarjetas.'},
-  'study.shuffled':{pl:'Wylosowano {n} kart.',en:'Shuffled {n} cards.',es:'Se barajaron {n} tarjetas.'},
-  'study.noLimit':{pl:'Osiągnięto dzienny limit powtórek! Świetna robota.',en:'Daily limit reached! Great job.',es:'¡Límite diario alcanzado! Buen trabajo.'},
-  'sess.remaining':{pl:'Pozostało:',en:'Remaining:',es:'Quedan:'},
-  'sess.end':{pl:'Zakończ',en:'Finish',es:'Terminar'},
-  'sess.discover':{pl:'Dotknij lub naciśnij spację, aby odkryć',en:'Tap or press space',es:'Toca o pulsa espacio'},
-  'sess.image':{pl:'🖼 Pokaż obraz',en:'🖼 Show image',es:'🖼 Mostrar imagen'},
-  'sess.say':{pl:'🔊 Wymowa',en:'🔊 Pronounce',es:'🔊 Pronunciación'},
-  'sess.undo':{pl:'↶ Cofnij',en:'↶ Undo',es:'↶ Deshacer'},
-  'sess.again':{pl:'Znowu (1)',en:'Again (1)',es:'Otra vez (1)'},
-  'sess.hard':{pl:'Trudne (2)',en:'Hard (2)',es:'Difícil (2)'},
-  'sess.good':{pl:'Dobrze (3)',en:'Good (3)',es:'Bien (3)'},
-  'sess.easy':{pl:'Łatwe (4)',en:'Easy (4)',es:'Fácil (4)'},
-  'sess.keysHint':{pl:'Klawisze: spacja · 1–4 · z · o · m',en:'Keys: space · 1–4 · z · o · m',es:'Teclas: espacio · 1–4 · z · o · m'},
-  'sess.done':{pl:'Gotowe! 🎉',en:'Done! 🎉',es:'¡Hecho! 🎉'},
-  'sess.doneSub':{pl:'Sesja ukończona.',en:'Session finished.',es:'Sesión completada.'},
-  'sess.back':{pl:'Wróć',en:'Back',es:'Volver'},
-  'sess.noUndo':{pl:'Nic do cofnięcia',en:'Nothing to undo',es:'Nada que deshacer'},
-  'sess.undone':{pl:'Cofnięto',en:'Undone',es:'Deshecho'},
-  'sess.imgSearch':{pl:'Szukam…',en:'Searching…',es:'Buscando…'},
-  'sess.imgNotFound':{pl:'Nie znaleziono.',en:'Not found.',es:'No encontrado.'},
-  'sess.imgError':{pl:'Błąd obrazu.',en:'Image error.',es:'Error de imagen.'},
-  'sess.imgCredit':{pl:'Wikimedia Commons',en:'Wikimedia Commons',es:'Wikimedia Commons'},
-  'add.title':{pl:'Nowa fiszka',en:'New card',es:'Nueva tarjeta'},
-  'add.front':{pl:'Przód (np. słowo)',en:'Front (e.g. word)',es:'Frente (p. ej. palabra)'},
-  'add.suggest':{pl:'✨ Podpowiedz',en:'✨ Suggest',es:'✨ Sugerir'},
-  'add.pons':{pl:'PONS',en:'PONS',es:'PONS'},
-  'add.back':{pl:'Tył (np. tłumaczenie)',en:'Back (e.g. translation)',es:'Reverso (p. ej. traducción)'},
-  'add.add':{pl:'Dodaj fiszkę',en:'Add card',es:'Añadir tarjeta'},
-  'add.bothSides':{pl:'Uzupełnij obie strony',en:'Fill both sides',es:'Completa ambos lados'},
-  'add.added':{pl:'Dodano ✓',en:'Added ✓',es:'Añadida ✓'},
-  'add.sg.search':{pl:'Szukam…',en:'Searching…',es:'Buscando…'},
-  'add.sg.unavailable':{pl:'Użyj PONS.',en:'Use PONS.',es:'Usa PONS.'},
-  'add.sg.noResults':{pl:'Brak.',en:'None.',es:'Ninguna.'},
-  'add.sg.error':{pl:'Błąd.',en:'Error.',es:'Error.'},
-  'cards.title':{pl:'Talie',en:'Decks',es:'Mazos'},
-  'cards.search':{pl:'Szukaj fiszki…',en:'Search cards…',es:'Buscar tarjetas…'},
-  'cards.decksTitle':{pl:'Zarządzaj taliami',en:'Manage decks',es:'Gestionar mazos'},
-  'cards.newDeckPlaceholder':{pl:'Nowa talia',en:'New deck',es:'Nuevo mazo'},
-  'cards.createDeck':{pl:'Utwórz talię',en:'Create deck',es:'Crear mazo'},
-  'cards.importTitle':{pl:'Import CSV',en:'Import CSV',es:'Importar CSV'},
-  'cards.colsHint':{pl:'Kolumny: przód · tył',en:'Cols: front · back',es:'Columnas: frente · reverso'},
-  'cards.importBtn':{pl:'Importuj',en:'Import',es:'Importar'},
-  'cards.noCards':{pl:'Brak kart.',en:'No cards.',es:'Sin tarjetas.'},
-  'cards.selectFile':{pl:'Wybierz plik',en:'Choose file',es:'Elige archivo'},
-  'cards.imported':{pl:'Zaimportowano: {n}',en:'Imported: {n}',es:'Importadas: {n}'},
-  'cards.editTitle':{pl:'Edytuj',en:'Edit',es:'Editar'},
-  'cards.deleteCard':{pl:'Usunąć fiszkę?',en:'Delete card?',es:'¿Eliminar tarjeta?'},
-  'cards.deleteDeck':{pl:'Usunąć talię?',en:'Delete deck?',es:'¿Eliminar mazo?'},
-  'cards.keepOneDeck':{pl:'Musi zostać 1 talia',en:'Keep at least 1 deck',es:'Debe quedar 1 mazo'},
-  'cards.cardDeleted':{pl:'Usunięto',en:'Deleted',es:'Eliminado'},
-  'cards.front':{pl:'Przód',en:'Front',es:'Frente'},
-  'cards.back':{pl:'Tył',en:'Back',es:'Reverso'},
-  'cards.bothRequired':{pl:'Wymagane obie strony',en:'Both required',es:'Ambos requeridos'},
-  'cards.deckCount':{pl:'{n} kart',en:'{n} cards',es:'{n} tarjetas'},
-  'cards.edit':{pl:'Edytuj',en:'Edit',es:'Editar'},
-  'cards.del':{pl:'Usuń',en:'Delete',es:'Eliminar'},
-  'stats.title':{pl:'Postępy',en:'Progress',es:'Progreso'},
-  'stats.now':{pl:'Teraz',en:'Now',es:'Ahora'},
-  'stats.all':{pl:'wszystkich kart',en:'all cards',es:'todas'},
-  'stats.mastered':{pl:'opanowane',en:'mastered',es:'dominadas'},
-  'stats.learning':{pl:'w nauce',en:'learning',es:'aprendiendo'},
-  'stats.new':{pl:'nowe',en:'new',es:'nuevas'},
-  'stats.dueNow':{pl:'do powtórki',en:'due now',es:'por repasar'},
-  'stats.today':{pl:'dziś',en:'today',es:'hoy'},
-  'stats.total':{pl:'Łącznie',en:'Total',es:'Total'},
-  'stats.allAnswers':{pl:'odpowiedzi',en:'answers',es:'respuestas'},
-  'stats.reviewedCards':{pl:'powtórzone',en:'reviewed',es:'repasadas'},
-  'stats.retention':{pl:'skuteczność',en:'accuracy',es:'precisión'},
-  'stats.daysTotal':{pl:'dni nauki',en:'study days',es:'días'},
-  'stats.streak':{pl:'seria',en:'streak',es:'racha'},
-  'stats.longestStreak':{pl:'najdłuższa',en:'longest',es:'más larga'},
-  'stats.byRating':{pl:'Oceny',en:'Grades',es:'Calificaciones'},
-  'stats.again':{pl:'Znowu',en:'Again',es:'Otra vez'},
-  'stats.hard':{pl:'Trudne',en:'Hard',es:'Difícil'},
-  'stats.good':{pl:'Dobrze',en:'Good',es:'Bien'},
-  'stats.easy':{pl:'Łatwe',en:'Easy',es:'Fácil'},
-  'stats.last30':{pl:'Ostatnie 30 dni',en:'Last 30 days',es:'Últimos 30 días'},
-  'stats.perDeck':{pl:'Per talia',en:'Per deck',es:'Por mazo'},
-  'stats.deckLine':{pl:'{total} · {new} nowych · {mastered} opan.',en:'{total} · {new} new · {mastered} mastered',es:'{total} · {new} nuevas · {mastered} dominadas'},
-  'stats.backup':{pl:'Kopia',en:'Backup',es:'Copia'},
-  'stats.backupInfo':{pl:'Zrób kopię na wypadek zmiany telefonu.',en:'Backup before switching phones.',es:'Copia antes de cambiar de móvil.'},
-  'stats.copyBackup':{pl:'Kopiuj',en:'Copy',es:'Copiar'},
-  'stats.pasteBackup':{pl:'Wklej',en:'Paste',es:'Pegar'},
-  'stats.copied':{pl:'Skopiowano',en:'Copied',es:'Copiado'},
-  'stats.restored':{pl:'Przywrócono',en:'Restored',es:'Restaurado'},
-  'stats.invalidBackup':{pl:'Błąd kopii',en:'Invalid backup',es:'Copia no válida'},
-  'stats.manualCopyTitle':{pl:'Skopiuj ręcznie',en:'Copy manually',es:'Copia manualmente'},
-  'stats.pasteTitle':{pl:'Wklej kopię',en:'Paste backup',es:'Pega copia'},
-  'stats.pastePlaceholder':{pl:'Kopia',en:'Backup',es:'Copia'},
-  'settings.title':{pl:'Ustawienia',en:'Settings',es:'Ajustes'},
-  'settings.sync':{pl:'Synchronizacja',en:'Sync',es:'Sincronización'},
-  'settings.loggedIn':{pl:'Zalogowano: {email}',en:'Signed in: {email}',es:'Sesión: {email}'},
-  'settings.notLoggedIn':{pl:'Nie zalogowano.',en:'Not signed in.',es:'Sin sesión.'},
-  'settings.logout':{pl:'Wyloguj',en:'Sign out',es:'Cerrar sesión'},
-  'settings.deleteAccount':{pl:'Usuń konto',en:'Delete account',es:'Eliminar cuenta'},
-  'settings.deleteAccountTitle':{pl:'Usunąć konto?',en:'Delete account?',es:'¿Eliminar cuenta?'},
-  'settings.deleteAccountConfirm':{pl:'Czy na pewno chcesz bezpowrotnie usunąć swoje konto i wszystkie fiszki? Tej operacji nie można cofnąć.',en:'Are you sure you want to permanently delete your account and all flashcards? This cannot be undone.',es:'¿Estás seguro de que quieres eliminar permanentemente tu cuenta y todas las tarjetas? Esto no se puede deshacer.'},
-  'settings.deleteConfirmBtn':{pl:'Tak, usuń konto',en:'Yes, delete account',es:'Sí, eliminar cuenta'},
-  'settings.deleted':{pl:'Konto zostało usunięte.',en:'Account deleted.',es:'Cuenta eliminada.'},
-  'settings.newLimit':{pl:'Dzienny limit powtórek',en:'Daily review limit',es:'Límite diario de repasos'},
-  'settings.newLimitInfo':{pl:'Maksymalna liczba kart (nowych + powtórek) na jeden dzień.',en:'Max number of cards (new + reviews) per day.',es:'Número máximo de tarjetas (nuevas + repasos) por día.'},
-  'settings.save':{pl:'Zapisz',en:'Save',es:'Guardar'},
-  'settings.back':{pl:'← Wróć',en:'← Back',es:'← Volver'},
-  'settings.saved':{pl:'Zapisano',en:'Saved',es:'Guardado'},
-  'settings.loggedOut':{pl:'Wylogowano',en:'Signed out',es:'Sesión cerrada'},
-  'settings.showTut':{pl:'📖 Pokaż instrukcję',en:'📖 Show tutorial',es:'📖 Mostrar tutorial'},
-  'common.cancel':{pl:'Anuluj',en:'Cancel',es:'Cancelar'},
-  'common.ok':{pl:'OK',en:'OK',es:'OK'},
-  'tut.title':{pl:'Witaj w AltCards! 👋',en:'Welcome to AltCards! 👋',es:'¡Bienvenido a AltCards! 👋'},
-  'tut.step1':{pl:'➕ <b>Dodawaj karty</b> – wpisz słowo i tłumaczenie. Możesz też importować z Excela (CSV).',en:'➕ <b>Add cards</b> – enter word and translation. You can also import CSV.',es:'➕ <b>Añade tarjetas</b> – escribe palabra y traducción. También puedes importar CSV.'},
-  'tut.step2':{pl:'🧠 <b>Ucz się</b> – apka sama przypomni Ci, kiedy powtórzyć materiał. Używaj przycisków lub klawiszy 1-4.',en:'🧠 <b>Study</b> – the app reminds you when to review. Use buttons or keys 1-4.',es:'🧠 <b>Estudia</b> – la app te recuerda cuándo repasar. Usa botones o teclas 1-4.'},
-  'tut.step3':{pl:'☁️ <b>Synchronizuj</b> – Twoje postępy zapisują się automatycznie w chmurze.',en:'☁️ <b>Sync</b> – your progress is saved automatically in the cloud.',es:'☁️ <b>Sincroniza</b> – tu progreso se guarda automáticamente.'},
-  'tut.btn':{pl:'Zaczynamy! 🚀',en:'Let\'s start! 🚀',es:'¡Empecemos! 🚀'},
-  'tut.moreBtn':{pl:'📚 Szczegółowa instrukcja',en:'📚 Detailed guide',es:'📚 Guía detallada'},
-  'tut.g.back':{pl:'← Wróć do wstępu',en:'← Back to intro',es:'← Volver a la introducción'},
-  'tut.g.study':{pl:'<b>🧠 Zakładka NAUKA</b><br>Kliknij „Zacznij naukę”, aby rozpocząć sesję. Aplikacja pokaże Ci przód fiszki. Kliknij na nią (lub naciśnij spację), aby zobaczyć tył. Następnie oceń, jak dobrze ją pamiętasz (1 - Znowu, 2 - Trudne, 3 - Dobrze, 4 - Łatwe). Aplikacja automatycznie zaplanuje kolejną powtórkę.',en:'<b>🧠 STUDY Tab</b><br>Click "Start studying" to begin. The app shows the front. Tap it (or press space) to see the back. Then grade how well you remembered it (1 - Again, 2 - Hard, 3 - Good, 4 - Easy). The app will automatically schedule the next review.',es:'<b>🧠 Pestaña ESTUDIO</b><br>Haz clic en "Empezar a estudiar". La app muestra el frente. Tócalo (o pulsa espacio) para ver el reverso. Luego califica qué tan bien lo recordaste (1 - Otra vez, 2 - Difícil, 3 - Bien, 4 - Fácil). La app programará la próxima revisión.'},
-  'tut.g.decks':{pl:'<b>🗂 Zakładka TALIE</b><br>Tutaj mieszkają Twoje fiszki. Możesz tworzyć nowe talie (np. „Hiszpański – jedzenie”), edytować (✎) lub usuwać (🗑) karty. Aby dodać nową kartę, kliknij pomarańczowy przycisk „＋ Dodaj fiszkę”. Jeśli masz listę słówek w Excelu, możesz ją zaimportować używając sekcji „Import CSV”.',en:'<b>🗂 DECKS Tab</b><br>Your flashcards live here. You can create new decks (e.g. "Spanish - food"), edit (✎) or delete (🗑) cards. To add a new card, click the orange "＋ Add card" button. If you have an Excel list, you can import it using the "Import CSV" section.',es:'<b>🗂 Pestaña MAZOS</b><br>Tus tarjetas viven aquí. Puedes crear mazos nuevos (ej. "Español - comida"), editar (✎) o eliminar (🗑) tarjetas. Para añadir una, haz clic en el botón naranja "＋ Añadir tarjeta". Si tienes una lista en Excel, impórtala con "Importar CSV".'},
-  'tut.g.stats':{pl:'<b>📊 Zakładka POSTĘPY</b><br>Tutaj znajdziesz swoje statystyki. Zobaczysz, ile fiszek już opanowałeś, jaka jest Twoja skuteczność i ile dni z rzędu uczysz się (tzw. streak 🔥). Świetna motywacja!',en:'<b>📊 PROGRESS Tab</b><br>Here are your stats. See how many cards you have mastered, your accuracy, and your daily streak 🔥. Great motivation!',es:'<b>📊 Pestaña PROGRESO</b><br>Aquí están tus estadísticas. Mira cuántas tarjetas has dominado, tu precisión y tu racha 🔥. ¡Gran motivación!'},
-  'tut.g.settings':{pl:'<b>⚙️ Ustawienia</b><br>Kliknij zębatkę w zakładce Nauka. Możesz zmienić język interfejsu (PL/EN/ES), ustawić limit nowych fiszek na dzień, wylogować się, lub wymusić synchronizację (przydatne, gdy używasz apki na telefonie i komputerze).',en:'<b>⚙️ Settings</b><br>Click the gear in the Study tab. You can change the interface language (PL/EN/ES), set the daily limit for new cards, log out, or force a sync (useful if you use the app on both phone and PC).',es:'<b>⚙️ Ajustes</b><br>Haz clic en el engranaje en la pestaña Estudio. Puedes cambiar el idioma (PL/EN/ES), establecer el límite diario de tarjetas, cerrar sesión o forzar la sincronización (útil si usas la app en móvil y PC).'},
-  'tut.g.shortcuts':{pl:'<b>⌨️ Skróty klawiszowe (na komputerze)</b><br>Spacja – odkryj fiszkę<br>1, 2, 3, 4 – oceń fiszkę<br>Z – cofnij ostatnią odpowiedź<br>O – pokaż obrazek<br>M – odsłuchaj wymowę',en:'<b>⌨️ Keyboard shortcuts (on PC)</b><br>Space – reveal card<br>1, 2, 3, 4 – grade card<br>Z – undo last answer<br>O – show image<br>M – play audio',es:'<b>⌨️ Atajos de teclado (en PC)</b><br>Espacio – revelar tarjeta<br>1, 2, 3, 4 – calificar tarjeta<br>Z – deshacer última respuesta<br>O – mostrar imagen<br>M – reproducir audio'},
-  'info.level':{pl:'Im wyższy level, tym więcej XP potrzeba do awansu. XP zdobywasz za oceny Dobrze (10), Łatwe (15) i Trudne (5).',en:'The higher the level, the more XP is needed to rank up. Earn XP for Good (10), Easy (15), and Hard (5).',es:'Cuanto mayor sea el nivel, más XP se necesita. Gana XP por Bien (10), Fácil (15) y Difícil (5).'},
-  'info.due':{pl:'Karty, które algorytm SRS zaplanował na dziś lub wcześniej. Oznacza to, że powinieneś je powtórzyć, aby nie zapomnieć.',en:'Cards scheduled by the SRS algorithm for today or earlier. You should review them so you don\'t forget.',es:'Tarjetas programadas por el algoritmo SRS para hoy o antes. Deberías repasarlas para no olvidarlas.'},
-  'info.limit':{pl:'Maksymalna liczba fiszek (powtórki + nowe) na jeden dzień.',en:'Maximum number of cards (reviews + new) per day.',es:'Número máximo de tarjetas (repasos + nuevas) por día.'},
-  'info.today':{pl:'Liczba fiszek, które już powtórzyłeś dzisiaj. Wlicza się do dziennego limitu.',en:'Number of cards you have reviewed today. Counts towards the daily limit.',es:'Número de tarjetas que has repasado hoy. Cuenta para el límite diario.'},
-  'info.rank':{pl:'Twoja ranga zależy od poziomu.',en:'Your rank depends on your level.',es:'Tu rango depende de tu nivel.'},
-  'feedback.title':{pl:'✉️ Wyślij opinię',en:'✉️ Send feedback',es:'✉️ Enviar opinión'},
-  'feedback.desc':{pl:'Co możemy poprawić? Czego brakuje? Dzięki Twoim opiniom apka staje się lepsza!',en:'What can we improve? What is missing? Your feedback helps us grow!',es:'¿Qué podemos mejorar? ¿Qué falta? ¡Tu opinión nos ayuda a crecer!'},
-  'feedback.placeholder':{pl:'Twoja wiadomość...',en:'Your message...',es:'Tu mensaje...'},
-  'feedback.send':{pl:'Wyślij 🚀',en:'Send 🚀',es:'Enviar 🚀'},
-  'feedback.sending':{pl:'Wysyłanie...',en:'Sending...',es:'Enviando...'},
-  'feedback.success':{pl:'Dziękujemy za opinię! 🙏',en:'Thanks for your feedback! 🙏',es:'¡Gracias por tu opinión! 🙏'},
-  'feedback.error':{pl:'Nie udało się wysłać. Spróbuj później.',en:'Failed to send. Try again later.',es:'No se pudo enviar. Inténtalo más tarde.'},
-  'feedback.empty':{pl:'Wpisz wiadomość.',en:'Enter a message.',es:'Introduce un mensaje.'}
+  'nav.study':{pl:'Nauka',en:'Study'},'nav.cards':{pl:'Talie',en:'Decks'},'nav.library':{pl:'Biblioteka',en:'Library'},'nav.stats':{pl:'Postępy',en:'Progress'},'nav.feedback':{pl:'Opinia',en:'Feedback'},
+  'study.title':{pl:'Nauka',en:'Study'},'study.allDecks':{pl:'Wszystkie talie',en:'All decks'},'study.settings':{pl:'⚙️ Ustawienia',en:'⚙️ Settings'},'study.shuffle':{pl:'🔀 Losuj',en:'🔀 Shuffle'},
+  'study.due':{pl:'do powtórki',en:'to review'},'study.newLimit':{pl:'dziś (limit: {n})',en:'today (limit: {n})'},'study.today':{pl:'fiszek dziś',en:'cards today'},
+  'study.start':{pl:'Zacznij naukę',en:'Start studying'},'study.noCards':{pl:'Brak fiszek.',en:'No cards.'},'study.tooFewNew':{pl:'Za mało nowych.',en:'Not enough new.'},'study.shuffled':{pl:'Wylosowano {n}.',en:'Shuffled {n}.'},'study.noLimit':{pl:'Limit osiągnięty!',en:'Limit reached!'},
+  'sess.remaining':{pl:'Pozostało:',en:'Remaining:'},'sess.end':{pl:'Zakończ',en:'Finish'},'sess.discover':{pl:'Dotknij lub naciśnij spację, aby odkryć',en:'Tap or press space'},'sess.image':{pl:'🖼 Pokaż obraz',en:'🖼 Show image'},'sess.say':{pl:'🔊 Wymowa',en:'🔊 Pronounce'},'sess.undo':{pl:'↶ Cofnij',en:'↶ Undo'},
+  'sess.again':{pl:'Znowu (1)',en:'Again (1)'},'sess.hard':{pl:'Trudne (2)',en:'Hard (2)'},'sess.good':{pl:'Dobrze (3)',en:'Good (3)'},'sess.easy':{pl:'Łatwe (4)',en:'Easy (4)'},'sess.keysHint':{pl:'Klawisze: spacja · 1–4 · z · o · m',en:'Keys: space · 1–4 · z · o · m'},
+  'sess.done':{pl:'Gotowe! 🎉',en:'Done! 🎉'},'sess.doneSub':{pl:'Sesja ukończona.',en:'Session finished.'},'sess.back':{pl:'Wróć',en:'Back'},'sess.noUndo':{pl:'Nic do cofnięcia',en:'Nothing to undo'},'sess.undone':{pl:'Cofnięto',en:'Undone'},
+  'sess.imgSearch':{pl:'Szukam…',en:'Searching…'},'sess.imgNotFound':{pl:'Nie znaleziono.',en:'Not found.'},'sess.imgError':{pl:'Błąd obrazu.',en:'Image error.'},'sess.imgCredit':{pl:'Wikimedia Commons',en:'Wikimedia Commons'},
+  'cards.title':{pl:'Talie',en:'Decks'},'cards.search':{pl:'Szukaj fiszki…',en:'Search cards…'},'cards.decksTitle':{pl:'Zarządzaj taliami',en:'Manage decks'},'cards.newDeckPlaceholder':{pl:'Nowa talia',en:'New deck'},'cards.createDeck':{pl:'Utwórz talię',en:'Create deck'},
+  'cards.importTitle':{pl:'Import CSV',en:'Import CSV'},'cards.colsHint':{pl:'Kolumny: przód · tył',en:'Cols: front · back'},'cards.importBtn':{pl:'Importuj',en:'Import'},'cards.noCards':{pl:'Brak kart.',en:'No cards.'},'cards.selectFile':{pl:'Wybierz plik',en:'Choose file'},'cards.imported':{pl:'Zaimportowano: {n}',en:'Imported: {n}'},
+  'cards.editTitle':{pl:'Edytuj',en:'Edit'},'cards.deleteCard':{pl:'Usunąć fiszkę?',en:'Delete card?'},'cards.deleteDeck':{pl:'Usunąć talię?',en:'Delete deck?'},'cards.keepOneDeck':{pl:'Musi zostać 1 talia',en:'Keep at least 1 deck'},'cards.cardDeleted':{pl:'Usunięto',en:'Deleted'},'cards.front':{pl:'Przód',en:'Front'},'cards.back':{pl:'Tył',en:'Back'},'cards.bothRequired':{pl:'Wymagane obie strony',en:'Both required'},'cards.deckCount':{pl:'{n} kart',en:'{n} cards'},'cards.edit':{pl:'Edytuj',en:'Edit'},'cards.del':{pl:'Usuń',en:'Delete'},'cards.add':{pl:'Dodaj fiszkę',en:'Add card'},'cards.share':{pl:'Udostępnij',en:'Share'},'cards.shared':{pl:'Talia udostępniona!',en:'Deck shared!'},
+  'add.title':{pl:'Nowa fiszka',en:'New card'},'add.front':{pl:'Przód',en:'Front'},'add.back':{pl:'Tył',en:'Back'},'add.suggest':{pl:'✨ Podpowiedz',en:'✨ Suggest'},'add.pons':{pl:'PONS',en:'PONS'},'add.add':{pl:'Dodaj fiszkę',en:'Add card'},'add.bothSides':{pl:'Uzupełnij obie strony',en:'Fill both sides'},'add.added':{pl:'Dodano ✓',en:'Added ✓'},
+  'add.sg.search':{pl:'Szukam…',en:'Searching…'},'add.sg.unavailable':{pl:'Użyj PONS.',en:'Use PONS.'},'add.sg.noResults':{pl:'Brak.',en:'None.'},'add.sg.error':{pl:'Błąd.',en:'Error.'},
+  'stats.title':{pl:'Postępy',en:'Progress'},'stats.now':{pl:'Teraz',en:'Now'},'stats.all':{pl:'wszystkich kart',en:'all cards'},'stats.mastered':{pl:'opanowane',en:'mastered'},'stats.learning':{pl:'w nauce',en:'learning'},'stats.new':{pl:'nowe',en:'new'},'stats.dueNow':{pl:'do powtórki',en:'due now'},'stats.today':{pl:'dziś',en:'today'},
+  'stats.total':{pl:'Łącznie',en:'Total'},'stats.allAnswers':{pl:'odpowiedzi',en:'answers'},'stats.reviewedCards':{pl:'powtórzone',en:'reviewed'},'stats.retention':{pl:'skuteczność',en:'accuracy'},'stats.daysTotal':{pl:'dni nauki',en:'study days'},'stats.streak':{pl:'seria',en:'streak'},'stats.longestStreak':{pl:'najdłuższa',en:'longest'},
+  'stats.byRating':{pl:'Oceny',en:'Grades'},'stats.again':{pl:'Znowu',en:'Again'},'stats.hard':{pl:'Trudne',en:'Hard'},'stats.good':{pl:'Dobrze',en:'Good'},'stats.easy':{pl:'Łatwe',en:'Easy'},
+  'stats.last30':{pl:'Ostatnie 30 dni',en:'Last 30 days'},'stats.perDeck':{pl:'Per talia',en:'Per deck'},'stats.deckLine':{pl:'{total} · {new} nowych · {mastered} opan.',en:'{total} · {new} new · {mastered} mastered'},
+  'stats.backup':{pl:'Kopia',en:'Backup'},'stats.backupInfo':{pl:'Zrób kopię na wypadek zmiany telefonu.',en:'Backup before switching phones.'},'stats.copyBackup':{pl:'Kopiuj',en:'Copy'},'stats.pasteBackup':{pl:'Wklej',en:'Paste'},'stats.copied':{pl:'Skopiowano',en:'Copied'},'stats.restored':{pl:'Przywrócono',en:'Restored'},'stats.invalidBackup':{pl:'Błąd kopii',en:'Invalid backup'},'stats.manualCopyTitle':{pl:'Skopiuj ręcznie',en:'Copy manually'},'stats.pasteTitle':{pl:'Wklej kopię',en:'Paste backup'},'stats.pastePlaceholder':{pl:'Kopia',en:'Backup'},
+  'stats.leaderboard':{pl:'Ranking',en:'Leaderboard'},'stats.day':{pl:'Dziś',en:'Today'},'stats.month':{pl:'Miesiąc',en:'Month'},'stats.noLbData':{pl:'Brak danych.',en:'No data.'},
+  'settings.title':{pl:'Ustawienia',en:'Settings'},'settings.sync':{pl:'Synchronizacja',en:'Sync'},'settings.loggedIn':{pl:'Zalogowano: {email}',en:'Signed in: {email}'},'settings.notLoggedIn':{pl:'Nie zalogowano.',en:'Not signed in.'},'settings.logout':{pl:'Wyloguj',en:'Sign out'},
+  'settings.deleteAccount':{pl:'Usuń konto',en:'Delete account'},'settings.deleteAccountTitle':{pl:'Usunąć konto?',en:'Delete account?'},'settings.deleteAccountConfirm':{pl:'Czy na pewno chcesz bezpowrotnie usunąć konto?',en:'Are you sure you want to permanently delete your account?'},'settings.deleteConfirmBtn':{pl:'Tak, usuń',en:'Yes, delete'},'settings.deleted':{pl:'Konto usunięte.',en:'Account deleted.'},
+  'settings.newLimit':{pl:'Dzienny limit powtórek',en:'Daily review limit'},'settings.newLimitInfo':{pl:'Maksymalna liczba kart (nowych + powtórek) na dzień.',en:'Max cards per day.'},'settings.save':{pl:'Zapisz',en:'Save'},'settings.back':{pl:'← Wróć',en:'← Back'},'settings.saved':{pl:'Zapisano',en:'Saved'},'settings.loggedOut':{pl:'Wylogowano',en:'Signed out'},'settings.showTut':{pl:'📖 Pokaż instrukcję',en:'📖 Show tutorial'},
+  'ui.lang':{pl:'Język interfejsu',en:'Interface language'},'ui.pet':{pl:'Wybierz zwierzaka',en:'Choose pet'},'ui.pet.dog':{pl:'🐕 Piesek',en:'🐕 Dog'},'ui.pet.cat':{pl:'🐈 Kotek',en:'🐈 Cat'},'ui.nick':{pl:'Pseudonim',en:'Nickname'},'ui.nick.change':{pl:'Zmień nick',en:'Change nickname'},
+  'library.title':{pl:'Biblioteka publiczna',en:'Public Library'},'library.desc':{pl:'Kopiuj talie od innych. Autorzy dostają +50 XP za każdą kopię!',en:'Copy decks from others. Authors get +50 XP for each copy!'},
+  'library.copy':{pl:'Kopiuj',en:'Copy'},'library.copied':{pl:'Skopiowano! Sprawdź zakładkę Talie.',en:'Copied! Check the Decks tab.'},'library.empty':{pl:'Brak udostępnionych talii.',en:'No shared decks.'},'library.author':{pl:'Autor',en:'Author'},'library.alreadyCopied':{pl:'Już skopiowałeś tę talię.',en:'Already copied this deck.'},'library.loading':{pl:'Ładowanie...',en:'Loading...'},
+  'login.title':{pl:'AltCards',en:'AltCards'},'login.subtitle':{pl:'Zaloguj się, aby zsynchronizować fiszki.',en:'Sign in to sync your cards.'},'login.email':{pl:'E-mail',en:'Email'},'login.password':{pl:'Hasło (min. 6 znaków)',en:'Password (min. 6)'},'login.login':{pl:'Zaloguj',en:'Sign in'},'login.signup':{pl:'Załóż konto',en:'Create account'},'login.err.notConfig':{pl:'Brak konfiguracji.',en:'Not configured.'},'login.err.confirm':{pl:'Sprawdź e-mail.',en:'Check email.'},
+  'nick.title':{pl:'Witaj w społeczności!',en:'Welcome to the community!'},'nick.desc':{pl:'Aplikacja się rozwija! Wprowadzamy rankingi i bibliotekę talii. Wybierz swój unikalny pseudonim, który będzie widoczny publicznie.',en:'The app is growing! We are adding leaderboards and a deck library. Choose your unique nickname, which will be publicly visible.'},'nick.btn':{pl:'Zapisz pseudonim',en:'Save nickname'},'nick.taken':{pl:'Ten nick jest już zajęty.',en:'This nickname is taken.'},'nick.short':{pl:'Min. 3 znaki.',en:'Min. 3 characters.'},
+  'common.cancel':{pl:'Anuluj',en:'Cancel'},'common.ok':{pl:'OK',en:'OK'},'common.info':{pl:'Info',en:'Info'},
+  'tut.title':{pl:'Witaj w AltCards! 👋',en:'Welcome to AltCards! 👋'},'tut.step1':{pl:'➕ <b>Dodawaj karty</b> – wpisz słowo i tłumaczenie.',en:'➕ <b>Add cards</b> – enter word and translation.'},'tut.step2':{pl:'🧠 <b>Ucz się</b> – apka sama przypomni Ci, kiedy powtórzyć materiał.',en:'🧠 <b>Study</b> – the app reminds you when to review.'},'tut.step3':{pl:'☁️ <b>Synchronizuj</b> – Twoje postępy w chmurze.',en:'☁️ <b>Sync</b> – your progress in the cloud.'},'tut.btn':{pl:'Zaczynamy! 🚀',en:'Let\'s start! 🚀'},'tut.moreBtn':{pl:'📚 Szczegółowa instrukcja',en:'📚 Detailed guide'},'tut.g.back':{pl:'← Wróć',en:'← Back'},
+  'tut.g.study':{pl:'<b>🧠 NAUKA</b><br>Kliknij „Zacznij naukę”. Dotknij karty lub naciśnij spację, by odkryć tył. Oceń (1-4).',en:'<b>🧠 STUDY</b><br>Click "Start". Tap card or press space to see back. Rate (1-4).'},'tut.g.decks':{pl:'<b>🗂 TALIE</b><br>Zarządzaj fiszkami. Kliknij 🌍, aby udostępnić. Import CSV.',en:'<b>🗂 DECKS</b><br>Manage cards. Click 🌍 to share. CSV import.'},'tut.g.stats':{pl:'<b>📊 POSTĘPY</b><br>Statystyki, ranking dzienny i miesięczny.',en:'<b>📊 PROGRESS</b><br>Stats, daily and monthly ranking.'},'tut.g.settings':{pl:'<b>⚙️ USTAWIENIA</b><br>Język, limit dzienny, zwierzak.',en:'<b>⚙️ SETTINGS</b><br>Language, daily limit, pet.'},'tut.g.shortcuts':{pl:'<b>⌨️ SKRÓTY</b><br>Spacja – odkryj · 1-4 – oceń · Z – cofnij · O – obraz · M – wymowa',en:'<b>⌨️ SHORTCUTS</b><br>Space – reveal · 1-4 – rate · Z – undo · O – image · M – pronounce'},
+  'info.level':{pl:'Im wyższy level, tym więcej XP potrzeba. XP: Trudne (+5), Dobrze (+10), Łatwe (+15).',en:'Higher level = more XP needed. XP: Hard (+5), Good (+10), Easy (+15).'},
+  'info.ranks':{pl:'<b>Rangi:</b><br>🏅 Nowicjusz (1-4)<br>📗 Uczeń (5-9)<br>📘 Adept (10-19)<br>🎓 Ekspert (20-34)<br>👑 Mistrz (35+)',en:'<b>Ranks:</b><br>🏅 Novice (1-4)<br>📗 Apprentice (5-9)<br>📘 Adept (10-19)<br>🎓 Expert (20-34)<br>👑 Master (35+)'},
+  'info.due':{pl:'Karty, które SRS zaplanował na dziś lub wcześniej.',en:'Cards scheduled by SRS for today or earlier.'},'info.limit':{pl:'Maksymalna liczba fiszek (powtórki + nowe) na dzień.',en:'Max cards (reviews + new) per day.'},'info.today':{pl:'Fiszki powtórzone dziś. Wliczają się do limitu.',en:'Cards reviewed today. Counts toward limit.'},
+  'info.mastered':{pl:'Karta opanowana: interwał ≥ 21 dni.',en:'Mastered: interval ≥ 21 days.'},'info.learning':{pl:'Karty w trakcie nauki (interwał < 21 dni).',en:'Cards being learned (interval < 21 days).'},'info.new':{pl:'Karty jeszcze niepowtórzone.',en:'Cards never reviewed.'},'info.retention':{pl:'Procent odpowiedzi Dobrze+Łatwe.',en:'Percent of Good+Easy answers.'},'info.streak':{pl:'Dni z rzędu.',en:'Consecutive days.'},'info.longest':{pl:'Najdłuższa seria.',en:'Longest streak.'},
+  'feedback.title':{pl:'Wyślij opinię',en:'Send feedback'},'feedback.desc':{pl:'Co poprawić? Czego brakuje?',en:'What to improve? What is missing?'},'feedback.placeholder':{pl:'Twoja wiadomość...',en:'Your message...'},'feedback.send':{pl:'Wyślij 🚀',en:'Send 🚀'},'feedback.sending':{pl:'Wysyłanie...',en:'Sending...'},'feedback.success':{pl:'Dziękujemy! 🙏',en:'Thanks! 🙏'},'feedback.error':{pl:'Nie udało się. Spróbuj później.',en:'Failed. Try later.'},'feedback.empty':{pl:'Wpisz wiadomość.',en:'Enter message.'}
 };
 
 let UI=(()=>{
@@ -524,840 +321,540 @@ let UI=(()=>{
   return TR['nav.study'][n]?n:'pl';
 })();
 const t=k=>{const e=TR[k];return e?(e[UI]||e.pl||k):k};
-function setUI(l){
-  if(!TR['nav.study'][l])return;
-  UI=l;
-  try{localStorage.setItem('altcards-uilang',l)}catch(e){}
-  document.documentElement.lang=l;
-  if($('#login')){
-    const e=$('#lemail')?.value||'',p=$('#lpass')?.value||'';
-    showLogin(true);
-    if($('#lemail'))$('#lemail').value=e;
-    if($('#lpass'))$('#lpass').value=p;
-  }else{
-    render();
-  }
-}
-function uiLangSelect(){
-  const opts=[['pl','Polski'],['en','English'],['es','Español']]
-    .map(([v,n])=>`<option value="${v}"${UI===v?' selected':''}>${n}</option>`).join('');
-  return `<select onchange="setUI(this.value)" style="margin:0">${opts}</select>`;
-}
 
 function getLevelInfo(xp) {
-  let lvl = 1;
-  let req = 100;
-  let tempXp = xp;
-  while (tempXp >= req) {
-    tempXp -= req;
-    lvl++;
-    req += 50;
-  }
+  let lvl = 1, req = 100, tempXp = xp;
+  while (tempXp >= req) { tempXp -= req; lvl++; req += 50; }
   return { level: lvl, currentXp: tempXp, nextLevelXp: req };
 }
-
-function getRank(lvl) {
-  if (lvl < 5) return "Nowicjusz";
-  if (lvl < 10) return "Uczeń";
-  if (lvl < 20) return "Adept";
-  if (lvl < 35) return "Ekspert";
-  return "Mistrz";
-}
-
-function fitSize(text, base) {
-  const len = (text || '').length;
-  if (len <= 12) return base + 'px';
-  if (len <= 20) return Math.round(base * 0.78) + 'px';
-  if (len <= 30) return Math.round(base * 0.62) + 'px';
-  if (len <= 45) return Math.round(base * 0.5) + 'px';
-  if (len <= 60) return Math.round(base * 0.42) + 'px';
-  if (len <= 90) return Math.round(base * 0.35) + 'px';
-  return Math.round(base * 0.28) + 'px';
-}
+function getRank(lvl) { return lvl<5?"Nowicjusz":lvl<10?"Uczeń":lvl<20?"Adept":lvl<35?"Ekspert":"Mistrz"; }
+function fitSize(text, base) { const len=(text||'').length; if(len<=12) return base+'px'; if(len<=20) return Math.round(base*.78)+'px'; if(len<=30) return Math.round(base*.62)+'px'; if(len<=45) return Math.round(base*.5)+'px'; if(len<=60) return Math.round(base*.42)+'px'; return Math.round(base*.35)+'px'; }
+const pad=n=>String(n).padStart(2,'0');
+const dk=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const sod=()=>{const d=new Date();d.setHours(0,0,0,0);return d.getTime()};
+const toast=m=>{const el=$('#t');el.textContent=m;el.style.display='block';setTimeout(()=>el.style.display='none',2500)};
+const uid=()=>Math.random().toString(36).slice(2,9);
 
 function showInfo(title, text) {
   if($('#md')) $('#md').remove();
   const m = document.createElement('div'); m.id = 'md';
-  m.innerHTML = `<div class="mb">
-    <h3>${title}</h3>
-    <p class="mu" style="margin-bottom:20px; font-size:15px">${text}</p>
-    <button class="p" style="margin:0" onclick="document.getElementById('md').remove()">${t('common.ok')}</button>
-  </div>`;
+  m.innerHTML = `<div class="mb"><h3>${title}</h3><div class="mu" style="margin-bottom:20px;line-height:1.6">${text}</div><button class="p" style="margin:0" onclick="document.getElementById('md').remove()">${t('common.ok')}</button></div>`;
   document.body.appendChild(m);
 }
 
 const SUPABASE_URL='https://icwmcoxscwpswrhmfiht.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_saVIwdtGphXww4eraJIr-w_0qy5ShrO';
-const createSupabaseClient=()=>{try{return SUPABASE_URL&&SUPABASE_ANON_KEY&&window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY):null}catch(e){return null}};
+const createSupabaseClient=()=>{try{return window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)}catch(e){return null}};
 
-let Sync=null;
-let S=null;
-let isFreshInstall=false;
-let undoStack = []; 
+let Sync=null, S=null, undoStack=[], tab='study', sess=null, flip=false, imgRev=false, sd='', lastDeck='', lbTab='day';
 
 try{S=JSON.parse(localStorage.getItem('altcards-v1'))}catch(e){}
-if(!S){
-  try{S=JSON.parse(localStorage.getItem('fiszki-v1'))}catch(e){} 
-}
-if(!S){
-  S={decks:[{id:'d1',name:'Hiszpański',lang:'es'}],cards:[],log:{}};
-  isFreshInstall=true;
-}
-
-function migrateState(state) {
-  if(!state) return false;
-  let changed = false;
-  if(state.daily) {
-    Object.keys(state.daily).forEach(k => {
-      if (Array.isArray(state.daily[k])) {
-        state.daily[k] = state.daily[k].length;
-        changed = true;
-      }
-    });
-  }
-  return changed;
-}
-let needsSave = migrateState(S);
-
-function pruneOldStats() {
-  const limit = new Date();
-  limit.setDate(limit.getDate() - 90); 
-  const limitKey = dk(limit);
-  Object.keys(S.log || {}).forEach(k => { if(k < limitKey) delete S.log[k]; });
-  Object.keys(S.ratings || {}).forEach(k => { if(k < limitKey) delete S.ratings[k]; });
-  Object.keys(S.daily || {}).forEach(k => { if(k < limitKey) delete S.daily[k]; });
-}
-
-const save=()=>{
-  pruneOldStats();
-  S.updatedAt=Date.now();
-  try{localStorage.setItem('altcards-v1',JSON.stringify(S))}catch(e){}
-  Sync?.queueUpload()
-};
-const uid=()=>Math.random().toString(36).slice(2,9);
-const pad=n=>String(n).padStart(2,'0');
-const dk=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
-const sod=()=>{const d=new Date();d.setHours(0,0,0,0);return d.getTime()};
-const toast=m=>{const t=$('#t');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2500)};
-const deckOpts=sel=>S.decks.map(d=>`<option value="${d.id}"${d.id==sel?' selected':''}>${esc(d.name)}</option>`).join('');
-const isNew=c=>!(c.reps>0||c.lapses>0);
-const due=d=>S.cards.filter(c=>(!d||c.deck==d)&&c.due<=Date.now());
-let tab='study',sess=null,flip=false,imageRevealed=false,sd='',lastDeck='';
-
+if(!S){ S={decks:[{id:'d1',name:'Hiszpański',lang:'es'}],cards:[],log:{}}; }
 const defaults={newLimit:200, xp:0, pet:'🐕'};
 S.settings={...defaults,...(S.settings||{})};
 S.daily={...(S.daily||{})};
-S.cards.forEach(c=>{if(typeof c.imageEnabled!=='boolean')c.imageEnabled=false;});
 S.ratings=S.ratings||{};
-if(!isFreshInstall || needsSave) save();
+S.cards.forEach(c=>{if(typeof c.imageEnabled!=='boolean')c.imageEnabled=false;});
+const isNew=c=>!(c.reps>0||c.lapses>0);
+const due=d=>S.cards.filter(c=>(!d||c.deck==d)&&c.due<=Date.now());
+const save=()=>{S.updatedAt=Date.now();localStorage.setItem('altcards-v1',JSON.stringify(S));Sync?.queueUpload()};
 
+// ============ FEEDBACK ============
 function openFbx() {
-  document.getElementById('fbx-title').innerHTML = t('feedback.title');
-  document.getElementById('fbx-desc').innerHTML = t('feedback.desc');
-  document.getElementById('fbx-msg').placeholder = t('feedback.placeholder');
-  document.getElementById('fbx-cancel-btn').innerHTML = t('common.cancel');
-  document.getElementById('fbx-submit').innerHTML = t('feedback.send');
-  document.getElementById('fbx-overlay').hidden = false;
-  document.getElementById('fbx-msg').focus();
+  $('#fbx-title').textContent = t('feedback.title');
+  $('#fbx-msg').placeholder = t('feedback.placeholder');
+  $('#fbx-cancel').textContent = t('common.cancel');
+  $('#fbx-send').textContent = t('feedback.send');
+  $('#fbx-overlay').hidden = false;
+  $('#fbx-msg').focus();
 }
 function closeFbx() {
-  document.getElementById('fbx-overlay').hidden = true;
-  const status = document.getElementById('fbx-status');
-  status.textContent = '';
-  status.className = 'fbx-status';
-  document.getElementById('fbx-form').reset();
-  const btn = document.getElementById('fbx-submit');
-  btn.disabled = false;
-  btn.textContent = t('feedback.send');
+  $('#fbx-overlay').hidden = true;
+  $('#fbx-status').textContent = '';
+  $('#fbx-status').className = 'fbx-status';
+  $('#fbx-form').reset();
+  $('#fbx-send').disabled = false;
 }
 async function submitFbx(e) {
   e.preventDefault();
-  const msg = document.getElementById('fbx-msg').value.trim();
-  if(!msg) return;
-  const btn = document.getElementById('fbx-submit');
-  const status = document.getElementById('fbx-status');
-  btn.disabled = true;
-  btn.textContent = t('feedback.sending');
-  status.textContent = '';
-  const formData = new FormData();
-  formData.append("access_key", "2cbdf2f1-4b1f-41d2-883b-5a67d0489e8e");
-  formData.append("subject", "Nowa opinia z aplikacji AltCards");
-  formData.append("from_name", "AltCards");
-  formData.append("email", Sync?.user?.email || "Anonimowy użytkownik");
-  formData.append("message", msg);
+  const msg = $('#fbx-msg').value.trim();
+  if(!msg) return toast(t('feedback.empty'));
+  const btn = $('#fbx-send'), status = $('#fbx-status');
+  btn.disabled = true; btn.textContent = t('feedback.sending');
+  const fd = new FormData();
+  fd.append("access_key", "2cbdf2f1-4b1f-41d2-883b-5a67d0489e8e");
+  fd.append("subject", "Opinia AltCards");
+  fd.append("from_name", "AltCards");
+  fd.append("email", Sync?.user?.email || "Anonim");
+  fd.append("message", msg);
   try {
-    const res = await fetch("https://api.web3forms.com/submit", { method: "POST", body: formData });
+    const res = await fetch("https://api.web3forms.com/submit", {method:"POST", body:fd});
     const data = await res.json();
     if(data.success) {
       status.textContent = t('feedback.success');
       status.className = "fbx-status ok";
       setTimeout(closeFbx, 2000);
-    } else {
-      throw new Error(data.message || "Error");
-    }
+    } else throw new Error();
   } catch(err) {
     status.textContent = t('feedback.error');
     status.className = "fbx-status err";
-    btn.disabled = false;
-    btn.textContent = t('feedback.send');
+    btn.disabled = false; btn.textContent = t('feedback.send');
   }
 }
 
+// ============ TUTORIAL ============
 function showTutorial(){
   if($('#md')) $('#md').remove();
   const m=document.createElement('div');m.id='md';
   m.innerHTML=`<div class="mb" style="text-align:center">
     <h2 style="margin-bottom:20px">${t('tut.title')}</h2>
-    <div style="text-align:left; display:flex; flex-direction:column; gap:20px; margin-bottom:28px">
-      <div style="display:flex; gap:14px; align-items:flex-start"><span style="font-size:24px">1️⃣</span><p style="margin:0; line-height:1.5">${t('tut.step1')}</p></div>
-      <div style="display:flex; gap:14px; align-items:flex-start"><span style="font-size:24px">2️⃣</span><p style="margin:0; line-height:1.5">${t('tut.step2')}</p></div>
-      <div style="display:flex; gap:14px; align-items:flex-start"><span style="font-size:24px">3️⃣</span><p style="margin:0; line-height:1.5">${t('tut.step3')}</p></div>
+    <div style="text-align:left;display:flex;flex-direction:column;gap:20px;margin-bottom:28px">
+      <div style="display:flex;gap:14px"><span style="font-size:24px">1️⃣</span><p style="margin:0">${t('tut.step1')}</p></div>
+      <div style="display:flex;gap:14px"><span style="font-size:24px">2️⃣</span><p style="margin:0">${t('tut.step2')}</p></div>
+      <div style="display:flex;gap:14px"><span style="font-size:24px">3️⃣</span><p style="margin:0">${t('tut.step3')}</p></div>
     </div>
-    <button class="p" onclick="document.getElementById('md').remove(); localStorage.setItem('altcards-tut','1')">${t('tut.btn')}</button>
-    <button class="s" style="width:100%; margin-top:10px" onclick="showDetailedGuide()">${t('tut.moreBtn')}</button>
+    <button class="p" onclick="document.getElementById('md').remove();localStorage.setItem('altcards-tut','1')">${t('tut.btn')}</button>
+    <button class="s" style="width:100%;margin-top:10px" onclick="showDetailedGuide()">${t('tut.moreBtn')}</button>
   </div>`;
   document.body.appendChild(m);
 }
-
 function showDetailedGuide(){
   if($('#md')) $('#md').remove();
   const m=document.createElement('div');m.id='md';
   m.innerHTML=`<div class="mb long">
-    <h3 style="text-align:center; margin-bottom:20px">${t('tut.moreBtn')}</h3>
-    <div style="display:flex; flex-direction:column; gap:16px; margin-bottom:24px">
+    <h3 style="text-align:center;margin-bottom:20px">${t('tut.moreBtn')}</h3>
+    <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:24px">
       <p style="margin:0">${t('tut.g.study')}</p>
       <p style="margin:0">${t('tut.g.decks')}</p>
       <p style="margin:0">${t('tut.g.stats')}</p>
       <p style="margin:0">${t('tut.g.settings')}</p>
       <p style="margin:0">${t('tut.g.shortcuts')}</p>
     </div>
-    <div class="row">
-      <button class="s" style="margin:0" onclick="showTutorial()">${t('tut.g.back')}</button>
-      <button class="p" style="margin:0" onclick="document.getElementById('md').remove(); localStorage.setItem('altcards-tut','1')">${t('tut.btn')}</button>
-    </div>
+    <div class="row"><button class="s" style="margin:0" onclick="showTutorial()">${t('tut.g.back')}</button><button class="p" style="margin:0" onclick="document.getElementById('md').remove();localStorage.setItem('altcards-tut','1')">${t('tut.btn')}</button></div>
   </div>`;
   document.body.appendChild(m);
 }
 
+// ============ DELETE ACCOUNT ============
 function showDeleteAccountModal() {
   if($('#md')) $('#md').remove();
-  const m = document.createElement('div');
-  m.id = 'md';
-  m.innerHTML = `<div class="mb">
-    <h3 style="color:#ef4444">${t('settings.deleteAccountTitle')}</h3>
-    <p class="mu" style="margin-bottom:20px; font-size:15px">${t('settings.deleteAccountConfirm')}</p>
-    <div class="row">
-      <button class="s" onclick="document.getElementById('md').remove()">${t('common.cancel')}</button>
-      <button class="p" id="delbtn" style="background:#ef4444; box-shadow:none; margin:0" onclick="Sync.executeDeleteAccount()">${t('settings.deleteConfirmBtn')}</button>
-    </div>
-  </div>`;
+  const m = document.createElement('div'); m.id = 'md';
+  m.innerHTML = `<div class="mb"><h3 style="color:#ef4444">${t('settings.deleteAccountTitle')}</h3><p class="mu" style="margin-bottom:20px">${t('settings.deleteAccountConfirm')}</p><div class="row"><button class="s" onclick="document.getElementById('md').remove()">${t('common.cancel')}</button><button class="p" id="delbtn" style="background:#ef4444;margin:0" onclick="Sync.executeDeleteAccount()">${t('settings.deleteConfirmBtn')}</button></div></div>`;
   document.body.appendChild(m);
 }
 
-function showLogin(force){
-  document.body.classList.add('locked');
-  if($('#login')){
-    if(!force)return;
-    $('#login').remove();
-  }
-  const d=document.createElement('div');d.id='login';
-  d.innerHTML=`<div class="box">
-    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
-      <select id="langsel" style="width:auto;margin:0;padding:8px 12px" onchange="setUI(this.value)">
-        <option value="pl"${UI==='pl'?' selected':''}>Polski</option>
-        <option value="en"${UI==='en'?' selected':''}>English</option>
-        <option value="es"${UI==='es'?' selected':''}>Español</option>
-      </select>
-    </div>
-    <h2 style="text-align:center;margin-bottom:8px;font-size:34px;font-weight:900;letter-spacing:-1px">Alt<span style="color:var(--ac)">Cards</span></h2>
-    <p class="mu" style="text-align:center;margin-bottom:28px">${t('login.subtitle')}</p>
-    <input id="lemail" type="email" placeholder="${t('login.email')}" autocomplete="email">
-    <div class="pass-wrap">
-      <input id="lpass" type="password" minlength="6" placeholder="${t('login.password')}" autocomplete="current-password">
-      <button class="pass-toggle" type="button" onclick="const p=document.getElementById('lpass'); p.type = p.type==='password'?'text':'password'; this.textContent = p.type==='password'?'👁️':'🙈';">👁️</button>
-    </div>
-    <button class="p" id="lbtn" style="margin-top:8px">${t('login.login')}</button>
-    <button class="s" id="rbtn" style="width:100%; border:none; background:transparent; color:var(--ac); box-shadow:none">${t('login.signup')}</button>
-    <p class="mu" id="lerr" style="color:#ef4444; text-align:center; margin-top:12px; font-weight:600"></p>
-    
-    <div style="text-align:center; margin-top:20px; padding-top:16px; border-top:1px solid var(--bd);">
-      <a href="#" onclick="openFbx(); return false;" style="font-size:14px; color:var(--mu); font-weight:500;">${t('feedback.title')}</a>
-    </div>
+// ============ NICKNAME MODAL ============
+function showNicknameModal(){
+  if($('#login')) $('#login').remove();
+  if($('#md')) $('#md').remove();
+  const d = document.createElement('div'); d.id='md';
+  d.innerHTML = `<div class="mb">
+    <h3>${t('nick.title')}</h3>
+    <p class="mu" style="margin-bottom:20px">${t('nick.desc')}</p>
+    <input id="nick-input" placeholder="np. Marek" maxlength="20">
+    <p class="mu" id="nick-err" style="color:#ef4444;min-height:20px"></p>
+    <button class="p" onclick="saveNick()">${t('nick.btn')}</button>
   </div>`;
   document.body.appendChild(d);
-  
+  $('#nick-input').focus();
+}
+function saveNick(){
+  const n = $('#nick-input').value.trim();
+  if(n.length<3) { $('#nick-err').textContent = t('nick.short'); return; }
+  $('#nick-err').textContent = '';
+  Sync.setNickname(n).then(err=>{
+    if(err) $('#nick-err').textContent = err.includes('duplicate') ? t('nick.taken') : err;
+    else { $('#md').remove(); hideLogin(); render(); toast('Witaj, ' + n + '!'); }
+  });
+}
+
+// ============ LOGIN ============
+function showLogin(){
+  document.body.classList.add('locked');
+  if($('#login')) return;
+  const d=document.createElement('div');d.id='login';
+  d.innerHTML=`<div class="box">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px"><select id="langsel" style="width:auto;margin:0;padding:8px 12px" onchange="UI=this.value;localStorage.setItem('altcards-uilang',this.value);showLogin();">${['pl','en'].map(l=>`<option value="${l}"${UI===l?' selected':''}>${l==='pl'?'Polski':'English'}</option>`).join('')}</select></div>
+    <h2 style="text-align:center;margin-bottom:8px;font-size:34px;font-weight:900">Alt<span style="color:var(--ac)">Cards</span></h2>
+    <p class="mu" style="text-align:center;margin-bottom:28px">${t('login.subtitle')}</p>
+    <input id="lemail" type="email" placeholder="${t('login.email')}">
+    <div class="pass-wrap"><input id="lpass" type="password" placeholder="${t('login.password')}"><button class="pass-toggle" type="button" onclick="const p=document.getElementById('lpass');p.type=p.type==='password'?'text':'password';this.textContent=p.type==='password'?'👁️':'🙈'">👁️</button></div>
+    <button class="p" id="lbtn" style="margin-top:8px">${t('login.login')}</button>
+    <button class="s" id="rbtn" style="width:100%;border:none;background:transparent;color:var(--ac)">${t('login.signup')}</button>
+    <p class="mu" id="lerr" style="color:#ef4444;text-align:center;margin-top:12px"></p>
+    <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--bd)"><a href="#" onclick="openFbx();return false" style="font-size:14px;color:var(--mu)">${t('feedback.title')}</a></div>
+  </div>`;
+  document.body.appendChild(d);
   const go=async(signUp)=>{
-    const e=$('#lemail').value.trim(),p=$('#lpass').value;
-    const err=$('#lerr');
+    const e=$('#lemail').value.trim(),p=$('#lpass').value,err=$('#lerr');
     err.textContent='';
-    if(!Sync?.client){err.textContent=t('login.err.notConfig');return}
-    if(!e||!e.includes('@')){err.textContent='Wpisz poprawny e-mail.';return}
-    if(!p){err.textContent='Wpisz hasło.';return}
-    if(signUp && p.length<6){err.textContent='Hasło musi mieć min. 6 znaków.';return}
-    
-    const btn = signUp ? $('#rbtn') : $('#lbtn');
-    const orig = btn.textContent; btn.textContent = '⏳'; btn.disabled = true;
-    
+    if(!e||!e.includes('@')){err.textContent='Poprawny e-mail.';return}
+    if(p.length<6){err.textContent='Min. 6 znaków.';return}
+    const btn=signUp?$('#rbtn'):$('#lbtn'); const orig=btn.textContent;
+    btn.textContent='⏳'; btn.disabled=true;
     const r=signUp?await Sync.client.auth.signUp({email:e,password:p}):await Sync.client.auth.signInWithPassword({email:e,password:p});
-    
-    btn.textContent = orig; btn.disabled = false;
-    
+    btn.textContent=orig; btn.disabled=false;
     if(r.error){err.textContent=r.error.message;return}
     if(signUp&&!r.data.session){err.textContent=t('login.err.confirm');return}
-    
-    Sync.user=r.data.user||r.data.session?.user;
-    
-    S = null;
-    localStorage.removeItem('altcards-v1');
-    
-    await Sync.download(true);
-    hideLogin();
-    render();
-    
-    if(signUp) showTutorial();
-    
-    toast(signUp?t('login.toast.registered'):t('login.toast.logged'));
+    Sync.user = r.data.user || r.data.session?.user;
+    await Sync.startSession();
+    if(signUp && !localStorage.getItem('altcards-tut')) showTutorial();
   };
   $('#lbtn').onclick=()=>go(false);
   $('#rbtn').onclick=()=>go(true);
   $('#lpass').onkeydown=e=>{if(e.key==='Enter')go(false)};
 }
-function hideLogin(){document.body.classList.remove('locked');const l=$('#login');if(l)l.remove()}
+function hideLogin(){document.body.classList.remove('locked');$('#login')?.remove()}
 
-Sync={
-  client:createSupabaseClient(),
-  user:null,timer:0,
+// ============ SYNC ============
+Sync = {
+  client: createSupabaseClient(), user: null, profile: null, timer: 0,
   async init(){
     if(!this.client){showLogin();return}
     try {
-      const {data:{session}}=await this.client.auth.getSession();
-      this.user=session?.user||null;
-      if(!this.user){showLogin();return}
-      await this.download(true);
-      render();
-      
+      const {data:{session}} = await this.client.auth.getSession();
+      this.user = session?.user || null;
+      if(this.user) await this.startSession();
+      else showLogin();
       this.client.auth.onAuthStateChange(async(_e,s)=>{
-        this.user=s?.user||null;
-        if(this.user){await this.download(true);hideLogin();render()}
-        else{showLogin();document.body.classList.add('locked')}
+        this.user = s?.user || null;
+        if(this.user) await this.startSession();
+        else showLogin();
       });
-    } catch (e) {
-      if(S && S.cards && S.cards.length > 0) {
-        this.user = { id: 'offline', email: 'offline@local' };
-        hideLogin();
-        render();
-        toast('Tryb offline');
-      } else {
-        showLogin();
-      }
+    } catch(e) {
+      if(S && S.cards && S.cards.length) { this.user={id:'offline',email:'offline'}; hideLogin(); render(); }
+      else showLogin();
     }
   },
-  async download(force=false){
-    if(IS_DEV) return false;
-    if(!this.client||!this.user)return false;
-    const {data}=await this.client.from('app_states').select('state').eq('user_id',this.user.id).maybeSingle();
-    
+  async startSession(){
+    const {data:prof} = await this.client.from('profiles').select('*').eq('id',this.user.id).maybeSingle();
+    this.profile = prof;
+    await this.download();
+    await this.checkBonuses();
+    if(!this.profile) { showNicknameModal(); }
+    else { hideLogin(); render(); if(!localStorage.getItem('altcards-tut')) showTutorial(); }
+  },
+  async download(){
+    if(IS_DEV) return;
+    const {data} = await this.client.from('app_states').select('state').eq('user_id',this.user.id).maybeSingle();
     if(data?.state){
-      S=data.state;
+      S = data.state;
       if(!S.settings)S.settings={...defaults};
       if(!S.daily)S.daily={};
       if(!S.ratings)S.ratings={};
-      if(S.settings.xp === undefined) S.settings.xp = 0;
-      if(!S.settings.pet) S.settings.pet = '🐕';
-      migrateState(S);
+      if(S.settings.xp===undefined)S.settings.xp=0;
+      if(!S.settings.pet)S.settings.pet='🐕';
+      S.cards.forEach(c=>{if(typeof c.imageEnabled!=='boolean')c.imageEnabled=false;});
       localStorage.setItem('altcards-v1',JSON.stringify(S));
     } else {
-      S = { decks:[{id:'d1',name:'Hiszpański',lang:'es'}], cards:[], log:{} };
-      S.settings = { ...defaults };
-      S.daily = {};
-      S.ratings = {};
+      S = {decks:[{id:'d1',name:'Hiszpański',lang:'es'}],cards:[],log:{},settings:{...defaults},daily:{},ratings:{}};
       localStorage.setItem('altcards-v1',JSON.stringify(S));
       this.queueUpload();
     }
-    render();
-    return true;
   },
-  queueUpload(){if(IS_DEV) return;if(!this.client||!this.user)return;clearTimeout(this.timer);this.timer=setTimeout(()=>this.upload(),800)},
-  async upload(){
-    if(IS_DEV) return;
-    if(!this.client||!this.user||!S)return;
-    if(S.cards.length===0){
-      const {data}=await this.client.from('app_states').select('state').eq('user_id',this.user.id).maybeSingle();
-      if(data?.state?.cards?.length>0){
-        await this.download(true);
-        return;
+  queueUpload(){if(IS_DEV)return;if(!this.user)return;clearTimeout(this.timer);this.timer=setTimeout(()=>this.upload(),800)},
+  async upload(){if(IS_DEV||!this.user||!S)return;try{await this.client.from('app_states').upsert({user_id:this.user.id,state:S,updated_at:new Date().toISOString()})}catch(e){}},
+  async logXp(amount){
+    if(IS_DEV||!this.user||amount<=0)return;
+    try{await this.client.from('xp_logs').insert({user_id:this.user.id,amount:amount})}catch(e){}
+  },
+  async checkBonuses(){
+    if(IS_DEV||!this.user)return;
+    const key = 'altcards-bonus-'+dk(new Date());
+    if(localStorage.getItem(key)) return;
+    localStorage.setItem(key,'1');
+    const yest = new Date(); yest.setDate(yest.getDate()-1);
+    const yd = dk(yest);
+    try {
+      const {data} = await this.client.rpc('get_leaderboard',{p_start:yd, p_end:yd});
+      if(!data) return;
+      const idx = data.findIndex(d=>d.user_id===this.user.id);
+      if(idx>=0 && idx<3){
+        const bonus = idx===0?100:idx===1?50:25;
+        S.settings.xp = (S.settings.xp||0) + bonus;
+        save();
+        setTimeout(()=>toast(`🏆 Top ${idx+1} wczoraj! +${bonus} XP`),1500);
       }
+    } catch(e){}
+  },
+  async setNickname(nick){
+    const {error} = await this.client.from('profiles').insert({id:this.user.id, nickname:nick});
+    if(error) return error.message;
+    this.profile = {nickname:nick};
+    return null;
+  },
+  async shareDeck(deck){
+    const cards = S.cards.filter(c=>c.deck===deck.id).map(c=>({front:c.front,back:c.back,contextSentence:c.contextSentence,imageUrl:c.imageUrl}));
+    if(!cards.length) return "Pusta talia.";
+    const {error} = await this.client.from('shared_decks').insert({author_id:this.user.id,name:deck.name,lang:deck.lang,cards:cards});
+    if(error) return error.message;
+    return null;
+  },
+  async copyDeck(sharedId,name,lang,cards){
+    const {data:exist} = await this.client.from('deck_copies').select('id').eq('user_id',this.user.id).eq('deck_id',sharedId).maybeSingle();
+    if(exist) return t('library.alreadyCopied');
+    const newDeckId = uid();
+    S.decks.push({id:newDeckId,name:name,lang:lang});
+    cards.forEach(c=>S.cards.push({id:uid(),deck:newDeckId,front:c.front,back:c.back,imageUrl:c.imageUrl,contextSentence:c.contextSentence,imageEnabled:false,ease:2.5,int:0,reps:0,lapses:0,due:0}));
+    save();
+    await this.client.from('deck_copies').insert({user_id:this.user.id,deck_id:sharedId});
+    const {data:sd} = await this.client.from('shared_decks').select('author_id').eq('id',sharedId).single();
+    if(sd && sd.author_id !== this.user.id){
+      try{await this.client.rpc('add_xp',{target_user_id:sd.author_id, xp_amount:50})}catch(e){}
     }
-    try { await this.client.from('app_states').upsert({user_id:this.user.id,state:S,updated_at:new Date().toISOString()}); } catch(e) {}
+    return null;
   },
   async signOut(){
-    if(IS_DEV) {
-      if(!confirm('DEV MODE: wyczyścić wszystkie lokalne dane i przeładować?')) return;
-      localStorage.removeItem('altcards-v1');
-      location.reload();
-      return;
-    }
+    if(IS_DEV){if(confirm('Wyczyścić?')){localStorage.removeItem('altcards-v1');location.reload()}return}
     if(this.client)await this.client.auth.signOut();
-    this.user=null;
-    S = null;
+    this.user=null; this.profile=null; S=null;
     localStorage.removeItem('altcards-v1');
-    showLogin();
-    toast(t('settings.loggedOut'));
+    showLogin(); toast(t('settings.loggedOut'));
   },
   async executeDeleteAccount(){
-    const btn = document.getElementById('delbtn');
-    if(btn) { btn.textContent = '⏳'; btn.disabled = true; }
+    const btn = $('#delbtn');
+    if(btn){btn.textContent='⏳';btn.disabled=true}
     try {
-      const { error } = await this.client.rpc('delete_user_account');
-      if(error){ toast(error.message); if(btn){btn.textContent = t('settings.deleteConfirmBtn'); btn.disabled = false;} return; }
+      const {error} = await this.client.rpc('delete_user_account');
+      if(error){toast(error.message);if(btn){btn.textContent=t('settings.deleteConfirmBtn');btn.disabled=false}return}
       await this.client.auth.signOut();
-      this.user=null;
-      S = null;
+      this.user=null; this.profile=null; S=null;
       localStorage.removeItem('altcards-v1');
-      document.getElementById('md')?.remove();
-      showLogin();
-      toast(t('settings.deleted'));
-    } catch (e) {
-      toast('Error: ' + e.message);
-      if(btn){btn.textContent = t('settings.deleteConfirmBtn'); btn.disabled = false;}
-    }
+      $('#md')?.remove(); showLogin(); toast(t('settings.deleted'));
+    } catch(e){toast(e.message);if(btn){btn.textContent=t('settings.deleteConfirmBtn');btn.disabled=false}}
   }
 };
+if(IS_DEV){Sync.user={id:'dev',email:'dev@local'};Sync.profile={nickname:'Dev'};}
 
-if(IS_DEV) {
-  Sync.user = { id: 'local-dev', email: 'dev@localhost' };
-  Sync.isDevMode = true;
-  if(!S || !S.cards) {
-    S = { decks: [{id:'dev1', name:'Test (dev)', lang:'es'}], cards: [], log: {}, settings: { newLimit: 200, xp: 0, pet:'🐕' }, daily: {}, ratings: {} };
-    localStorage.setItem('altcards-v1', JSON.stringify(S));
-  }
-  const badge = document.createElement('div');
-  badge.textContent = '🔧 DEV MODE';
-  badge.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top, 8px) + 4px);left:8px;background:#f59e0b;color:#111;padding:3px 8px;border-radius:6px;font:600 10px system-ui;z-index:999999;pointer-events:none;';
-  document.body.appendChild(badge);
-}
-
+// ============ RENDER ============
 function render(){
-  document.documentElement.lang=UI;
-  document.querySelectorAll('nav span[data-nav]').forEach(s=>{s.textContent=t('nav.'+s.dataset.nav)});
-  const fabText = document.querySelector('.fbx-fab span:nth-child(2)');
-  if(fabText) fabText.textContent = t('feedback.title').replace('✉️ ', '');
-  
+  document.documentElement.lang = UI;
+  document.querySelectorAll('nav span[data-nav]').forEach(s=>{s.textContent = t('nav.'+s.dataset.nav)});
   if(!Sync?.user){showLogin();return}
+  if(!Sync.profile){showNicknameModal();return}
   document.body.classList.toggle('reviewing',tab==='study'&&!!sess);
-  ({study:vStudy,add:vAdd,cards:vCards,stats:vStats,settings:vSettings})[tab]($('#v'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==tab));
+  ({study:vStudy, add:vAdd, cards:vCards, library:vLibrary, stats:vStats, settings:vSettings})[tab]($('#v'));
 }
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()});
 
-document.addEventListener('keydown',e=>{
-  const tag=(e.target.tagName||'').toLowerCase();
-  if(tag==='input'||tag==='textarea'||tag==='select'||e.target.isContentEditable)return;
-  if($('#md')||$('#login')||$('#fbx-overlay')?.hidden===false)return;
-  if(tab!=='study'||!sess)return;
-  if(!sess.q.length)return;
-  const key=e.key.toLowerCase();
-  const c=S.cards.find(x=>x.id==sess.q[0]);
-  if(!c)return;
-  if(key==='m'){say(c.id);e.preventDefault();return}
-  if(!flip){
-    if(key===' '||e.code==='Space'){e.preventDefault();flip=true;render();return}
-    if(key==='o'){e.preventDefault();flip=true;revealImage(c.id);return}
-    if(key==='z'){e.preventDefault();undoAnswer();return}
-    return;
-  }
-  if(key==='1'){e.preventDefault();ans(0)}
-  else if(key==='2'){e.preventDefault();ans(1)}
-  else if(key==='3'){e.preventDefault();ans(2)}
-  else if(key==='4'){e.preventDefault();ans(3)}
-  else if(key==='z'){e.preventDefault();undoAnswer()}
-  else if(key==='o'){e.preventDefault();revealImage(c.id)}
-});
-
+// ============ STUDY ============
 function vStudy(v){
   if(sess){
     if(!sess.q.length){
-      v.innerHTML=`<div class="c" style="text-align:center">
-        <h2>${t('sess.done')}</h2>
-        <p class="mu">${t('sess.doneSub')}</p>
-        <button class="p" onclick="sess=null;render()">${t('sess.back')}</button>
-      </div>`;
+      v.innerHTML=`<div class="c" style="text-align:center"><h2>${t('sess.done')}</h2><p class="mu">${t('sess.doneSub')}</p><button class="p" onclick="sess=null;render()">${t('sess.back')}</button></div>`;
       return;
     }
-    const c=S.cards.find(x=>x.id==sess.q[0]);
-    const fStyle = `font-size:${fitSize(c.front, 56)}`;
-    const bStyle = `font-size:${fitSize(c.back, 44)}`;
-    const prompt = c.contextSentence
-      ? `<div class="sentence">${esc(c.contextSentence).replace(/\{\{.*?\}\}/,'<span class="blank">_____</span>')}</div>`
-      : `<div class="f" style="${fStyle}">${esc(c.front)}</div>`;
-      
-    const total = sess.total || sess.q.length;
-    const todayKey = dk(new Date());
-    const todayCount = S.daily[todayKey] || 0;
-    
-    // Postęp dzienny (z bazy), nie tylko sesji
-    const progress = Math.min(100, (todayCount / S.settings.newLimit) * 100);
-    const petEmoji = S.settings.pet || '🐕';
-
-    v.innerHTML=`<div class="progress-bar-container">
-        <div class="track"><div class="pet" style="left:${progress}%">${petEmoji}</div></div>
-        <span class="house">🏠</span>
+    const c = S.cards.find(x=>x.id==sess.q[0]);
+    const fStyle = `font-size:${fitSize(c.front,56)}`;
+    const bStyle = `font-size:${fitSize(c.back,44)}`;
+    const prompt = c.contextSentence ? `<div class="sentence">${esc(c.contextSentence).replace(/\{\{.*?\}\}/,'<span class="blank">_____</span>')}</div>` : `<div class="f" style="${fStyle}">${esc(c.front)}</div>`;
+    const todayCount = S.daily[dk(new Date())]||0;
+    const progress = Math.min(100, (todayCount/S.settings.newLimit)*100);
+    const petEmoji = S.settings.pet||'🐕';
+    let flipContent='';
+    if(flip){
+      flipContent = `<button class="s" style="position:absolute;top:12px;right:12px;padding:10px 14px;font-size:22px;opacity:0.6;border:none;background:transparent;z-index:10" onclick="event.stopPropagation();editCard('${c.id}',true)">✎</button><hr><div class="b" style="${bStyle}">${esc(c.back)}</div>${c.contextSentence?`<p class="mu" style="margin-top:16px">${esc(c.contextSentence).replace(/\{\{(.*?)\}\}/,'<b style="color:var(--ac)">$1</b>')}</p>`:''}${imgRev?'<div id="imghost" class="mu"></div>':`<button class="s" style="margin-top:24px" onclick="event.stopPropagation();revealImg('${c.id}')">${t('sess.image')}</button>`}`;
+    }
+    v.innerHTML = `<div class="progress-bar-container"><div class="track"><div class="pet" style="left:${progress}%">${petEmoji}</div></div><span class="house">🏠</span></div>
+      <div class="prog" style="display:flex;justify-content:space-between;align-items:center">
+        <span>${t('sess.remaining')} ${sess.q.length}</span>
+        <button class="s" style="padding:6px 12px;font-size:13px" onclick="sess=null;render()">${t('sess.end')}</button>
       </div>
-      <div class="prog" style="display:flex; justify-content:space-between; align-items:center">
-        <span>${t('sess.remaining')} ${sess.q.length}</span> 
-        <button class="s" style="padding:6px 12px; font-size:13px" onclick="sess=null;render()">${t('sess.end')}</button>
-      </div>
-    <div class="card" style="margin-top:12px" onclick="flip=true;render()">${prompt}${flip?`<hr><div class="f" style="position:relative;${fStyle}">${esc(c.front)} <button class="s" style="position:absolute; right:0; top:50%; transform:translateY(-50%); padding:6px 10px; font-size:14px; opacity:0.5; border:none; box-shadow:none" onclick="event.stopPropagation();editCard('${c.id}', true)">✎</button></div><div class="b" style="${bStyle}">${esc(c.back)}</div>${c.contextSentence?'<p class="mu">'+esc(c.contextSentence).replace(/\{\{(.*?)\}\}/,'<b>$1</b>')+'</p>':''}${imageRevealed?'<div id="imghost" class="mu"></div>':'<button class="s" style="margin-top:24px" onclick="event.stopPropagation();revealImage(&quot;'+c.id+'&quot;)">'+t('sess.image')+'</button>'}`:'<div class="hint" style="margin-top:24px">'+t('sess.discover')+'</div>'}</div>
-    <div class="row" style="margin-top:12px"><button class="s" onclick="say('${c.id}')">${t('sess.say')}</button><button class="s" onclick="undoAnswer()">${t('sess.undo')}</button></div>`+
-    (flip?`<div class="g"><button style="background:#ef4444" onclick="ans(0)">${t('sess.again')}</button><button style="background:#f59e0b" onclick="ans(1)">${t('sess.hard')}</button><button style="background:#10b981" onclick="ans(2)">${t('sess.good')}</button><button style="background:#3b82f6" onclick="ans(3)">${t('sess.easy')}</button></div><p class="hint" style="text-align:center;margin-top:12px;opacity:0.7">${t('sess.keysHint')}</p>`:'');
-    if(flip&&imageRevealed)loadCardImage(c);
+      <div class="card" style="margin-top:12px;position:relative" onclick="if(!flip){flip=true;render()}">${prompt}${flip?flipContent:`<div class="hint" style="margin-top:24px">${t('sess.discover')}</div>`}</div>
+      <div class="row" style="margin-top:12px"><button class="s" onclick="say('${c.id}')">${t('sess.say')}</button><button class="s" onclick="undoAnswer()">${t('sess.undo')}</button></div>
+      ${flip?`<div class="g"><button style="background:#ef4444" onclick="ans(0)">${t('sess.again')}</button><button style="background:#f59e0b" onclick="ans(1)">${t('sess.hard')}</button><button style="background:#10b981" onclick="ans(2)">${t('sess.good')}</button><button style="background:#3b82f6" onclick="ans(3)">${t('sess.easy')}</button></div><p class="hint" style="text-align:center;margin-top:12px;opacity:0.7">${t('sess.keysHint')}</p>`:''}`;
+    if(flip && imgRev) loadCardImage(c);
     return;
   }
-  
-  const todayKey = dk(new Date());
-  const todayCount = S.daily[todayKey] || 0;
+  const todayCount = S.daily[dk(new Date())]||0;
   const remaining = Math.max(0, S.settings.newLimit - todayCount);
-  
   const allDue = due(sd);
-  const rv = allDue.filter(c => !isNew(c)).length;
+  const rv = allDue.filter(c=>!isNew(c)).length;
   const sessionSize = Math.min(allDue.length, remaining);
-  
-  const lvlInfo = getLevelInfo(S.settings.xp || 0);
-  const rank = getRank(lvlInfo.level);
-  
-  v.innerHTML=`<h2>${t('study.title')}</h2>
-  <div class="c" style="background:var(--sf); padding:10px 20px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-    <div>
-      <span style="font-weight:700" id="lvl-display">🏆 Lvl ${lvlInfo.level} - ${rank}</span>
-      <span class="info-icon" onclick="showInfo('Level', t('info.level'))">i</span>
+  const lvlInfo = getLevelInfo(S.settings.xp||0);
+  v.innerHTML = `<h2>${t('study.title')}</h2>
+    <div class="c" style="background:var(--sf);padding:10px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div><span style="font-weight:700" id="lvl-display">🏆 Lvl ${lvlInfo.level} - ${getRank(lvlInfo.level)}</span><span class="info-icon" onclick="showInfo('Level i rangi', t('info.level')+'<br><br>'+t('info.ranks'))">i</span></div>
+      <span class="mu">${lvlInfo.currentXp}/${lvlInfo.nextLevelXp} XP</span>
     </div>
-    <span class="mu">${lvlInfo.currentXp} / ${lvlInfo.nextLevelXp} XP</span>
-  </div>
-  <select onchange="sd=this.value;render()"><option value="">${t('study.allDecks')}</option>${deckOpts(sd)}</select>
-  <div class="row"><button class="s" onclick="tab='settings';render()">${t('study.settings')}</button><button class="s" onclick="shuffleNewInDeck()">${t('study.shuffle')}</button></div>
-  <div class="c" style="margin-top:20px"><div class="st">
-    <div><div class="n">${rv}</div><span class="mu">${t('study.due')} <span class="info-icon" onclick="showInfo('Do powtórki', t('info.due'))">i</span></span></div>
-    <div><div class="n">${sessionSize}</div><span class="mu">${t('study.newLimit').replace('{n}', S.settings.newLimit)} <span class="info-icon" onclick="showInfo('Limit', t('info.limit'))">i</span></span></div>
-    <div><div class="n">${todayCount}</div><span class="mu">${t('study.today')} <span class="info-icon" onclick="showInfo('Dziś', t('info.today'))">i</span></span></div>
-  </div>
-  ${remaining === 0 ? `<p class="mu" style="text-align:center; color:var(--ac); font-weight:600; margin:10px 0">${t('study.noLimit')}</p>` : ''}
-  <button class="p" ${sessionSize > 0 ? '' : 'disabled style="opacity:.4"'} onclick="start()">${t('study.start')}</button>
-  ${S.cards.length?'':`<p class="mu" style="text-align:center">${t('study.noCards')}</p>`}</div>`;
-  const sel=v.querySelector('select');sel.value=sd;
+    <select onchange="sd=this.value;render()"><option value="">${t('study.allDecks')}</option>${S.decks.map(d=>`<option value="${d.id}"${d.id===sd?' selected':''}>${esc(d.name)}</option>`).join('')}</select>
+    <div class="row"><button class="s" onclick="tab='settings';render()">${t('study.settings')}</button><button class="s" onclick="shuffleNewInDeck()">${t('study.shuffle')}</button></div>
+    <div class="c" style="margin-top:20px"><div class="st">
+      <div><div class="n">${rv}</div><span class="mu">${t('study.due')} <span class="info-icon" onclick="showInfo('${t('study.due')}', t('info.due'))">i</span></span></div>
+      <div><div class="n">${sessionSize}</div><span class="mu">${t('study.newLimit').replace('{n}',S.settings.newLimit)} <span class="info-icon" onclick="showInfo('Limit', t('info.limit'))">i</span></span></div>
+      <div><div class="n">${todayCount}</div><span class="mu">${t('study.today')} <span class="info-icon" onclick="showInfo('${t('study.today')}', t('info.today'))">i</span></span></div>
+    </div>
+    ${remaining===0?`<p class="mu" style="text-align:center;color:var(--ac);font-weight:600;margin:10px 0">${t('study.noLimit')}</p>`:''}
+    <button class="p" ${sessionSize>0?'':'disabled style="opacity:.4"'} onclick="start()">${t('study.start')}</button>
+    ${S.cards.length?'':`<p class="mu" style="text-align:center">${t('study.noCards')}</p>`}</div>`;
+  const sel=v.querySelector('select'); sel.value=sd;
 }
-
-let lastLevel = getLevelInfo(S.settings.xp || 0).level;
-
 function start(){
-  const todayKey = dk(new Date());
-  const todayCount = S.daily[todayKey] || 0;
-  const remaining = Math.max(0, S.settings.newLimit - todayCount);
-  
-  const allDue = due(sd); 
-  const review = allDue.filter(c => !isNew(c));
-  const newCards = allDue.filter(c => isNew(c));
-  
-  const combined = [...review, ...newCards];
-  const queue = combined.slice(0, remaining).map(c => c.id);
-  
-  sess = { q: queue, total: queue.length, origQueue: [...queue] };
-  flip = false; imageRevealed = false; 
-  undoStack = []; // Reset cofania na nową sesję
-  render();
+  const remaining = Math.max(0, S.settings.newLimit - (S.daily[dk(new Date())]||0));
+  const allDue = due(sd);
+  const review = allDue.filter(c=>!isNew(c));
+  const newC = allDue.filter(c=>isNew(c));
+  const queue = [...review,...newC].slice(0,remaining).map(c=>c.id);
+  sess = {q:queue,total:queue.length}; flip=false; imgRev=false; undoStack=[]; render();
 }
-
 function shuffleNewInDeck(){
-  const pool=S.cards.map((c,i)=>({c,i})).filter(x=>(!sd||x.c.deck===sd)&&isNew(x.c));
+  const pool = S.cards.map((c,i)=>({c,i})).filter(x=>(!sd||x.c.deck===sd)&&isNew(x.c));
   if(pool.length<2){toast(t('study.tooFewNew'));return}
-  const shuffled=pool.map(x=>x.c);
-  for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]]}
-  pool.forEach((x,k)=>{S.cards[x.i]=shuffled[k]});
-  save();
-  toast(t('study.shuffled').replace('{n}',Math.min(S.settings.newLimit,pool.length)));
+  const sh=pool.map(x=>x.c);
+  for(let i=sh.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[sh[i],sh[j]]=[sh[j],sh[i]]}
+  pool.forEach((x,k)=>{S.cards[x.i]=sh[k]});
+  save(); toast(t('study.shuffled').replace('{n}',Math.min(S.settings.newLimit,pool.length)));
   render();
 }
-
 function say(id){
   const c=S.cards.find(x=>x.id==id),d=S.decks.find(x=>x.id==c.deck);
-  try{
-    const u=new SpeechSynthesisUtterance(c.front);
-    u.lang=(L[d?.lang]||L['es']).tts;
-    speechSynthesis.cancel();
-    speechSynthesis.speak(u);
-  }catch(e){}
+  try{const u=new SpeechSynthesisUtterance(c.front);u.lang=(L[d?.lang]||L.es).tts;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}
 }
-
 function grade(c,g){
-  if(g==0){c.lapses++;c.ease=Math.max(1.3,c.ease-.2);c.int=0;c.due=Date.now();return}
-  if(g==1){c.ease=Math.max(1.3,c.ease-.15);c.int=Math.max(1,Math.round((c.int||1)*1.2))}
-  if(g==2)c.int=c.int<1?1:c.int<2?3:Math.round(c.int*c.ease);
-  if(g==3){c.ease+=.15;c.int=c.int<1?4:Math.round(c.int*c.ease*1.3)}
-  c.reps++;c.due=sod()+c.int*864e5;
+  if(g===0){c.lapses++;c.ease=Math.max(1.3,c.ease-.2);c.int=0;c.due=Date.now();return}
+  if(g===1){c.ease=Math.max(1.3,c.ease-.15);c.int=Math.max(1,Math.round((c.int||1)*1.2))}
+  if(g===2)c.int=c.int<1?1:c.int<2?3:Math.round(c.int*c.ease);
+  if(g===3){c.ease+=.15;c.int=c.int<1?4:Math.round(c.int*c.ease*1.3)}
+  c.reps++; c.due = sod()+c.int*864e5;
 }
-
 function ans(g){
-  const id=sess.q[0],c=S.cards.find(x=>x.id==id);
-  const todayKey = dk(new Date());
-  
-  // Zapisz stan przed odpowiedzią
-  undoStack.push({
-    cardId: id,
-    card: JSON.parse(JSON.stringify(c)),
-    queue: [...sess.q],
-    total: sess.total,
-    flip,
-    dailyCount: S.daily[todayKey] || 0,
-    xp: S.settings.xp || 0,
-    ratings: JSON.parse(JSON.stringify(S.ratings || {})),
-    log: JSON.parse(JSON.stringify(S.log))
-  });
-  if(undoStack.length > 50) undoStack.shift();
-  
+  const id=sess.q[0], c=S.cards.find(x=>x.id===id), k=dk(new Date());
+  undoStack.push({card:JSON.parse(JSON.stringify(c)),queue:[...sess.q],flip,daily:S.daily[k]||0,xp:S.settings.xp||0,ratings:JSON.parse(JSON.stringify(S.ratings)),log:JSON.parse(JSON.stringify(S.log))});
+  if(undoStack.length>50) undoStack.shift();
   sess.q.shift();
-  grade(c, g);
-  
-  const k = todayKey;
-  S.log[k] = (S.log[k]||0) + 1;
-  
-  if(!S.ratings) S.ratings={};
-  if(!S.ratings[k]) S.ratings[k]=[0,0,0,0];
-  S.ratings[k][g] = (S.ratings[k][g]||0) + 1;
-  
-  if (typeof S.daily[k] !== 'number') S.daily[k] = 0;
-  if(g > 0) {
-    if(undoStack[undoStack.length-1].dailyCount === S.daily[k]) S.daily[k]++; 
-  }
-  
-  if(g > 0) {
-    S.settings.xp = (S.settings.xp || 0) + (g===1 ? 5 : g===2 ? 10 : 15);
-  }
-
-  if(g == 0) sess.q.splice(Math.min(3, sess.q.length), 0, id);
-  
-  save(); flip=false; imageRevealed=false; 
-  
-  const newLvlInfo = getLevelInfo(S.settings.xp || 0);
-  if(newLvlInfo.level > lastLevel) {
-    lastLevel = newLvlInfo.level;
-    toast(`🎉 LEVEL UP! Awans na ${lastLevel} - ${getRank(lastLevel)}`);
-    render(); 
-    const lvlEl = document.getElementById('lvl-display');
-    if(lvlEl) lvlEl.classList.add('level-up-anim');
+  grade(c,g);
+  S.log[k]=(S.log[k]||0)+1;
+  if(!S.ratings[k])S.ratings[k]=[0,0,0,0];
+  S.ratings[k][g]=(S.ratings[k][g]||0)+1;
+  if(!S.daily[k])S.daily[k]=0;
+  if(g>0){
+    S.daily[k]++;
+    const xpGain = g===1?5:g===2?10:15;
+    S.settings.xp = (S.settings.xp||0) + xpGain;
+    Sync.logXp(xpGain);
   } else {
-    render();
+    sess.q.splice(Math.min(3,sess.q.length),0,id);
+  }
+  const prevLvl = getLevelInfo(undoStack[undoStack.length-1].xp||0).level;
+  save(); flip=false; imgRev=false;
+  const newLvl = getLevelInfo(S.settings.xp||0).level;
+  render();
+  if(newLvl > prevLvl){
+    setTimeout(()=>{
+      toast(`🎉 LEVEL UP! ${newLvl} - ${getRank(newLvl)}`);
+      const el = document.getElementById('lvl-display');
+      if(el) el.classList.add('level-up-anim');
+    },100);
   }
 }
-
-function vSettings(v){
-  const account=Sync?.user
-    ?`<p class="mu">${t('settings.loggedIn').replace('{email}',esc(Sync.user.email||'—'))}</p>
-      <div class="row" style="margin-bottom:10px">
-        <button class="s" onclick="Sync.signOut()">${t('settings.logout')}</button>
-        <button class="s" style="border-color:#ef4444; color:#ef4444" onclick="showDeleteAccountModal()">${t('settings.deleteAccount')}</button>
-      </div>`
-    :`<p class="mu">${t('settings.notLoggedIn')}</p>`;
-    
-  const petOpts = `
-    <option value="🐕" ${S.settings.pet==='🐕'?'selected':''}>${t('ui.pet.dog')}</option>
-    <option value="🐈" ${S.settings.pet==='🐈'?'selected':''}>${t('ui.pet.cat')}</option>
-  `;
-
-  v.innerHTML=`<h2>${t('settings.title')}</h2>
-  <div class="c"><h3>${t('settings.sync')}</h3>${account}</div>
-  <div class="c"><h3>${t('ui.lang')}</h3>${uiLangSelect()}</div>
-  <div class="c"><h3>${t('ui.pet')}</h3>
-    <select id="pet-select" onchange="S.settings.pet=this.value;save()">
-      ${petOpts}
-    </select>
-  </div>
-  <div class="c"><label for="nlmt"><b>${t('settings.newLimit')}</b></label>
-  <p class="mu">${t('settings.newLimitInfo')}</p>
-  <input id="nlmt" type="number" min="1" max="500" value="${S.settings.newLimit}">
-  <button class="p" onclick="saveSettings()">${t('settings.save')}</button></div>
-  
-  <div class="c" style="text-align:center">
-    <button class="s" style="width:100%" onclick="localStorage.removeItem('altcards-tut'); showTutorial()">${t('settings.showTut')}</button>
-  </div>
-
-  <button class="s" style="width:100%; margin-top:10px" onclick="tab='study';render()">${t('settings.back')}</button>`;
-}
-
-function saveSettings(){
-  const n=Math.max(1,Math.min(500,parseInt($('#nlmt').value,10)||200));
-  S.settings.newLimit=n;save();toast(t('settings.saved'));tab='study';render();
-}
-
 function undoAnswer(){
   if(!undoStack.length){toast(t('sess.noUndo'));return}
-  const state = undoStack.pop();
-  
-  const c=S.cards.find(x=>x.id===state.cardId);
-  if(c)Object.assign(c,state.card);
-  
-  sess.q = [...state.queue];
-  sess.total = state.total;
-  flip = state.flip; 
-  
-  const todayKey = dk(new Date());
-  S.daily[todayKey] = state.dailyCount;
-  S.settings.xp = state.xp;
-  S.ratings = state.ratings;
-  S.log = state.log;
-  
-  save();render();toast(t('sess.undone'));
+  const st = undoStack.pop();
+  const c = S.cards.find(x=>x.id===st.card.id);
+  if(c) Object.assign(c, st.card);
+  sess.q=[...st.queue]; flip=st.flip;
+  const k = dk(new Date());
+  S.daily[k]=st.daily; S.settings.xp=st.xp; S.ratings=st.ratings; S.log=st.log;
+  save(); render(); toast(t('sess.undone'));
 }
-
 async function loadCardImage(c){
-  const host=$('#imghost');if(!host)return;
-  if(c.imageUrl){host.innerHTML=`<img class="review-image" alt="${esc(c.front)}" src="${esc(c.imageUrl)}"><div class="mu">${t('sess.imgCredit')}</div>`;return}
-  host.textContent=t('sess.imgSearch');
-  
-  const searchCommons = async (query) => {
-    const q = encodeURIComponent(query);
-    const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${q}&gsrnamespace=6&gsrlimit=5&prop=imageinfo&iiprop=url|mime&iiurlwidth=900&format=json&origin=*`;
-    const r = await fetch(url);
-    if(!r.ok) return [];
+  const host = $('#imghost'); if(!host) return;
+  if(c.imageUrl){host.innerHTML=`<img class="review-image" alt="" src="${esc(c.imageUrl)}"><div class="mu">${t('sess.imgCredit')}</div>`;return}
+  host.textContent = t('sess.imgSearch');
+  const search = async (q)=>{
+    const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(q)}&gsrnamespace=6&gsrlimit=5&prop=imageinfo&iiprop=url|mime&iiurlwidth=900&format=json&origin=*`;
+    const r = await fetch(url); if(!r.ok) return [];
     const j = await r.json();
     return Object.values(j.query?.pages||{}).filter(p=>p.imageinfo?.[0]?.thumburl&&/^image\/(jpeg|png|webp)/.test(p.imageinfo[0].mime||''));
   };
-
   try{
-    let pages = await searchCommons(c.front);
-    if(!pages.length) pages = await searchCommons(c.back);
-    
-    // Fallback: podziel na słowa i szukaj pierwszego
-    if(!pages.length) {
-      const firstWordF = c.front.split(' ')[0];
-      pages = await searchCommons(firstWordF);
-      if(!pages.length) {
-        const firstWordB = c.back.split(' ')[0];
-        pages = await searchCommons(firstWordB);
-      }
-    }
-    
+    let pages = await search(c.front);
+    if(!pages.length) pages = await search(c.back);
+    if(!pages.length) pages = await search(c.front.split(' ')[0]);
     if(!pages.length){host.textContent=t('sess.imgNotFound');return}
-    const best=pages[0].imageinfo[0].thumburl;c.imageUrl=best;save();
-    host.innerHTML=`<img class="review-image" alt="${esc(c.front)}" src="${esc(best)}"><div class="mu">${t('sess.imgCredit')}</div>`;
+    const best = pages[0].imageinfo[0].thumburl;
+    c.imageUrl = best; save();
+    host.innerHTML = `<img class="review-image" alt="" src="${esc(best)}"><div class="mu">${t('sess.imgCredit')}</div>`;
   }catch(e){host.textContent=t('sess.imgError')}
 }
+function revealImg(id){const c=S.cards.find(x=>x.id===id);if(!c)return;c.imageEnabled=true;imgRev=true;save();render()}
 
-function revealImage(id){
-  const c=S.cards.find(x=>x.id===id);if(!c)return;
-  c.imageEnabled=true;imageRevealed=true;save();render();
-}
-
-function vAdd(v){
-  v.innerHTML=`<h2>${t('add.title')}</h2>
-  <select id="dk" onchange="lastDeck=this.value; plink()">${deckOpts(lastDeck||(S.decks[0]||{}).id)}</select>
-  <textarea id="fr" placeholder="${t('add.front')}" onchange="suggest()" oninput="plink()"></textarea>
-  <div class="row" style="margin-bottom:12px">
-    <button class="s" onclick="suggest()">${t('add.suggest')}</button>
-    <a class="s" id="pl" target="_blank" rel="noopener" style="text-decoration:none;padding:12px">${t('add.pons')}</a>
-  </div>
-  <div id="sg" class="chips"></div>
-  <textarea id="bk" placeholder="${t('add.back')}"></textarea>
-  <button class="p" onclick="addCard()">${t('add.add')}</button>
-  <button class="s" style="width:100%; margin-top:10px" onclick="tab='cards';render()">${t('settings.back')}</button>`;
-  plink();
-}
-
-function plink(){
-  const el = $('#pl'); if(!el) return;
-  const d=S.decks.find(x=>x.id==$('#dk').value),l=(L[d&&d.lang]||L['es']).pons;
-  el.href=`https://pl.pons.com/tłumaczenie?q=${encodeURIComponent($('#fr').value.trim())}&l=${l}`;
-}
-
-async function suggest(){
-  const f=$('#fr').value.trim(),box=$('#sg');
-  if(!f)return;
-  const d=S.decks.find(x=>x.id==$('#dk').value),ln=L[d&&d.lang]||L['es'];
-  box.innerHTML=`<span class="mu">${t('add.sg.search')}</span>`;
-  try{
-    const nb=window.webkit&&webkit.messageHandlers&&webkit.messageHandlers.tr;
-    const sm=nb?null:(window.claude&&await claude.use('sample'));
-    if(!nb&&!sm){box.innerHTML=`<span class="mu">${t('add.sg.unavailable')}</span>`;return}
-    const r=nb?await nb.postMessage({q:f,lang:d.lang}):await sm.json(`Jesteś słownikiem polsko-${ln.name.pl}. Hasło: „${f}”. Jeśli hasło jest po polsku, podaj do 4 najczęstszych tłumaczeń na język: ${ln.name.pl}. W przeciwnym razie podaj do 4 najczęstszych polskich tłumaczeń. Przy rzeczownikach dodaj rodzajnik. Odpowiedz wyłącznie tablicą JSON z krótkimi stringami.`);
-    const arr=(Array.isArray(r)?r:[]).slice(0,4);
-    box.innerHTML='';
-    arr.forEach(tn=>{const b=document.createElement('button');b.textContent=String(tn);b.onclick=()=>{const k=$('#bk');k.value=k.value?k.value+', '+tn:tn};box.appendChild(b)});
-    if(!arr.length)box.innerHTML=`<span class="mu">${t('add.sg.noResults')}</span>`;
-  }catch(e){box.innerHTML=`<span class="mu">${t('add.sg.error')}</span>`}
-}
-
-function addCard(){
-  const f=$('#fr').value.trim(),b=$('#bk').value.trim();
-  if(!f||!b){toast(t('add.bothSides'));return}
-  S.cards.push({id:uid(),deck:$('#dk').value,front:f,back:b,imageEnabled:false,ease:2.5,int:0,reps:0,lapses:0,due:0});
-  save();$('#fr').value='';$('#bk').value='';$('#sg').innerHTML='';plink();$('#fr').focus();toast(t('add.added'));
-}
-
+// ============ DECKS ============
 function vCards(v){
-  v.innerHTML=`<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
-    <h2 style="margin:0">${t('cards.title')}</h2>
-    <button class="p" style="width:auto; padding:10px 16px; margin:0; border-radius:14px; font-size:14px; box-shadow:none" onclick="goToAdd()">＋ ${t('add.add')}</button>
-  </div>
-  <input id="q" placeholder="${t('cards.search')}" oninput="renderCards()">
-  <select id="fd" onchange="renderCards()"><option value="">${t('study.allDecks')}</option>${deckOpts('')}</select>
-  <div id="ls"></div>
-  <h3>${t('cards.decksTitle')}</h3><div id="dl"></div>
-  <div class="row"><input id="nn" placeholder="${t('cards.newDeckPlaceholder')}"><select id="nl">${Object.entries(L).map(([k,x])=>`<option value="${k}">${x.name[UI]||k}</option>`).join('')}</select></div>
-  <button class="p" onclick="addDeck()">${t('cards.createDeck')}</button>
-  <h3>${t('cards.importTitle')}</h3>
-  <select id="idk">${deckOpts('')}</select>
-  <input id="cf" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain">
-  <div class="row"><input id="c1" type="number" value="1" min="1"><input id="c2" type="number" value="2" min="1"></div>
-  <p class="mu" style="margin-top:-4px">${t('cards.colsHint')}</p>
-  <button class="p" onclick="importCSV()">${t('cards.importBtn')}</button>`;
-  renderCards();dlist();
+  v.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h2 style="margin:0">${t('cards.title')}</h2><button class="p" style="width:auto;padding:10px 16px;margin:0;border-radius:14px;font-size:14px;box-shadow:none" onclick="goToAdd()">＋ ${t('cards.add')}</button></div>
+    <input id="q" placeholder="${t('cards.search')}" oninput="renderCards()">
+    <select id="fd" onchange="renderCards()"><option value="">${t('study.allDecks')}</option>${S.decks.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('')}</select>
+    <div id="ls"></div>
+    <h3>${t('cards.decksTitle')}</h3><div id="dl"></div>
+    <div class="row"><input id="nn" placeholder="${t('cards.newDeckPlaceholder')}"><select id="nl">${Object.entries(L).map(([k,x])=>`<option value="${k}">${x.name[UI]||k}</option>`).join('')}</select></div>
+    <button class="p" onclick="addDeck()">${t('cards.createDeck')}</button>
+    <h3>${t('cards.importTitle')}</h3>
+    <select id="idk">${S.decks.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('')}</select>
+    <input id="cf" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain">
+    <div class="row"><input id="c1" type="number" value="1" min="1"><input id="c2" type="number" value="2" min="1"></div>
+    <p class="mu" style="margin-top:-4px">${t('cards.colsHint')}</p>
+    <button class="p" onclick="importCSV()">${t('cards.importBtn')}</button>
+    <button class="s" style="width:100%;margin-top:10px" onclick="tab='study';render()">${t('settings.back')}</button>`;
+  renderCards(); dlist();
 }
-
-function goToAdd() {
-  const selectedDeck = $('#fd') ? $('#fd').value : '';
-  if (selectedDeck) lastDeck = selectedDeck;
-  tab = 'add';
-  render();
-}
-
+function goToAdd(){const s=$('#fd')?.value;if(s)lastDeck=s;tab='add';render()}
 function renderCards(){
   if(!$('#q')||!$('#fd')||!$('#ls'))return;
-  const q=$('#q').value.trim().toLocaleLowerCase(),d=$('#fd').value;
-  const a=S.cards.filter(c=>(!d||c.deck==d)&&(c.front+' '+c.back).toLocaleLowerCase().includes(q));
-  $('#ls').innerHTML=a.slice(0,200).map(c=>`<div class="it"><div><b>${esc(c.front)}</b><br><span class="mu">${esc(c.back)}</span></div><button aria-label="${t('cards.edit')}" onclick="editCard('${c.id}')">✎</button><button aria-label="${t('cards.del')}" onclick="delCard('${c.id}')">🗑</button></div>`).join('')||`<p class="mu">${t('cards.noCards')}</p>`;
+  const q=$('#q').value.trim().toLowerCase(),d=$('#fd').value;
+  const arr=S.cards.filter(c=>(!d||c.deck==d)&&(c.front+' '+c.back).toLowerCase().includes(q));
+  $('#ls').innerHTML = arr.slice(0,200).map(c=>`<div class="it"><div><b>${esc(c.front)}</b><br><span class="mu">${esc(c.back)}</span></div><button onclick="editCard('${c.id}')">✎</button><button onclick="delCard('${c.id}')">🗑</button></div>`).join('')||`<p class="mu">${t('cards.noCards')}</p>`;
 }
-
 function dlist(){
-  $('#dl').innerHTML=S.decks.map(d=>`<div class="it"><div>${esc(d.name)} <span class="mu">· ${langName(d.lang)} · ${t('cards.deckCount').replace('{n}',S.cards.filter(c=>c.deck==d.id).length)}</span></div><button onclick="delDeck('${d.id}')">🗑</button></div>`).join('');
+  $('#dl').innerHTML = S.decks.map(d=>`<div class="it"><div>${esc(d.name)} <span class="mu">· ${langName(d.lang)} · ${S.cards.filter(c=>c.deck==d.id).length}</span></div><button onclick="shareDeck('${d.id}')" title="${t('cards.share')}">🌍</button><button onclick="delDeck('${d.id}')">🗑</button></div>`).join('');
 }
-
+function shareDeck(id){
+  const deck = S.decks.find(x=>x.id===id);
+  if(!confirm(`Udostępnić "${deck.name}" publicznie? Inni będą mogli skopiować.`)) return;
+  Sync.shareDeck(deck).then(err=>{
+    if(err) toast(err);
+    else toast(t('cards.shared'));
+  });
+}
+function addDeck(){
+  const n = $('#nn').value.trim(); if(!n) return;
+  S.decks.push({id:uid(),name:n,lang:$('#nl').value}); save(); render();
+}
+function delDeck(id){
+  if(S.decks.length<2){toast(t('cards.keepOneDeck'));return}
+  if(!confirm(t('cards.deleteDeck'))) return;
+  S.decks = S.decks.filter(d=>d.id!==id);
+  S.cards = S.cards.filter(c=>c.deck!==id);
+  save(); render();
+}
 function modal(title,fields,ok){
   if($('#md')) $('#md').remove();
   const m=document.createElement('div');m.id='md';
   m.innerHTML=`<div class="mb"><h3>${esc(title)}</h3>${fields.map(f=>`<textarea placeholder="${esc(f.ph||'')}">${esc(f.v||'')}</textarea>`).join('')}<div class="row"><button class="s" id="mc">${t('common.cancel')}</button><button class="p" id="mo" style="margin:0">${t('common.ok')}</button></div></div>`;
   document.body.appendChild(m);
   m.querySelector('#mc').onclick=()=>m.remove();
-  m.querySelector('#mo').onclick=()=>{const v=[...m.querySelectorAll('textarea')].map(x=>x.value);m.remove();ok(v)};
+  m.querySelector('#mo').onclick=()=>{const val=[...m.querySelectorAll('textarea')].map(x=>x.value);m.remove();ok(val)};
 }
-
-function editCard(id, fromStudy=false){
-  const c=S.cards.find(x=>x.id==id);
-  if(!c)return;
+function editCard(id,fromStudy=false){
+  const c = S.cards.find(x=>x.id==id); if(!c) return;
   modal(t('cards.editTitle'),[{v:c.front,ph:t('cards.front')},{v:c.back,ph:t('cards.back')}],v=>{
     if(!v[0].trim()||!v[1].trim()){toast(t('cards.bothRequired'));return}
-    const front=v[0].trim();if(front!==c.front)delete c.imageUrl;
-    c.front=front;c.back=v[1].trim();save();
+    const fr = v[0].trim();
+    if(fr!==c.front) delete c.imageUrl;
+    c.front=fr; c.back=v[1].trim(); save();
     if(fromStudy) render(); else renderCards();
   });
 }
-
 function delCard(id){
-  if(!S.cards.some(c=>c.id===id))return;
-  modal(t('cards.deleteCard'),[],()=>{S.cards=S.cards.filter(c=>c.id!==id);if(sess)sess.q=sess.q.filter(x=>x!==id);save();renderCards();dlist();toast(t('cards.cardDeleted'))});
+  if(!confirm(t('cards.deleteCard'))) return;
+  S.cards = S.cards.filter(c=>c.id!==id);
+  if(sess) sess.q = sess.q.filter(x=>x!==id);
+  save(); renderCards(); dlist(); toast(t('cards.cardDeleted'));
 }
-
 function parseCSV(t){
-  t=t.replace(/^\uFEFF/,'');
-  const first=t.split('\n')[0],sep=[';','\t',','].map(s=>[s,first.split(s).length]).sort((a,b)=>b[1]-a[1])[0][0];
-  const rows=[];let r=[],f='',q=false;
+  t = t.replace(/^\uFEFF/,'');
+  const first = t.split('\n')[0], sep = [';','\t',','].map(s=>[s,first.split(s).length]).sort((a,b)=>b[1]-a[1])[0][0];
+  const rows=[]; let r=[],f='',q=false;
   for(let i=0;i<t.length;i++){const c=t[i];
     if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=false}else f+=c}
     else if(c=='"')q=true;
@@ -1367,108 +864,194 @@ function parseCSV(t){
   if(f||r.length){r.push(f);rows.push(r)}
   return rows.filter(r=>r.some(x=>x.trim()));
 }
-
 async function importCSV(){
-  const fl=$('#cf').files[0];if(!fl){toast(t('cards.selectFile'));return}
-  const cl=s=>(s||'').replace(/<br\s*\/?>/gi,'; ').replace(/<[^>]+>/g,'').trim();
-  const rows=parseCSV(await fl.text()),a=Math.max(1,+$('#c1').value||1)-1,b=Math.max(1,+$('#c2').value||2)-1,d=$('#idk').value;
-  if(rows.length&&/^(front|back|przód|przod|tył|tyl|question|answer|term|definition|pytanie|odpowiedź)/i.test(cl(rows[0][a])))rows.shift();
-  const have=new Set(S.cards.filter(c=>c.deck==d).map(c=>c.front.toLowerCase()));let n=0;
-  rows.forEach(r=>{const x=cl(r[a]),y=cl(r[b]);if(x&&y&&!have.has(x.toLowerCase())){have.add(x.toLowerCase());S.cards.push({id:uid(),deck:d,front:x,back:y,ease:2.5,int:0,reps:0,lapses:0,due:0});n++}});
-  save();toast(t('cards.imported').replace('{n}',n));renderCards();dlist();
+  const fl = $('#cf').files[0]; if(!fl){toast(t('cards.selectFile'));return}
+  const cl = s=>(s||'').replace(/<br\s*\/?>/gi,'; ').replace(/<[^>]+>/g,'').trim();
+  const rows = parseCSV(await fl.text());
+  const a = Math.max(1,+$('#c1').value||1)-1, b = Math.max(1,+$('#c2').value||2)-1;
+  const d = $('#idk').value;
+  if(rows.length && /^(front|back|przód|tył|question|answer)/i.test(cl(rows[0][a]))) rows.shift();
+  const have = new Set(S.cards.filter(c=>c.deck==d).map(c=>c.front.toLowerCase()));
+  let n=0;
+  rows.forEach(r=>{const x=cl(r[a]),y=cl(r[b]);if(x&&y&&!have.has(x.toLowerCase())){have.add(x.toLowerCase());S.cards.push({id:uid(),deck:d,front:x,back:y,imageEnabled:false,ease:2.5,int:0,reps:0,lapses:0,due:0});n++}});
+  save(); toast(t('cards.imported').replace('{n}',n)); renderCards(); dlist();
 }
 
-function addDeck(){
-  const n=$('#nn').value.trim();if(!n)return;
-  S.decks.push({id:uid(),name:n,lang:$('#nl').value});save();render();
+// ============ ADD ============
+function vAdd(v){
+  v.innerHTML = `<h2>${t('add.title')}</h2>
+    <select id="dk" onchange="lastDeck=this.value;plink()">${S.decks.map(d=>`<option value="${d.id}"${d.id===lastDeck?' selected':''}>${esc(d.name)}</option>`).join('')}</select>
+    <textarea id="fr" placeholder="${t('add.front')}" onchange="suggest()" oninput="plink()"></textarea>
+    <div class="row" style="margin-bottom:12px"><button class="s" onclick="suggest()">${t('add.suggest')}</button><a class="s" id="pl" target="_blank" style="text-decoration:none;padding:12px">${t('add.pons')}</a></div>
+    <div id="sg" class="chips"></div>
+    <textarea id="bk" placeholder="${t('add.back')}"></textarea>
+    <button class="p" onclick="addCard()">${t('add.add')}</button>
+    <button class="s" style="width:100%;margin-top:10px" onclick="tab='cards';render()">${t('settings.back')}</button>`;
+  plink();
+}
+function plink(){
+  const el = $('#pl'); if(!el) return;
+  const d = S.decks.find(x=>x.id==$('#dk').value);
+  const l = (L[d?.lang]||L.es).pons;
+  el.href = `https://pl.pons.com/tłumaczenie?q=${encodeURIComponent($('#fr').value.trim())}&l=${l}`;
+}
+async function suggest(){
+  const f = $('#fr').value.trim(), box = $('#sg');
+  if(!f) return;
+  box.innerHTML = `<span class="mu">${t('add.sg.search')}</span>`;
+  try{
+    const nb = window.webkit && webkit.messageHandlers && webkit.messageHandlers.tr;
+    const sm = nb ? null : (window.claude && await claude.use('sample'));
+    if(!nb && !sm){box.innerHTML = `<span class="mu">${t('add.sg.unavailable')}</span>`;return}
+    const d = S.decks.find(x=>x.id==$('#dk').value), ln = L[d?.lang]||L.es;
+    const r = nb ? await nb.postMessage({q:f,lang:d.lang}) : await sm.json(`Słownik polsko-${ln.name.pl}. Hasło: „${f}”. Podaj do 4 tłumaczeń. JSON array stringów.`);
+    const arr = (Array.isArray(r)?r:[]).slice(0,4);
+    box.innerHTML = '';
+    arr.forEach(tn=>{const b=document.createElement('button');b.textContent=String(tn);b.onclick=()=>{const k=$('#bk');k.value=k.value?k.value+', '+tn:tn};box.appendChild(b)});
+    if(!arr.length) box.innerHTML = `<span class="mu">${t('add.sg.noResults')}</span>`;
+  }catch(e){box.innerHTML = `<span class="mu">${t('add.sg.error')}</span>`}
+}
+function addCard(){
+  const f = $('#fr').value.trim(), b = $('#bk').value.trim();
+  if(!f||!b){toast(t('add.bothSides'));return}
+  S.cards.push({id:uid(),deck:$('#dk').value,front:f,back:b,imageEnabled:false,ease:2.5,int:0,reps:0,lapses:0,due:0});
+  save(); $('#fr').value=''; $('#bk').value=''; $('#sg').innerHTML=''; plink(); $('#fr').focus();
+  toast(t('add.added'));
 }
 
-function delDeck(id){
-  if(S.decks.length<2){toast(t('cards.keepOneDeck'));return}
-  modal(t('cards.deleteDeck'),[],()=>{S.decks=S.decks.filter(d=>d.id!=id);S.cards=S.cards.filter(c=>c.deck!=id);if(sd==id)sd='';save();render()});
+// ============ LIBRARY ============
+function vLibrary(v){
+  v.innerHTML = `<h2>${t('library.title')}</h2><p class="mu" style="margin-bottom:20px">${t('library.desc')}</p><div id="lib-list"><p class="mu">${t('library.loading')}</p></div>`;
+  Sync.client.from('shared_decks').select('*, profiles(nickname)').order('created_at',{ascending:false}).then(({data})=>{
+    if(!data || !data.length){$('#lib-list').innerHTML=`<p class="mu">${t('library.empty')}</p>`;return}
+    $('#lib-list').innerHTML = data.map(d=>`
+      <div class="c" style="padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div style="flex:1">
+            <b>${esc(d.name)}</b><br>
+            <span class="mu">${langName(d.lang)} · ${t('library.author')}: ${esc(d.profiles?.nickname||'?')} · ${d.cards.length}</span>
+          </div>
+          <button class="s" onclick='copyDeck("${d.id}","${esc(d.name).replace(/'/g,"\\'")}","${d.lang}",${JSON.stringify(d.cards)})'>${t('library.copy')}</button>
+        </div>
+      </div>
+    `).join('');
+  });
+}
+function copyDeck(id, name, lang, cards){
+  Sync.copyDeck(id, name, lang, cards).then(err=>{
+    if(err) toast(err);
+    else toast(t('library.copied'));
+  });
 }
 
+// ============ STATS ============
 function vStats(v){
-  const C=S.cards,todayKey=dk(new Date());
-  const mast=C.filter(c=>c.int>=21).length,nw=C.filter(isNew).length,lr=C.length-mast-nw;
-  const today = Array.isArray(S.daily[todayKey]) ? S.daily[todayKey].length : (S.daily[todayKey] || 0);
-  const reviewedEver=C.filter(c=>c.reps>0).length;
-  let streak=0;const d=new Date();
-  if(!S.log[dk(d)])d.setDate(d.getDate()-1);
+  const C = S.cards, tk = dk(new Date());
+  const mast = C.filter(c=>c.int>=21).length, nw = C.filter(isNew).length, lr = C.length-mast-nw;
+  const today = S.daily[tk]||0;
+  const reviewedEver = C.filter(c=>c.reps>0).length;
+  let streak=0; const d=new Date();
+  if(!S.log[dk(d)]) d.setDate(d.getDate()-1);
   while(S.log[dk(d)]){streak++;d.setDate(d.getDate()-1)}
-  const activeKeys=Object.keys(S.log).filter(k=>S.log[k]>0).sort();
+  const aks = Object.keys(S.log).filter(k=>S.log[k]>0).sort();
   let longest=0,cur=0,prev=null;
-  activeKeys.forEach(k=>{
-    if(prev){const diff=Math.round((new Date(k+'T00:00:00')-new Date(prev+'T00:00:00'))/864e5);cur=diff===1?cur+1:1}
-    else cur=1;
-    if(cur>longest)longest=cur;prev=k;
-  });
-  const R=S.ratings||{};
+  aks.forEach(k=>{if(prev){const diff=Math.round((new Date(k+'T00:00:00')-new Date(prev+'T00:00:00'))/864e5);cur=diff===1?cur+1:1}else cur=1;if(cur>longest)longest=cur;prev=k});
+  const R = S.ratings||{};
   let tA=0,tH=0,tG=0,tE=0;
-  Object.values(R).forEach(a=>{tA+=(a[0]||0);tH+=(a[1]||0);tG+=(a[2]||0);tE+=(a[3]||0)});
-  const totalReviews=tA+tH+tG+tE;
-  const retention=totalReviews?Math.round((tG+tE)/totalReviews*100)+'%':'—';
-  const activeDays=activeKeys.length;
-  const chart=[...Array(30)].map((_,i)=>{
-    const x=new Date(); x.setDate(x.getDate() - (29 - i));
-    const a=R[dk(x)]||[0,0,0,0];
-    return a[0]+a[1]+a[2]+a[3];
-  });
-  const mx=Math.max(1,...chart);
-  const perDeck=S.decks.map(deck=>{
-    const dc=C.filter(c=>c.deck==deck.id);
-    return {name:deck.name,total:dc.length,new:dc.filter(isNew).length,mastered:dc.filter(c=>c.int>=21).length};
-  });
-  const gb=(label,n,col)=>{
-    const h=totalReviews?Math.round(n/Math.max(1,totalReviews)*80):0;
-    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end"><div style="font-size:12px;color:var(--mu);margin-bottom:4px">${n}</div><div style="width:70%;background:${col};border-radius:4px 4px 0 0;min-height:2px;height:${h}px"></div><div style="font-size:11px;color:var(--mu);margin-top:4px">${label}</div></div>`;
-  };
-  v.innerHTML=`<h2>${t('stats.title')}</h2>
-  <h3>${t('stats.now')}</h3>
-  <div class="st">
-    <div class="c"><div class="n">${C.length}</div><span class="mu">${t('stats.all')}</span></div>
-    <div class="c"><div class="n">${mast}</div><span class="mu">${t('stats.mastered')}</span></div>
-    <div class="c"><div class="n">${lr}</div><span class="mu">${t('stats.learning')}</span></div>
-    <div class="c"><div class="n">${nw}</div><span class="mu">${t('stats.new')}</span></div>
-    <div class="c"><div class="n">${due('').length}</div><span class="mu">${t('stats.dueNow')}</span></div>
-    <div class="c"><div class="n">${today}</div><span class="mu">${t('stats.today')}</span></div>
-  </div>
-  <h3>${t('stats.total')}</h3>
-  <div class="st">
-    <div class="c"><div class="n">${totalReviews}</div><span class="mu">${t('stats.allAnswers')}</span></div>
-    <div class="c"><div class="n">${reviewedEver}</div><span class="mu">${t('stats.reviewedCards')}</span></div>
-    <div class="c"><div class="n">${retention}</div><span class="mu">${t('stats.retention')}</span></div>
-    <div class="c"><div class="n">${activeDays}</div><span class="mu">${t('stats.daysTotal')}</span></div>
-    <div class="c"><div class="n">${streak}🔥</div><span class="mu">${t('stats.streak')}</span></div>
-    <div class="c"><div class="n">${longest}</div><span class="mu">${t('stats.longestStreak')}</span></div>
-  </div>
-  <div class="c"><b>${t('stats.byRating')}</b>
-    <div style="display:flex;gap:8px;height:110px;margin-top:10px">
-      ${gb(t('stats.again'),tA,'#ef4444')}${gb(t('stats.hard'),tH,'#f59e0b')}${gb(t('stats.good'),tG,'#10b981')}${gb(t('stats.easy'),tE,'#3b82f6')}
+  Object.values(R).forEach(a=>{tA+=a[0]||0;tH+=a[1]||0;tG+=a[2]||0;tE+=a[3]||0});
+  const total = tA+tH+tG+tE;
+  const ret = total?Math.round((tG+tE)/total*100)+'%':'—';
+  const chart = [...Array(30)].map((_,i)=>{const x=new Date();x.setDate(x.getDate()-(29-i));const a=R[dk(x)]||[0,0,0,0];return a[0]+a[1]+a[2]+a[3]});
+  const mx = Math.max(1,...chart);
+  const perDeck = S.decks.map(dk=>{const dc=C.filter(c=>c.deck===dk.id);return{name:dk.name,total:dc.length,new:dc.filter(isNew).length,mastered:dc.filter(c=>c.int>=21).length}});
+  const gb = (label,n,col)=>{const h=total?Math.round(n/Math.max(1,total)*80):0;return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end"><div style="font-size:12px;color:var(--mu);margin-bottom:4px">${n}</div><div style="width:70%;background:${col};border-radius:4px 4px 0 0;min-height:2px;height:${h}px"></div><div style="font-size:11px;color:var(--mu);margin-top:4px">${label}</div></div>`};
+  v.innerHTML = `<h2>${t('stats.title')}</h2>
+    <h3>${t('stats.now')}</h3>
+    <div class="st">
+      <div class="c"><div class="n">${C.length}</div><span class="mu">${t('stats.all')}</span></div>
+      <div class="c"><div class="n">${mast}</div><span class="mu">${t('stats.mastered')} <span class="info-icon" onclick="showInfo('${t('stats.mastered')}', t('info.mastered'))">i</span></span></div>
+      <div class="c"><div class="n">${lr}</div><span class="mu">${t('stats.learning')} <span class="info-icon" onclick="showInfo('${t('stats.learning')}', t('info.learning'))">i</span></span></div>
+      <div class="c"><div class="n">${nw}</div><span class="mu">${t('stats.new')} <span class="info-icon" onclick="showInfo('${t('stats.new')}', t('info.new'))">i</span></span></div>
+      <div class="c"><div class="n">${due('').length}</div><span class="mu">${t('stats.dueNow')} <span class="info-icon" onclick="showInfo('${t('stats.dueNow')}', t('info.due'))">i</span></span></div>
+      <div class="c"><div class="n">${today}</div><span class="mu">${t('stats.today')} <span class="info-icon" onclick="showInfo('${t('stats.today')}', t('info.today'))">i</span></span></div>
     </div>
-  </div>
-  <div class="c"><b>${t('stats.last30')}</b> <span class="mu">(max: ${mx})</span>
-    <div class="bars" style="margin-top:10px;height:70px;gap:2px">
-      ${chart.map(n=>`<div><i style="height:${Math.round(n/mx*50)}px"></i></div>`).join('')}
+    <h3>${t('stats.total')}</h3>
+    <div class="st">
+      <div class="c"><div class="n">${total}</div><span class="mu">${t('stats.allAnswers')}</span></div>
+      <div class="c"><div class="n">${reviewedEver}</div><span class="mu">${t('stats.reviewedCards')}</span></div>
+      <div class="c"><div class="n">${ret}</div><span class="mu">${t('stats.retention')} <span class="info-icon" onclick="showInfo('${t('stats.retention')}', t('info.retention'))">i</span></span></div>
+      <div class="c"><div class="n">${aks.length}</div><span class="mu">${t('stats.daysTotal')}</span></div>
+      <div class="c"><div class="n">${streak}🔥</div><span class="mu">${t('stats.streak')} <span class="info-icon" onclick="showInfo('${t('stats.streak')}', t('info.streak'))">i</span></span></div>
+      <div class="c"><div class="n">${longest}</div><span class="mu">${t('stats.longestStreak')} <span class="info-icon" onclick="showInfo('${t('stats.longestStreak')}', t('info.longest'))">i</span></span></div>
     </div>
-  </div>
-  <h3>${t('stats.perDeck')}</h3>
-  ${perDeck.map(deck=>`<div class="it"><div><b>${esc(deck.name)}</b><br><span class="mu">${t('stats.deckLine').replace('{total}',deck.total).replace('{new}',deck.new).replace('{mastered}',deck.mastered)}</span></div></div>`).join('')||`<p class="mu">${t('cards.noCards')}</p>`}
-  <h3>${t('stats.backup')}</h3><p class="mu">${t('stats.backupInfo')}</p>
-  <div class="row"><button class="s" onclick="bkp()">${t('stats.copyBackup')}</button><button class="s" onclick="rst()">${t('stats.pasteBackup')}</button></div>`;
-}
-
-async function bkp(){
-  try{await navigator.clipboard.writeText(JSON.stringify(S));toast(t('stats.copied'))}
-  catch(e){modal(t('stats.manualCopyTitle'),[{v:JSON.stringify(S)}],()=>{})}
-}
-
-function rst(){
-  modal(t('stats.pasteTitle'),[{ph:t('stats.pastePlaceholder')}],v=>{
-    try{const o=JSON.parse(v[0]);if(!o.decks||!o.cards)throw 0;S=o;save();render();toast(t('stats.restored'))}
-    catch(e){toast(t('stats.invalidBackup'))}
+    <div class="c"><b>${t('stats.byRating')}</b><div style="display:flex;gap:8px;height:110px;margin-top:10px">${gb(t('stats.again'),tA,'#ef4444')}${gb(t('stats.hard'),tH,'#f59e0b')}${gb(t('stats.good'),tG,'#10b981')}${gb(t('stats.easy'),tE,'#3b82f6')}</div></div>
+    <div class="c"><b>${t('stats.last30')}</b> <span class="mu">(max: ${mx})</span><div class="bars" style="margin-top:10px;height:70px;gap:2px">${chart.map(n=>`<div><i style="height:${Math.round(n/mx*50)}px"></i></div>`).join('')}</div></div>
+    <div class="c"><h3>🏆 ${t('stats.leaderboard')}</h3>
+      <div class="tabs"><button class="${lbTab==='day'?'on':''}" onclick="lbTab='day';render()">${t('stats.day')}</button><button class="${lbTab==='month'?'on':''}" onclick="lbTab='month';render()">${t('stats.month')}</button></div>
+      <div id="lb-list"><p class="mu">${t('library.loading')}</p></div>
+    </div>
+    <h3>${t('stats.perDeck')}</h3>
+    ${perDeck.map(d=>`<div class="it"><div><b>${esc(d.name)}</b><br><span class="mu">${t('stats.deckLine').replace('{total}',d.total).replace('{new}',d.new).replace('{mastered}',d.mastered)}</span></div></div>`).join('')||`<p class="mu">${t('cards.noCards')}</p>`}
+    <h3>${t('stats.backup')}</h3><p class="mu">${t('stats.backupInfo')}</p>
+    <div class="row"><button class="s" onclick="bkp()">${t('stats.copyBackup')}</button><button class="s" onclick="rst()">${t('stats.pasteBackup')}</button></div>`;
+  
+  const todayD = new Date();
+  const start = lbTab==='day' ? dk(todayD) : todayD.getFullYear()+'-'+pad(todayD.getMonth()+1)+'-01';
+  const end = dk(todayD);
+  Sync.client.rpc('get_leaderboard',{p_start:start,p_end:end}).then(({data,error})=>{
+    if(error || !data || !data.length){$('#lb-list').innerHTML=`<p class="mu">${t('stats.noLbData')}</p>`;return}
+    $('#lb-list').innerHTML = data.map((u,i)=>`<div class="it" style="padding:8px 0"><div style="font-weight:bold;font-size:16px;width:36px">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1)}</div><div>${esc(u.nickname||'?')}</div><div style="text-align:right;font-weight:bold;color:var(--ac)">${u.total_xp} XP</div></div>`).join('');
   });
 }
+async function bkp(){try{await navigator.clipboard.writeText(JSON.stringify(S));toast(t('stats.copied'))}catch(e){}}
+function rst(){modal(t('stats.pasteTitle'),[{ph:t('stats.pastePlaceholder')}],v=>{try{const o=JSON.parse(v[0]);if(!o.decks||!o.cards)throw 0;S=o;save();render();toast(t('stats.restored'))}catch(e){toast(t('stats.invalidBackup'))}})}
 
-render();Sync.init();
+// ============ SETTINGS ============
+function vSettings(v){
+  const account = Sync?.user
+    ?`<p class="mu">${t('settings.loggedIn').replace('{email}',esc(Sync.user.email||'—'))}</p>
+      <p class="mu" style="margin:8px 0">${t('ui.nick')}: <b>${esc(Sync.profile?.nickname||'—')}</b></p>
+      <div class="row" style="margin-bottom:10px"><button class="s" onclick="Sync.signOut()">${t('settings.logout')}</button><button class="s" style="border-color:#ef4444;color:#ef4444" onclick="showDeleteAccountModal()">${t('settings.deleteAccount')}</button></div>`
+    :`<p class="mu">${t('settings.notLoggedIn')}</p>`;
+  const petOpts = `<option value="🐕" ${S.settings.pet==='🐕'?'selected':''}>${t('ui.pet.dog')}</option><option value="🐈" ${S.settings.pet==='🐈'?'selected':''}>${t('ui.pet.cat')}</option>`;
+  const langOpts = ['pl','en'].map(l=>`<option value="${l}"${UI===l?' selected':''}>${l==='pl'?'Polski':'English'}</option>`).join('');
+  v.innerHTML = `<h2>${t('settings.title')}</h2>
+    <div class="c"><h3>${t('settings.sync')}</h3>${account}</div>
+    <div class="c"><h3>${t('ui.lang')}</h3><select onchange="UI=this.value;localStorage.setItem('altcards-uilang',this.value);render()">${langOpts}</select></div>
+    <div class="c"><h3>${t('ui.pet')}</h3><select onchange="S.settings.pet=this.value;save();render()">${petOpts}</select></div>
+    <div class="c"><label><b>${t('settings.newLimit')}</b></label><p class="mu">${t('settings.newLimitInfo')}</p><input id="nlmt" type="number" min="1" max="500" value="${S.settings.newLimit}"><button class="p" onclick="saveSettings()">${t('settings.save')}</button></div>
+    <div class="c" style="text-align:center"><button class="s" style="width:100%" onclick="localStorage.removeItem('altcards-tut');showTutorial()">${t('settings.showTut')}</button></div>
+    <button class="s" style="width:100%;margin-top:10px" onclick="tab='study';render()">${t('settings.back')}</button>`;
+}
+function saveSettings(){
+  const n = Math.max(1,Math.min(500,parseInt($('#nlmt').value,10)||200));
+  S.settings.newLimit = n; save(); toast(t('settings.saved')); tab='study'; render();
+}
+
+// ============ KEYBOARD ============
+document.addEventListener('keydown',e=>{
+  const tag = (e.target.tagName||'').toLowerCase();
+  if(tag==='input'||tag==='textarea'||tag==='select'||e.target.isContentEditable) return;
+  if($('#md')||$('#login')||($('#fbx-overlay') && !$('#fbx-overlay').hidden)) return;
+  if(tab!=='study'||!sess||!sess.q.length) return;
+  const key = e.key.toLowerCase();
+  const c = S.cards.find(x=>x.id==sess.q[0]);
+  if(!c) return;
+  if(key==='m'){say(c.id);e.preventDefault();return}
+  if(!flip){
+    if(key===' '||e.code==='Space'){e.preventDefault();flip=true;render();return}
+    if(key==='o'){e.preventDefault();flip=true;revealImg(c.id);return}
+    if(key==='z'){e.preventDefault();undoAnswer();return}
+    return;
+  }
+  if(key==='1'){e.preventDefault();ans(0)}
+  else if(key==='2'){e.preventDefault();ans(1)}
+  else if(key==='3'){e.preventDefault();ans(2)}
+  else if(key==='4'){e.preventDefault();ans(3)}
+  else if(key==='z'){e.preventDefault();undoAnswer()}
+  else if(key==='o'){e.preventDefault();revealImg(c.id)}
+});
+
+// ============ INIT ============
+Sync.init();
 </script></body></html>
