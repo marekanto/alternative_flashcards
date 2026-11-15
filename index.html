@@ -542,7 +542,6 @@ Sync = {
     this.profile = prof;
     await this.download();
     
-    // Opcja A: Pobieranie sumy XP z bazy
     try {
       const {data} = await this.client.from('xp_logs').select('amount').eq('user_id', this.user.id);
       if(data) {
@@ -632,11 +631,11 @@ Sync = {
     await this.client.from('deck_copies').delete().eq('deck_id', sharedId);
     return null;
   },
-  async copyDeck(sharedId,name,lang,cards){
+  async copyDeck(sharedId,name,lang,cards,authorName){
     const {data:exist} = await this.client.from('deck_copies').select('id').eq('user_id',this.user.id).eq('deck_id',sharedId).maybeSingle();
     if(exist) return t('library.alreadyCopied');
     const newDeckId = uid();
-    S.decks.push({id:newDeckId,name:name,lang:lang,isCopied:true,copiedFrom:sharedId});
+    S.decks.push({id:newDeckId,name:name,lang:lang,isCopied:true,copiedFrom:sharedId,author:authorName});
     cards.forEach(c=>S.cards.push({id:uid(),deck:newDeckId,front:c.front,back:c.back,imageUrl:c.imageUrl,contextSentence:c.contextSentence,imageEnabled:false,ease:2.5,int:0,reps:0,lapses:0,due:0}));
     save();
     await this.client.from('deck_copies').insert({user_id:this.user.id,deck_id:sharedId});
@@ -864,7 +863,8 @@ function dlist(){
     } else {
       actionBtn = `<button onclick="shareDeck('${d.id}')" title="${t('cards.share')}">🌍</button>`;
     }
-    return `<div class="it"><div>${esc(d.name)} <span class="mu">· ${langName(d.lang)} · ${S.cards.filter(c=>c.deck==d.id).length}</span></div>
+    const authorInfo = d.isCopied && d.author ? ` · ${t('library.author')}: ${esc(d.author)}` : '';
+    return `<div class="it"><div>${esc(d.name)} <span class="mu">· ${langName(d.lang)} · ${S.cards.filter(c=>c.deck==d.id).length}${authorInfo}</span></div>
       <button onclick="editDeckName('${d.id}')" title="${t('cards.editName')}">✎</button>
       ${actionBtn}
       <button onclick="delDeck('${d.id}')">🗑</button></div>`;
@@ -1023,21 +1023,26 @@ function vLibrary(v){
     const nickMap = {};
     (profiles||[]).forEach(p=>nickMap[p.id]=p.nickname);
     
-    $('#lib-list').innerHTML = decks.map(d=>`
+    $('#lib-list').innerHTML = decks.map(d=>{
+      const authorName = esc(nickMap[d.author_id]||'?').replace(/'/g,"\\'");
+      const deckName = esc(d.name).replace(/'/g,"\\'");
+      const cardsJson = JSON.stringify(d.cards).replace(/'/g,"\\'");
+      return `
       <div class="c" style="padding:16px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
           <div style="flex:1">
             <b>${esc(d.name)}</b><br>
             <span class="mu">${langName(d.lang)} · ${t('library.author')}: ${esc(nickMap[d.author_id]||'?')} · ${d.cards.length} · 📥 ${d.copy_count || 0} ${t('library.downloads')}</span>
           </div>
-          <button class="s" onclick='copyDeck("${d.id}","${esc(d.name).replace(/'/g,"\\'")}","${d.lang}",${JSON.stringify(d.cards).replace(/'/g,"\\'")})'>${t('library.copy')}</button>
+          <button class="s" onclick='copyDeck("${d.id}","${deckName}","${d.lang}",${cardsJson},"${authorName}")'>${t('library.copy')}</button>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   });
 }
-function copyDeck(id, name, lang, cards){
-  Sync.copyDeck(id, name, lang, cards).then(err=>{
+function copyDeck(id, name, lang, cards, author){
+  Sync.copyDeck(id, name, lang, cards, author).then(err=>{
     if(err) toast(err);
     else toast(t('library.copied'));
   });
