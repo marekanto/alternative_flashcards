@@ -299,7 +299,7 @@ const TR={
   'sess.imgSearch':{pl:'Szukam…',en:'Searching…'},'sess.imgNotFound':{pl:'Nie znaleziono.',en:'Not found.'},'sess.imgError':{pl:'Błąd obrazu.',en:'Image error.'},'sess.imgCredit':{pl:'Wikimedia Commons',en:'Wikimedia Commons'},
   'cards.title':{pl:'Talie',en:'Decks'},'cards.search':{pl:'Szukaj fiszki…',en:'Search cards…'},'cards.decksTitle':{pl:'Zarządzaj taliami',en:'Manage decks'},'cards.newDeckPlaceholder':{pl:'Nowa talia',en:'New deck'},'cards.createDeck':{pl:'Utwórz talię',en:'Create deck'},
   'cards.importTitle':{pl:'Import CSV',en:'Import CSV'},'cards.colsHint':{pl:'Kolumny: przód · tył',en:'Cols: front · back'},'cards.importBtn':{pl:'Importuj',en:'Import'},'cards.noCards':{pl:'Brak kart.',en:'No cards.'},'cards.selectFile':{pl:'Wybierz plik',en:'Choose file'},'cards.imported':{pl:'Zaimportowano: {n}',en:'Imported: {n}'},
-  'cards.editTitle':{pl:'Edytuj',en:'Edit'},'cards.deleteCard':{pl:'Usunąć fiszkę?',en:'Delete card?'},'cards.deleteDeck':{pl:'Usunąć talię?',en:'Delete deck?'},'cards.keepOneDeck':{pl:'Musi zostać 1 talia',en:'Keep at least 1 deck'},'cards.cardDeleted':{pl:'Usunięto',en:'Deleted'},'cards.front':{pl:'Przód',en:'Front'},'cards.back':{pl:'Tył',en:'Back'},'cards.bothRequired':{pl:'Wymagane obie strony',en:'Both required'},'cards.deckCount':{pl:'{n} kart',en:'{n} cards'},'cards.edit':{pl:'Edytuj',en:'Edit'},'cards.del':{pl:'Usuń',en:'Delete'},'cards.add':{pl:'Dodaj fiszkę',en:'Add card'},'cards.share':{pl:'Udostępnij',en:'Share'},'cards.shared':{pl:'Talia udostępniona!',en:'Deck shared!'},'cards.editName':{pl:'Zmień nazwę',en:'Rename'},'cards.viewCards':{pl:'Zobacz fiszki w taliach',en:'View cards in decks'},
+  'cards.editTitle':{pl:'Edytuj',en:'Edit'},'cards.deleteCard':{pl:'Usunąć fiszkę?',en:'Delete card?'},'cards.deleteDeck':{pl:'Usunąć talię?',en:'Delete deck?'},'cards.keepOneDeck':{pl:'Musi zostać 1 talia',en:'Keep at least 1 deck'},'cards.cardDeleted':{pl:'Usunięto',en:'Deleted'},'cards.front':{pl:'Przód',en:'Front'},'cards.back':{pl:'Tył',en:'Back'},'cards.bothRequired':{pl:'Wymagane obie strony',en:'Both required'},'cards.deckCount':{pl:'{n} kart',en:'{n} cards'},'cards.edit':{pl:'Edytuj',en:'Edit'},'cards.del':{pl:'Usuń',en:'Delete'},'cards.add':{pl:'Dodaj fiszkę',en:'Add card'},'cards.share':{pl:'Udostępnij',en:'Share'},'cards.shared':{pl:'Talia udostępniona!',en:'Deck shared!'},'cards.unshare':{pl:'Odudostępnij',en:'Unshare'},'cards.unshared':{pl:'Wycofano udostępnianie.',en:'Unshared.'},'cards.copyBlocked':{pl:'Nie możesz udostępnić talii skopiowanej od kogoś innego.',en:'You cannot share a copied deck.'},'cards.editName':{pl:'Zmień nazwę',en:'Rename'},'cards.viewCards':{pl:'Zobacz fiszki w taliach',en:'View cards in decks'},'cards.copiedLock':{pl:'Talia skopiowana (brak udostępniania)',en:'Copied deck (sharing locked)'},
   'add.title':{pl:'Nowa fiszka',en:'New card'},'add.front':{pl:'Przód',en:'Front'},'add.back':{pl:'Tył',en:'Back'},'add.suggest':{pl:'✨ Podpowiedz',en:'✨ Suggest'},'add.pons':{pl:'PONS',en:'PONS'},'add.add':{pl:'Dodaj fiszkę',en:'Add card'},'add.bothSides':{pl:'Uzupełnij obie strony',en:'Fill both sides'},'add.added':{pl:'Dodano ✓',en:'Added ✓'},
   'add.sg.search':{pl:'Szukam…',en:'Searching…'},'add.sg.unavailable':{pl:'Użyj PONS.',en:'Use PONS.'},'add.sg.noResults':{pl:'Brak.',en:'None.'},'add.sg.error':{pl:'Błąd.',en:'Error.'},
   'stats.title':{pl:'Postępy',en:'Progress'},'stats.now':{pl:'Teraz',en:'Now'},'stats.all':{pl:'wszystkich kart',en:'all cards'},'stats.mastered':{pl:'opanowane',en:'mastered'},'stats.learning':{pl:'w nauce',en:'learning'},'stats.new':{pl:'nowe',en:'new'},'stats.dueNow':{pl:'do powtórki',en:'due now'},'stats.today':{pl:'dziś',en:'today'},
@@ -594,7 +594,7 @@ Sync = {
       if(idx>=0 && idx<3){
         const bonus = idx===0?100:idx===1?50:25;
         S.settings.xp = (S.settings.xp||0) + bonus;
-        await this.logXp(bonus); // Zapisz też do bazy
+        await this.logXp(bonus);
         save();
         setTimeout(()=>{
           if($('#md')) $('#md').remove();
@@ -623,13 +623,20 @@ Sync = {
     const {data, error} = await this.client.from('shared_decks').insert({author_id:this.user.id,name:deck.name,lang:deck.lang,cards:cards}).select();
     if(error) return "Błąd: " + error.message;
     if(!data || data.length === 0) return "Insert się nie powiódł. Sprawdź politykę RLS.";
+    deck.sharedId = data[0].id;
+    return null;
+  },
+  async unshareDeck(sharedId){
+    const {error} = await this.client.from('shared_decks').delete().eq('id', sharedId);
+    if(error) return "Błąd: " + error.message;
+    await this.client.from('deck_copies').delete().eq('deck_id', sharedId);
     return null;
   },
   async copyDeck(sharedId,name,lang,cards){
     const {data:exist} = await this.client.from('deck_copies').select('id').eq('user_id',this.user.id).eq('deck_id',sharedId).maybeSingle();
     if(exist) return t('library.alreadyCopied');
     const newDeckId = uid();
-    S.decks.push({id:newDeckId,name:name,lang:lang});
+    S.decks.push({id:newDeckId,name:name,lang:lang,isCopied:true,copiedFrom:sharedId});
     cards.forEach(c=>S.cards.push({id:uid(),deck:newDeckId,front:c.front,back:c.back,imageUrl:c.imageUrl,contextSentence:c.contextSentence,imageEnabled:false,ease:2.5,int:0,reps:0,lapses:0,due:0}));
     save();
     await this.client.from('deck_copies').insert({user_id:this.user.id,deck_id:sharedId});
@@ -848,7 +855,20 @@ function renderCards(){
   $('#ls').innerHTML = arr.slice(0,200).map(c=>`<div class="it"><div><b>${esc(c.front)}</b><br><span class="mu">${esc(c.back)}</span></div><button onclick="editCard('${c.id}')">✎</button><button onclick="delCard('${c.id}')">🗑</button></div>`).join('')||`<p class="mu">${t('cards.noCards')}</p>`;
 }
 function dlist(){
-  $('#dl').innerHTML = S.decks.map(d=>`<div class="it"><div>${esc(d.name)} <span class="mu">· ${langName(d.lang)} · ${S.cards.filter(c=>c.deck==d.id).length}</span></div><button onclick="editDeckName('${d.id}')" title="${t('cards.editName')}">✎</button><button onclick="shareDeck('${d.id}')" title="${t('cards.share')}">🌍</button><button onclick="delDeck('${d.id}')">🗑</button></div>`).join('');
+  $('#dl').innerHTML = S.decks.map(d=>{
+    let actionBtn = '';
+    if(d.isCopied){
+      actionBtn = `<span title="${t('cards.copiedLock')}" style="font-size:16px;opacity:0.6;padding:8px">🔒</span>`;
+    } else if(d.sharedId){
+      actionBtn = `<button onclick="unshareDeck('${d.id}')" title="${t('cards.unshare')}">🚫</button>`;
+    } else {
+      actionBtn = `<button onclick="shareDeck('${d.id}')" title="${t('cards.share')}">🌍</button>`;
+    }
+    return `<div class="it"><div>${esc(d.name)} <span class="mu">· ${langName(d.lang)} · ${S.cards.filter(c=>c.deck==d.id).length}</span></div>
+      <button onclick="editDeckName('${d.id}')" title="${t('cards.editName')}">✎</button>
+      ${actionBtn}
+      <button onclick="delDeck('${d.id}')">🗑</button></div>`;
+  }).join('');
 }
 function editDeckName(id) {
   const deck = S.decks.find(d => d.id === id);
@@ -864,13 +884,28 @@ function editDeckName(id) {
 async function shareDeck(id){
   const deck = S.decks.find(x=>x.id===id);
   if(!deck) return;
+  if(deck.isCopied) { toast(t('cards.copyBlocked')); return; }
+  if(deck.sharedId) { toast('Ta talia jest już udostępniona.'); return; }
   if(!confirm(`Udostępnić "${deck.name}" publicznie? Inni będą mogli skopiować.`)) return;
   toast('Udostępniam...');
   const err = await Sync.shareDeck(deck);
   if(err) toast(err);
   else {
+    save(); render();
     toast(t('cards.shared'));
     setTimeout(()=>{ if(tab==='cards'){ tab='library'; render(); } }, 1000);
+  }
+}
+async function unshareDeck(id){
+  const deck = S.decks.find(x=>x.id===id);
+  if(!deck || !deck.sharedId) return;
+  if(!confirm('Wycofać udostępnianie tej talii? Inni nie będą mogli jej już skopiować.')) return;
+  const err = await Sync.unshareDeck(deck.sharedId);
+  if(err) toast(err);
+  else {
+    deck.sharedId = null;
+    save(); render();
+    toast(t('cards.unshared'));
   }
 }
 function addDeck(){
