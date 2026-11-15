@@ -210,7 +210,7 @@ body.reviewing #t { bottom: 20px; }
 
 .mb.long { max-height: 80vh; overflow-y: auto; }
 .mb h3 { margin-top: 0; font-size: 22px; }
-.mb p, .mb ul { font-size: 15px; line-height: 1.6; color: var(--tx); white-space: pre-wrap;}
+.mb p, .mb ul, .mb div.mu { font-size: 15px; line-height: 1.6; color: var(--tx); white-space: pre-wrap; }
 .mb ul { padding-left: 20px; margin-bottom: 16px; }
 .mb li { margin-bottom: 8px; }
 
@@ -560,7 +560,7 @@ Sync = {
     } catch(e) {}
     
     await this.checkBonuses();
-    await this.checkChangelog(); // <-- DODANE
+    await this.checkChangelog();
     
     if(!this.profile) { showNicknameModal(); }
     else { hideLogin(); render(); } 
@@ -575,13 +575,16 @@ Sync = {
       const lastSeen = localStorage.getItem('altcards-changelog');
       
       if (lastSeen !== latest.version) {
+        const titleTxt = latest['title_' + UI] || latest.title_pl || latest.title_en || latest.title || '';
+        const contentTxt = latest['content_' + UI] || latest.content_pl || latest.content_en || latest.content || '';
+        
         setTimeout(() => {
           if($('#md')) $('#md').remove();
           const m = document.createElement('div'); m.id = 'md';
           m.innerHTML = `<div class="mb">
             <h2 style="text-align:center;font-size:32px;margin-bottom:10px">🚀</h2>
-            <h3 style="text-align:center;color:var(--ac)">${esc(latest.title)}</h3>
-            <p class="mu" style="margin-bottom:24px;line-height:1.6">${esc(latest.content)}</p>
+            <h3 style="text-align:center;color:var(--ac)">${esc(titleTxt)}</h3>
+            <div class="mu" style="margin-bottom:24px;line-height:1.6">${esc(contentTxt)}</div>
             <button class="p" onclick="document.getElementById('md').remove(); localStorage.setItem('altcards-changelog', '${latest.version}')">${t('common.ok')}</button>
           </div>`;
           document.body.appendChild(m);
