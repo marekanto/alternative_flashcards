@@ -314,7 +314,7 @@ const TR={
   'settings.newLimit':{pl:'Dzienny limit powtórek',en:'Daily review limit',es:'Límite diario de repaso'},'settings.newLimitInfo':{pl:'Maksymalna liczba kart (nowych + powtórek) na dzień.',en:'Max cards per day.',es:'Máximo de tarjetas por día.'},'settings.save':{pl:'Zapisz',en:'Save',es:'Guardar'},'settings.back':{pl:'← Wróć',en:'← Back',es:'← Volver'},'settings.saved':{pl:'Zapisano',en:'Saved',es:'Guardado'},'settings.loggedOut':{pl:'Wylogowano',en:'Signed out',es:'Sesión cerrada'},'settings.showTut':{pl:'📖 Pokaż instrukcję',en:'📖 Show tutorial',es:'📖 Mostrar tutorial'},
   'ui.lang':{pl:'Język interfejsu',en:'Interface language',es:'Idioma de la interfaz'},'ui.pet':{pl:'Wybierz zwierzaka',en:'Choose pet',es:'Elige mascota'},'ui.pet.dog':{pl:'🐕 Piesek',en:'🐕 Dog',es:'🐕 Perro'},'ui.pet.cat':{pl:'🐈 Kotek',en:'🐈 Cat',es:'🐈 Gato'},'ui.nick':{pl:'Pseudonim',en:'Nickname',es:'Apodo'},'ui.nick.change':{pl:'Zmień nick',en:'Change nickname',es:'Cambiar apodo'},
   'library.title':{pl:'Biblioteka publiczna',en:'Public Library',es:'Biblioteca pública'},'library.desc':{pl:'Kopiuj talie od innych. Autorzy dostają +50 XP za każdą kopię!',en:'Copy decks from others. Authors get +50 XP for each copy!',es:'¡Copia mazos de otros! Los autores reciben +50 XP por cada copia.'},
-  'library.copy':{pl:'Kopiuj',en:'Copy',es:'Copiar'},'library.copied':{pl:'Skopiowano! Sprawdź zakładkę Talie.',en:'Copied! Check the Decks tab.',es:'¡Copiado! Revisa la pestaña Mazos.'},'library.empty':{pl:'Brak udostępnionych talii.',en:'No shared decks.',es:'No hay mazos compartidos.'},'library.author':{pl:'Autor',en:'Author',es:'Autor'},'library.alreadyCopied':{pl:'Już skopiowałeś tę talię.',en:'Already copied this deck.',es:'Ya has copiado este mazo.'},'library.loading':{pl:'Ładowanie...',en:'Loading...',es:'Cargando...'},'library.downloads':{pl:'pobrań',en:'downloads',es:'descargas'},'library.suspicious':{pl:'Podejrzane zachowanie: skopiowałeś i usunąłeś tę talię dzisiaj. Spróbuj ponownie jutro.',en:'Suspicious behavior: you copied and deleted this deck today. Try again tomorrow.',es:'Comportamiento sospechoso: copiaste y eliminaste este mazo hoy. Inténtalo mañana.'},
+  'library.copy':{pl:'Kopiuj',en:'Copy',es:'Copiar'},'library.copied':{pl:'Skopiowano! Sprawdź zakładkę Talie.',en:'Copied! Check the Decks tab.',es:'¡Copiado! Revisa la pestaña Mazos.'},'library.empty':{pl:'Brak udostępnionych talii.',en:'No shared decks.',es:'No hay mazos compartidos.'},'library.author':{pl:'Autor',en:'Author',es:'Autor'},'library.alreadyCopied':{pl:'Już skopiowałeś tę talię.',en:'Already copied this deck.',es:'Ya has copiado este mazo.'},'library.loading':{pl:'Ładowanie...',en:'Loading...',es:'Cargando...'},'library.downloads':{pl:'pobrań',en:'downloads',es:'descargas'},'library.suspicious':{pl:'Podejrzane zachowanie: skopiowałeś i usunąłeś tę talię dzisiaj. Spróbuj ponownie jutro.',en:'Suspicious behavior: you copied and deleted this deck today. Try again tomorrow.',es:'Comportamiento sospechoso: copiaste y eliminaste este mazo hoy. Inténtalo mañana.'},'library.notFound':{pl:'Nie znaleziono talii',en:'Deck not found',es:'Mazo no encontrado'},
   'login.title':{pl:'AltCards',en:'AltCards',es:'AltCards'},'login.subtitle':{pl:'Zaloguj się, aby zsynchronizować fiszki.',en:'Sign in to sync your cards.',es:'Inicia sesión para sincronizar tus tarjetas.'},'login.email':{pl:'E-mail',en:'Email',es:'Correo'},'login.password':{pl:'Hasło (min. 6 znaków)',en:'Password (min. 6)',es:'Contraseña (mín. 6)'},'login.login':{pl:'Zaloguj',en:'Sign in',es:'Iniciar sesión'},'login.signup':{pl:'Załóż konto',en:'Create account',es:'Crear cuenta'},'login.err.notConfig':{pl:'Brak konfiguracji.',en:'Not configured.',es:'Sin configuración.'},'login.err.confirm':{pl:'Sprawdź e-mail.',en:'Check email.',es:'Revisa el correo.'},'login.err.email':{pl:'Poprawny e-mail.',en:'Valid email.',es:'Correo válido.'},'login.err.pass':{pl:'Min. 6 znaków.',en:'Min. 6 characters.',es:'Mín. 6 caracteres.'},
   'nick.title':{pl:'Witaj w społeczności!',en:'Welcome to the community!',es:'¡Bienvenido a la comunidad!'},'nick.desc':{pl:'Aplikacja się rozwija! Wprowadzamy rankingi i bibliotekę talii. Wybierz swój unikalny pseudonim, który będzie widoczny publicznie.',en:'The app is growing! We are adding leaderboards and a deck library. Choose your unique nickname, which will be publicly visible.',es:'¡La aplicación está creciendo! Añadimos clasificaciones y una biblioteca de mazos. Elige tu apodo único, que será visible públicamente.'},'nick.btn':{pl:'Zapisz pseudonim',en:'Save nickname',es:'Guardar apodo'},'nick.taken':{pl:'Ten nick jest już zajęty.',en:'This nickname is taken.',es:'Este apodo ya está en uso.'},'nick.short':{pl:'Min. 3 znaki.',en:'Min. 3 characters.',es:'Mín. 3 caracteres.'},'nick.welcome':{pl:'Witaj, {n}!',en:'Welcome, {n}!',es:'¡Bienvenido, {n}!'},
   'common.cancel':{pl:'Anuluj',en:'Cancel',es:'Cancelar'},'common.ok':{pl:'OK',en:'OK',es:'OK'},'common.info':{pl:'Info',en:'Info',es:'Info'},
@@ -672,32 +672,49 @@ Sync = {
     await this.client.from('deck_copies').delete().eq('deck_id', sharedId);
     return null;
   },
-  async copyDeck(sharedId,name,lang,cards,authorName){
-    const {data:exist} = await this.client.from('deck_copies').select('id, created_at').eq('user_id',this.user.id).eq('deck_id',sharedId).maybeSingle();
-    
-    if(exist) {
-      const copyDate = new Date(exist.created_at);
-      const today = new Date();
-      const copyDateStr = copyDate.getFullYear()+'-'+pad(copyDate.getMonth()+1)+'-'+pad(copyDate.getDate());
-      const todayStr = dk(today);
-      
-      if (copyDateStr === todayStr) {
-        return t('library.suspicious');
-      } else {
-        await this.client.from('deck_copies').delete().eq('id', exist.id);
-      }
-    }
+  async copyDeck(sharedId, name, lang, cards, authorName){
+    try {
+      const {data:exist, error:e1} = await this.client.from('deck_copies')
+        .select('id, created_at').eq('user_id', this.user.id).eq('deck_id', sharedId).maybeSingle();
+      if(e1) return 'Błąd kopiowania: ' + e1.message;
 
-    const newDeckId = uid();
-    S.decks.push({id:newDeckId,name:name,lang:lang,isCopied:true,copiedFrom:sharedId,author:authorName});
-    cards.forEach(c=>S.cards.push({id:uid(),deck:newDeckId,front:c.front,back:c.back,imageUrl:c.imageUrl,contextSentence:c.contextSentence,imageEnabled:false,ease:2.5,int:0,reps:0,lapses:0,due:0}));
-    save();
-    await this.client.from('deck_copies').insert({user_id:this.user.id,deck_id:sharedId});
-    const {data:sd} = await this.client.from('shared_decks').select('author_id').eq('id',sharedId).single();
-    if(sd && sd.author_id !== this.user.id){
-      try{await this.client.rpc('add_xp',{target_user_id:sd.author_id, xp_amount:50})}catch(e){}
+      if(exist) {
+        const copyDate = new Date(exist.created_at);
+        const today = new Date();
+        if (dk(copyDate) === dk(today)) {
+          return t('library.suspicious');
+        }
+        const {error:e2} = await this.client.from('deck_copies').delete().eq('id', exist.id);
+        if(e2) return 'Błąd czyszczenia: ' + e2.message;
+      }
+
+      const newDeckId = uid();
+      S.decks.push({id:newDeckId, name, lang, isCopied:true, copiedFrom:sharedId, author:authorName});
+      (cards||[]).forEach(c=>S.cards.push({
+        id:uid(), deck:newDeckId,
+        front:c.front, back:c.back,
+        imageUrl:c.imageUrl, contextSentence:c.contextSentence,
+        imageEnabled:false, ease:2.5, int:0, reps:0, lapses:0, due:0
+      }));
+      save();
+
+      const {error:e3} = await this.client.from('deck_copies').insert({user_id:this.user.id, deck_id:sharedId});
+      if(e3) {
+        console.warn('deck_copies INSERT:', e3.message);
+        if(/duplicate key|unique/i.test(e3.message)) {
+          return 'Błąd: konflikt UNIQUE w deck_copies';
+        }
+      }
+
+      const {data:sd} = await this.client.from('shared_decks').select('author_id').eq('id', sharedId).single();
+      if(sd && sd.author_id !== this.user.id){
+        try{await this.client.rpc('add_xp',{target_user_id:sd.author_id, xp_amount:50})}catch(e){}
+      }
+      return null;
+    } catch(e) {
+      console.error('copyDeck error:', e);
+      return 'Błąd: ' + (e.message || e);
     }
-    return null;
   },
   async signOut(){
     if(IS_DEV){if(confirm('Wyczyścić?')){localStorage.removeItem('altcards-v1');location.reload()}return}
@@ -1066,40 +1083,43 @@ function addCard(){
 }
 
 // ============ LIBRARY ============
+let _libDecks = [], _libNicks = {};
+
 function vLibrary(v){
   v.innerHTML = `<h2>${t('library.title')}</h2><p class="mu" style="margin-bottom:20px">${t('library.desc')}</p><div id="lib-list"><p class="mu">${t('library.loading')}</p></div>`;
   Sync.client.from('shared_decks').select('*').order('created_at',{ascending:false}).then(async ({data: decks, error}) => {
-    if(error) { $('#lib-list').innerHTML = `<p class="mu" style="color:#ef4444">Błąd: ${error.message}</p>`; return; }
+    if(error) { $('#lib-list').innerHTML = `<p class="mu" style="color:#ef4444">Błąd: ${esc(error.message)}</p>`; return; }
     if(!decks || !decks.length) { $('#lib-list').innerHTML = `<p class="mu">${t('library.empty')}</p>`; return; }
-    
+
     const authorIds = [...new Set(decks.map(d=>d.author_id))];
     const {data: profiles} = await Sync.client.from('profiles').select('id,nickname').in('id', authorIds);
-    const nickMap = {};
-    (profiles||[]).forEach(p=>nickMap[p.id]=p.nickname);
-    
-    $('#lib-list').innerHTML = decks.map(d=>{
-      const authorName = esc(nickMap[d.author_id]||'?').replace(/'/g,"\\'");
-      const deckName = esc(d.name).replace(/'/g,"\\'");
-      const cardsJson = JSON.stringify(d.cards).replace(/'/g,"\\'");
-      return `
+    _libNicks = {};
+    (profiles||[]).forEach(p=>_libNicks[p.id]=p.nickname);
+    _libDecks = decks;
+
+    $('#lib-list').innerHTML = decks.map((d, i) => `
       <div class="c" style="padding:16px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
           <div style="flex:1">
             <b>${esc(d.name)}</b><br>
-            <span class="mu">${langName(d.lang)} · ${t('library.author')}: ${esc(nickMap[d.author_id]||'?')} · ${d.cards.length} · 📥 ${d.copy_count || 0} ${t('library.downloads')}</span>
+            <span class="mu">${langName(d.lang)} · ${t('library.author')}: ${esc(_libNicks[d.author_id]||'?')} · ${d.cards.length} · 📥 ${d.copy_count || 0} ${t('library.downloads')}</span>
           </div>
-          <button class="s" onclick='copyDeck("${d.id}","${deckName}","${d.lang}",${cardsJson},"${authorName}")'>${t('library.copy')}</button>
+          <button class="s" onclick="copyDeckAt(${i})">${t('library.copy')}</button>
         </div>
       </div>
-    `;
-    }).join('');
+    `).join('');
+  }).catch(e => {
+    $('#lib-list').innerHTML = `<p class="mu" style="color:#ef4444">Błąd: ${esc(e.message||e)}</p>`;
   });
 }
-function copyDeck(id, name, lang, cards, author){
-  Sync.copyDeck(id, name, lang, cards, author).then(err=>{
-    if(err) toast(err);
-    else toast(t('library.copied'));
-  });
+
+function copyDeckAt(i){
+  const d = _libDecks[i];
+  if(!d) { toast(t('library.notFound')); return; }
+  const author = _libNicks[d.author_id] || '?';
+  Sync.copyDeck(d.id, d.name, d.lang, d.cards, author)
+    .then(err => { if(err) toast(err); else toast(t('library.copied')); })
+    .catch(e => { console.error('copyDeck:', e); toast('Błąd: ' + (e.message||e)); });
 }
 
 // ============ STATS ============
