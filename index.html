@@ -210,7 +210,7 @@ body.reviewing #t { bottom: 20px; }
 
 .mb.long { max-height: 80vh; overflow-y: auto; }
 .mb h3 { margin-top: 0; font-size: 22px; }
-.mb p, .mb ul { font-size: 15px; line-height: 1.6; color: var(--tx); }
+.mb p, .mb ul { font-size: 15px; line-height: 1.6; color: var(--tx); white-space: pre-wrap;}
 .mb ul { padding-left: 20px; margin-bottom: 16px; }
 .mb li { margin-bottom: 8px; }
 
@@ -517,7 +517,7 @@ function showLogin(){
     if(signUp&&!r.data.session){err.textContent=t('login.err.confirm');return}
     Sync.user = r.data.user || r.data.session?.user;
     await Sync.startSession();
-    if(signUp) showTutorial(); // <--- TUTAJ PRZYWRÓCONE WYŚWIETLANIE
+    if(signUp) showTutorial();
   };
   $('#lbtn').onclick=()=>go(false);
   $('#rbtn').onclick=()=>go(true);
@@ -560,8 +560,34 @@ Sync = {
     } catch(e) {}
     
     await this.checkBonuses();
+    await this.checkChangelog(); // <-- DODANE
+    
     if(!this.profile) { showNicknameModal(); }
     else { hideLogin(); render(); } 
+  },
+  async checkChangelog() {
+    if(IS_DEV) return;
+    try {
+      const {data} = await this.client.from('changelog').select('*').order('created_at', {ascending: false}).limit(1);
+      if(!data || !data.length) return;
+      
+      const latest = data[0];
+      const lastSeen = localStorage.getItem('altcards-changelog');
+      
+      if (lastSeen !== latest.version) {
+        setTimeout(() => {
+          if($('#md')) $('#md').remove();
+          const m = document.createElement('div'); m.id = 'md';
+          m.innerHTML = `<div class="mb">
+            <h2 style="text-align:center;font-size:32px;margin-bottom:10px">🚀</h2>
+            <h3 style="text-align:center;color:var(--ac)">${esc(latest.title)}</h3>
+            <p class="mu" style="margin-bottom:24px;line-height:1.6">${esc(latest.content)}</p>
+            <button class="p" onclick="document.getElementById('md').remove(); localStorage.setItem('altcards-changelog', '${latest.version}')">${t('common.ok')}</button>
+          </div>`;
+          document.body.appendChild(m);
+        }, 2000);
+      }
+    } catch(e) {}
   },
   async download(){
     if(IS_DEV) return;
