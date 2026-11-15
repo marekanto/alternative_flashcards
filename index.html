@@ -313,7 +313,7 @@ const TR={
   'settings.newLimit':{pl:'Dzienny limit powtórek',en:'Daily review limit'},'settings.newLimitInfo':{pl:'Maksymalna liczba kart (nowych + powtórek) na dzień.',en:'Max cards per day.'},'settings.save':{pl:'Zapisz',en:'Save'},'settings.back':{pl:'← Wróć',en:'← Back'},'settings.saved':{pl:'Zapisano',en:'Saved'},'settings.loggedOut':{pl:'Wylogowano',en:'Signed out'},'settings.showTut':{pl:'📖 Pokaż instrukcję',en:'📖 Show tutorial'},
   'ui.lang':{pl:'Język interfejsu',en:'Interface language'},'ui.pet':{pl:'Wybierz zwierzaka',en:'Choose pet'},'ui.pet.dog':{pl:'🐕 Piesek',en:'🐕 Dog'},'ui.pet.cat':{pl:'🐈 Kotek',en:'🐈 Cat'},'ui.nick':{pl:'Pseudonim',en:'Nickname'},'ui.nick.change':{pl:'Zmień nick',en:'Change nickname'},
   'library.title':{pl:'Biblioteka publiczna',en:'Public Library'},'library.desc':{pl:'Kopiuj talie od innych. Autorzy dostają +50 XP za każdą kopię!',en:'Copy decks from others. Authors get +50 XP for each copy!'},
-  'library.copy':{pl:'Kopiuj',en:'Copy'},'library.copied':{pl:'Skopiowano! Sprawdź zakładkę Talie.',en:'Copied! Check the Decks tab.'},'library.empty':{pl:'Brak udostępnionych talii.',en:'No shared decks.'},'library.author':{pl:'Autor',en:'Author'},'library.alreadyCopied':{pl:'Już skopiowałeś tę talię.',en:'Already copied this deck.'},'library.loading':{pl:'Ładowanie...',en:'Loading...'},'library.downloads':{pl:'pobrań',en:'downloads'},
+  'library.copy':{pl:'Kopiuj',en:'Copy'},'library.copied':{pl:'Skopiowano! Sprawdź zakładkę Talie.',en:'Copied! Check the Decks tab.'},'library.empty':{pl:'Brak udostępnionych talii.',en:'No shared decks.'},'library.author':{pl:'Autor',en:'Author'},'library.alreadyCopied':{pl:'Już skopiowałeś tę talię.',en:'Already copied this deck.'},'library.loading':{pl:'Ładowanie...',en:'Loading...'},'library.downloads':{pl:'pobrań',en:'downloads'},'library.suspicious':{pl:'Podejrzane zachowanie: skopiowałeś i usunąłeś tę talię dzisiaj. Spróbuj ponownie jutro.',en:'Suspicious behavior: you copied and deleted this deck today. Try again tomorrow.'},
   'login.title':{pl:'AltCards',en:'AltCards'},'login.subtitle':{pl:'Zaloguj się, aby zsynchronizować fiszki.',en:'Sign in to sync your cards.'},'login.email':{pl:'E-mail',en:'Email'},'login.password':{pl:'Hasło (min. 6 znaków)',en:'Password (min. 6)'},'login.login':{pl:'Zaloguj',en:'Sign in'},'login.signup':{pl:'Załóż konto',en:'Create account'},'login.err.notConfig':{pl:'Brak konfiguracji.',en:'Not configured.'},'login.err.confirm':{pl:'Sprawdź e-mail.',en:'Check email.'},
   'nick.title':{pl:'Witaj w społeczności!',en:'Welcome to the community!'},'nick.desc':{pl:'Aplikacja się rozwija! Wprowadzamy rankingi i bibliotekę talii. Wybierz swój unikalny pseudonim, który będzie widoczny publicznie.',en:'The app is growing! We are adding leaderboards and a deck library. Choose your unique nickname, which will be publicly visible.'},'nick.btn':{pl:'Zapisz pseudonim',en:'Save nickname'},'nick.taken':{pl:'Ten nick jest już zajęty.',en:'This nickname is taken.'},'nick.short':{pl:'Min. 3 znaki.',en:'Min. 3 characters.'},
   'common.cancel':{pl:'Anuluj',en:'Cancel'},'common.ok':{pl:'OK',en:'OK'},'common.info':{pl:'Info',en:'Info'},
@@ -632,8 +632,22 @@ Sync = {
     return null;
   },
   async copyDeck(sharedId,name,lang,cards,authorName){
-    const {data:exist} = await this.client.from('deck_copies').select('id').eq('user_id',this.user.id).eq('deck_id',sharedId).maybeSingle();
-    if(exist) return t('library.alreadyCopied');
+    const {data:exist} = await this.client.from('deck_copies').select('id, created_at').eq('user_id',this.user.id).eq('deck_id',sharedId).maybeSingle();
+    
+    if(exist) {
+      const copyDate = new Date(exist.created_at);
+      const today = new Date();
+      const copyDateStr = copyDate.getFullYear()+'-'+pad(copyDate.getMonth()+1)+'-'+pad(copyDate.getDate());
+      const todayStr = dk(today);
+      
+      if (copyDateStr === todayStr) {
+        return t('library.suspicious');
+      } else {
+        // Minął dzień, usuwamy stary wpis, żeby móc skopiować ponownie i nabić licznik
+        await this.client.from('deck_copies').delete().eq('id', exist.id);
+      }
+    }
+
     const newDeckId = uid();
     S.decks.push({id:newDeckId,name:name,lang:lang,isCopied:true,copiedFrom:sharedId,author:authorName});
     cards.forEach(c=>S.cards.push({id:uid(),deck:newDeckId,front:c.front,back:c.back,imageUrl:c.imageUrl,contextSentence:c.contextSentence,imageEnabled:false,ease:2.5,int:0,reps:0,lapses:0,due:0}));
