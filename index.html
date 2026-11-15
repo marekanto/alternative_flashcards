@@ -288,7 +288,7 @@ const TR={
   'sess.imgSearch':{pl:'Szukam…',en:'Searching…'},'sess.imgNotFound':{pl:'Nie znaleziono.',en:'Not found.'},'sess.imgError':{pl:'Błąd obrazu.',en:'Image error.'},'sess.imgCredit':{pl:'Wikimedia Commons',en:'Wikimedia Commons'},
   'cards.title':{pl:'Talie',en:'Decks'},'cards.search':{pl:'Szukaj fiszki…',en:'Search cards…'},'cards.decksTitle':{pl:'Zarządzaj taliami',en:'Manage decks'},'cards.newDeckPlaceholder':{pl:'Nowa talia',en:'New deck'},'cards.createDeck':{pl:'Utwórz talię',en:'Create deck'},
   'cards.importTitle':{pl:'Import CSV',en:'Import CSV'},'cards.colsHint':{pl:'Kolumny: przód · tył',en:'Cols: front · back'},'cards.importBtn':{pl:'Importuj',en:'Import'},'cards.noCards':{pl:'Brak kart.',en:'No cards.'},'cards.selectFile':{pl:'Wybierz plik',en:'Choose file'},'cards.imported':{pl:'Zaimportowano: {n}',en:'Imported: {n}'},
-  'cards.editTitle':{pl:'Edytuj',en:'Edit'},'cards.deleteCard':{pl:'Usunąć fiszkę?',en:'Delete card?'},'cards.deleteDeck':{pl:'Usunąć talię?',en:'Delete deck?'},'cards.keepOneDeck':{pl:'Musi zostać 1 talia',en:'Keep at least 1 deck'},'cards.cardDeleted':{pl:'Usunięto',en:'Deleted'},'cards.front':{pl:'Przód',en:'Front'},'cards.back':{pl:'Tył',en:'Back'},'cards.bothRequired':{pl:'Wymagane obie strony',en:'Both required'},'cards.deckCount':{pl:'{n} kart',en:'{n} cards'},'cards.edit':{pl:'Edytuj',en:'Edit'},'cards.del':{pl:'Usuń',en:'Delete'},'cards.add':{pl:'Dodaj fiszkę',en:'Add card'},'cards.share':{pl:'Udostępnij',en:'Share'},'cards.shared':{pl:'Talia udostępniona!',en:'Deck shared!'},
+  'cards.editTitle':{pl:'Edytuj',en:'Edit'},'cards.deleteCard':{pl:'Usunąć fiszkę?',en:'Delete card?'},'cards.deleteDeck':{pl:'Usunąć talię?',en:'Delete deck?'},'cards.keepOneDeck':{pl:'Musi zostać 1 talia',en:'Keep at least 1 deck'},'cards.cardDeleted':{pl:'Usunięto',en:'Deleted'},'cards.front':{pl:'Przód',en:'Front'},'cards.back':{pl:'Tył',en:'Back'},'cards.bothRequired':{pl:'Wymagane obie strony',en:'Both required'},'cards.deckCount':{pl:'{n} kart',en:'{n} cards'},'cards.edit':{pl:'Edytuj',en:'Edit'},'cards.del':{pl:'Usuń',en:'Delete'},'cards.add':{pl:'Dodaj fiszkę',en:'Add card'},'cards.share':{pl:'Udostępnij',en:'Share'},'cards.shared':{pl:'Talia udostępniona!',en:'Deck shared!'},'cards.editName':{pl:'Zmień nazwę',en:'Rename'},
   'add.title':{pl:'Nowa fiszka',en:'New card'},'add.front':{pl:'Przód',en:'Front'},'add.back':{pl:'Tył',en:'Back'},'add.suggest':{pl:'✨ Podpowiedz',en:'✨ Suggest'},'add.pons':{pl:'PONS',en:'PONS'},'add.add':{pl:'Dodaj fiszkę',en:'Add card'},'add.bothSides':{pl:'Uzupełnij obie strony',en:'Fill both sides'},'add.added':{pl:'Dodano ✓',en:'Added ✓'},
   'add.sg.search':{pl:'Szukam…',en:'Searching…'},'add.sg.unavailable':{pl:'Użyj PONS.',en:'Use PONS.'},'add.sg.noResults':{pl:'Brak.',en:'None.'},'add.sg.error':{pl:'Błąd.',en:'Error.'},
   'stats.title':{pl:'Postępy',en:'Progress'},'stats.now':{pl:'Teraz',en:'Now'},'stats.all':{pl:'wszystkich kart',en:'all cards'},'stats.mastered':{pl:'opanowane',en:'mastered'},'stats.learning':{pl:'w nauce',en:'learning'},'stats.new':{pl:'nowe',en:'new'},'stats.dueNow':{pl:'do powtórki',en:'due now'},'stats.today':{pl:'dziś',en:'today'},
@@ -573,7 +573,18 @@ Sync = {
         const bonus = idx===0?100:idx===1?50:25;
         S.settings.xp = (S.settings.xp||0) + bonus;
         save();
-        setTimeout(()=>toast(`🏆 Top ${idx+1} wczoraj! +${bonus} XP`),1500);
+        setTimeout(()=>{
+          if($('#md')) $('#md').remove();
+          const m = document.createElement('div'); m.id = 'md';
+          m.innerHTML = `<div class="mb" style="text-align:center">
+            <h2 style="font-size:40px;margin-bottom:10px">🏆</h2>
+            <h3>Gratulacje!</h3>
+            <p class="mu" style="margin-bottom:20px">Zająłeś <b>${idx + 1}. miejsce</b> w wczorajszym rankingu!</p>
+            <p style="font-size:24px;font-weight:800;color:var(--ac)">+${bonus} XP</p>
+            <button class="p" style="margin-top:20px" onclick="document.getElementById('md').remove()">Super!</button>
+          </div>`;
+          document.body.appendChild(m);
+        }, 1500);
       }
     } catch(e){}
   },
@@ -806,7 +817,18 @@ function renderCards(){
   $('#ls').innerHTML = arr.slice(0,200).map(c=>`<div class="it"><div><b>${esc(c.front)}</b><br><span class="mu">${esc(c.back)}</span></div><button onclick="editCard('${c.id}')">✎</button><button onclick="delCard('${c.id}')">🗑</button></div>`).join('')||`<p class="mu">${t('cards.noCards')}</p>`;
 }
 function dlist(){
-  $('#dl').innerHTML = S.decks.map(d=>`<div class="it"><div>${esc(d.name)} <span class="mu">· ${langName(d.lang)} · ${S.cards.filter(c=>c.deck==d.id).length}</span></div><button onclick="shareDeck('${d.id}')" title="${t('cards.share')}">🌍</button><button onclick="delDeck('${d.id}')">🗑</button></div>`).join('');
+  $('#dl').innerHTML = S.decks.map(d=>`<div class="it"><div>${esc(d.name)} <span class="mu">· ${langName(d.lang)} · ${S.cards.filter(c=>c.deck==d.id).length}</span></div><button onclick="editDeckName('${d.id}')" title="${t('cards.editName')}">✎</button><button onclick="shareDeck('${d.id}')" title="${t('cards.share')}">🌍</button><button onclick="delDeck('${d.id}')">🗑</button></div>`).join('');
+}
+function editDeckName(id) {
+  const deck = S.decks.find(d => d.id === id);
+  if (!deck) return;
+  modal(t('cards.editName'), [{ v: deck.name, ph: t('cards.newDeckPlaceholder') }], (v) => {
+    const newName = v[0].trim();
+    if (newName) {
+      deck.name = newName;
+      save(); render(); toast('Zmieniono nazwę');
+    }
+  });
 }
 function shareDeck(id){
   const deck = S.decks.find(x=>x.id===id);
