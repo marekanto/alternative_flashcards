@@ -19,28 +19,16 @@ def chat(
     Wywołanie DeepSeek Chat Completions.
 
     Parametry:
-      system_prompt, user_prompt — treść wiadomości.
-      max_tokens  — limit odpowiedzi (default: MAX_OUTPUT_TOKENS z settings).
-      model       — override modelu (default: MODEL z settings).
-      thinking    — "enabled" / "disabled" / None.
-                    None → używa THINKING z settings.
-                    "enabled" → dołącza {"thinking": {"type": "enabled"}}
-                    "disabled" → NIE dołącza pola thinking
-                    (DeepSeek API nie zna wartości "disabled" — pominięcie
-                    pola jest równoważne wyłączeniu rozumowania).
-      json_mode   — True (default, zgodne z code_agent/qa_agent): wysyła
-                    response_format={"type":"json_object"} i zwraca dict.
-                    False: zwraca surowy string (np. do własnego parsowania).
-
-    Zwraca:
-      json_mode=True  → dict (sparsowany JSON)
-      json_mode=False → str (surowa treść odpowiedzi)
+      thinking  — "enabled" / "disabled" / None (None = THINKING z settings)
+      json_mode — True: response_format=json_object, zwraca dict
+                  False: zwraca string
     """
     api_key = os.getenv("DEEPSEEK_API_KEY")
     if not api_key:
         raise RuntimeError("Missing DEEPSEEK_API_KEY GitHub secret")
 
     use_thinking = THINKING if thinking is None else thinking
+    effective_max = int(max_tokens or MAX_OUTPUT_TOKENS)
 
     payload = {
         "model": model or MODEL,
@@ -48,11 +36,10 @@ def chat(
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        "max_tokens": int(max_tokens or MAX_OUTPUT_TOKENS),
+        "max_tokens": effective_max,
         "stream": False,
     }
 
-    # DeepSeek przyjmuje wyłącznie {"type": "enabled"}; brak pola = disabled.
     if use_thinking == "enabled":
         payload["thinking"] = {"type": "enabled"}
 
@@ -93,9 +80,28 @@ def chat(
     )
 
     choices = result.get("choices") or []
-    content = (choices[0].get("message") or {}).get("content") if choices else None
+    if not choices:
+        raise RuntimeError(f"DeepSeek returned no choices. Raw: {str(result)[:600]}")
+
+    choice = choices[0]
+    finish_reason = choice.get("finish_reason")
+    content = (choice.get("message") or {}).get("content")
+
+    # --- KLUCZOWE: wykryj ucięcie ---
+    if finish_reason == "length":
+        got = usage.get("completion_tokens", "?")
+        raise RuntimeError(
+            f"DeepSeek output truncated: hit max_tokens={effective_max} "
+            f"(generated {got} tokens, finish_reason=length). "
+            f"Raise MAX_OUTPUT_TOKENS or narrow the task. "
+            f"Content preview: {str(content)[:400]}"
+        )
+
     if not isinstance(content, str) or not content.strip():
-        raise RuntimeError("DeepSeek returned empty content")
+        raise RuntimeError(
+            f"DeepSeek returned empty content (finish_reason={finish_reason}). "
+            f"Raw: {str(result)[:400]}"
+        )
 
     if not json_mode:
         return content
@@ -104,5 +110,6 @@ def chat(
         return json.loads(content)
     except json.JSONDecodeError as exc:
         raise RuntimeError(
-            f"DeepSeek returned invalid JSON: {content[:600]}"
+            f"DeepSeek returned invalid JSON (finish_reason={finish_reason}): "
+            f"{content[:600]}"
         ) from exc
