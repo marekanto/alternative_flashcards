@@ -25,7 +25,7 @@ def _assert(cond: bool, msg: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 1. Ogólne zadanie XP — dokładnie to, na czym agent się wykładał
+# 1. Ogólne zadanie XP
 # ---------------------------------------------------------------------------
 def test_generic_xp_task_is_complete() -> None:
     task = "Sprawdź dlaczego XP nie zwiększa się i czy może być gubione"
@@ -38,25 +38,25 @@ def test_generic_xp_task_is_complete() -> None:
     _assert(not res["over_limit"], f"pominięto z powodu limitu: {res['over_limit']}")
 
     required = [
-        # pełne bloki
+        # funkcje
         "function getLevelInfo", "function getRank", "function render",
         "function vStudy", "function vStats",
         "function ans", "function undoAnswer", "function grade",
-        # Sync — pełne metody
+        # Sync — pełne metody (queueUpload NIE jest async — patrz index.html)
         "async startSession", "async download", "async logXp",
-        "async queueUpload", "async upload", "async checkBonuses",
+        "queueUpload", "async upload", "async checkBonuses",
         # init + save
         "const defaults", "const save", "try{S=JSON.parse",
         # krytyczne kotwice
         "lvl-display",
         "S.settings.xp",
         "get_leaderboard",
-        "add_xp",
+        "xp_logs",
     ]
     for token in required:
         _assert(token in ctx, f"brak w kontekście XP: {token!r}")
 
-    # ucięte bloki — nie mogą kończyć się w środku (np. przedwczesny `}`)
+    # ucięte bloki — nie mogą kończyć się w środku
     _assert("return { level: lvl, currentXp: tempXp, nextLevelXp: req };" in ctx,
             "getLevelInfo wygląda na ucięty — brak pełnego `return`")
     _assert("Sync?.queueUpload" in ctx,
@@ -64,20 +64,23 @@ def test_generic_xp_task_is_complete() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 2. Zadanie bonusów rankingowych — musi zawierać logikę bonusu
+# 2. Zadanie bonusów rankingowych
 # ---------------------------------------------------------------------------
 def test_ranking_bonus_task() -> None:
     task = "Dlaczego bonus XP za top 3 w rankingu dziennym nie jest widoczny w levelu?"
     res = build_context(task, SOURCE)
     ctx = res["context"]
-    for token in ("checkBonuses", "get_leaderboard", "add_xp",
-                  "S.settings.xp", "xp_logs", "serverXp"):
+
+    # checkBonuses używa logXp (insert do xp_logs), NIE RPC add_xp.
+    # add_xp jest w copyDeck (bonus dla autora talii), które nie należy do tej ścieżki.
+    for token in ("checkBonuses", "get_leaderboard", "logXp",
+                  "S.settings.xp", "serverXp", "xp_logs"):
         _assert(token in ctx, f"brak w kontekście bonusu: {token!r}")
     _assert(res["chars"] <= MAX_CONTEXT_CHARS, "przekroczony limit znaków")
 
 
 # ---------------------------------------------------------------------------
-# 3. Zadanie logowania — nie może regresować poprzedniej poprawki
+# 3. Zadanie logowania
 # ---------------------------------------------------------------------------
 def test_login_task() -> None:
     task = "Usuń podtytuł na ekranie logowania i zmień tagline"
@@ -90,7 +93,7 @@ def test_login_task() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 4. Weryfikacja brace-matchera na znanym przypadku
+# 4. Brace-matcher na template literalu + zagnieżdżonych klamrach
 # ---------------------------------------------------------------------------
 def test_brace_matcher_handles_templates_and_nested() -> None:
     from agent.context_builder import _match_braces
