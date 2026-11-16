@@ -22,8 +22,22 @@ def main():
         raise RuntimeError("TASK must contain 1–2500 characters")
     allow_sensitive = os.getenv("ALLOW_SENSITIVE_CHANGES", "false").lower() == "true"
 
-    if run(["git", "status", "--porcelain"]).strip():
-        raise RuntimeError("Checkout is not clean before agent run")
+    status = run(["git", "status", "--porcelain", "--untracked-files=all"])
+    dirty = []
+    for line in status.splitlines():
+        # Python may create bytecode cache files during module imports before
+        # main() starts. They are generated artifacts, not user changes.
+        path = line[3:].split(" -> ")[-1].strip()
+        if "__pycache__/" in path or path.endswith(".pyc"):
+            continue
+        dirty.append(line)
+    if dirty:
+        details = "\n".join(dirty[:30])
+        raise RuntimeError(
+            "Checkout is not clean before agent run. Unexpected working-tree entries:\n"
+            + details
+            + "\nCommit, move, or remove these entries before rerunning."
+        )
 
     source, context = build_context(task, ROOT)
     print(f"Context selected: {len(context)} chars; index.html: {len(source)} chars")
