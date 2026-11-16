@@ -17,11 +17,15 @@ from __future__ import annotations
 import re
 from typing import Iterable
 
+MAX_CONTEXT_CHARS = 24_000
+TARGET_FILE = "index.html"
 try:
-    from .settings import MAX_CONTEXT_CHARS, TARGET_FILE
-except Exception:  # pragma: no cover
-    MAX_CONTEXT_CHARS = 16_000
-    TARGET_FILE = "index.html"
+    from .settings import MAX_CONTEXT_CHARS, TARGET_FILE  # type: ignore[no-redef]
+except Exception:
+    try:
+        from settings import MAX_CONTEXT_CHARS, TARGET_FILE  # type: ignore[no-redef]
+    except Exception:
+        pass
 
 # Twardy limit snippetów dla ścieżki XP — ignorujemy ewentualny MAX_SNIPPETS
 # z settings.py, bo dla XP potrzeba więcej bloków niż dla zwykłych zadań.
