@@ -7,23 +7,6 @@ Pipeline:
   3. Code Agent → operations / analiza,
   4. patch_validator,
   5. QA review z retry loop.
-
-Statusy agenta:
-  * ready / ok / applied / patch   → próbujemy patch
-  * cannot_do_safely, need_context,
-    refused, needs_human_review,
-    error                          → TERMINALNE (stop, bez retry)
-  * wszystko inne + brak ops       → 1 retry, potem stop
-
-Tryby:
-  * DIAGNOSE_ONLY=true → model NIE patchuje, tylko analizuje.
-    Wypisuje summary + reasoning + proponowane operacje (nieaplikowane).
-    Nie uruchamia QA review. Idealne do zrozumienia przyczyny.
-
-QA review:
-  * pass                 → sukces
-  * needs_human_review   → terminalne, przerwij
-  * fail                 → retry z feedbackiem (max QA_MAX_ATTEMPTS)
 """
 import os
 import subprocess
@@ -41,19 +24,20 @@ from qa_agent import review
 from settings import TARGET_FILE
 
 ROOT = Path(__file__).resolve().parents[1]
-
-QA_MAX_ATTEMPTS = int(os.getenv("QA_MAX_ATTEMPTS", "2"))
+QA_MAX_ATTEMPTS = int(os.getenv("QA_MAX_ATTEMPTS", "3"))
 DIAGNOSE_ONLY = os.getenv("DIAGNOSE_ONLY", "false").lower() == "true"
 
-# Statusy, przy których dalsze próby nie mają sensu — model odmówił,
-# poprosił o kontekst, albo QA zażądał człowieka.
-TERMINAL_STATUSES = {
-    "need_context",
-    "refused",
-    "error",
-    "cannot_do_safely",
-    "needs_human_review",
-}
+# Tylko te statusy naprawdę kończą pipeline.
+TRULY_TERMINAL = {"need_context", "refused"}
+
+RETRY_NUDGE = (
+    "\n\n// ===== IMPORTANT INSTRUCTIONS FOR THIS RETRY =====\n"
+    "You MUST produce at least one find/replace operation.\n"
+    "Returning `cannot_do_safely`, `needs_human_review`, or empty operations "
+    "is NOT acceptable when QA has given specific fixable feedback.\n"
+    "Read each QA finding below and address it with a concrete code change.\n"
+    "Stay inside the target task scope: no refactors, no unrelated changes.\n"
+)
 
 
 def run(args):
@@ -73,10 +57,8 @@ def check_clean_tree():
     if dirty:
         details = "\n".join(dirty[:30])
         raise RuntimeError(
-            "Checkout is not clean before agent run. "
-            "Unexpected working-tree entries:\n"
+            "Checkout is not clean before agent run. Unexpected entries:\n"
             + details
-            + "\nCommit, move, or remove these entries before rerunning."
         )
 
 
@@ -91,33 +73,24 @@ def _extract_operations(proposal):
 
 
 def _print_diagnosis(proposal):
-    """Wypisuje pełną analizę modelu (tryb DIAGNOSE_ONLY)."""
     print("\n" + "=" * 70)
-    print("DIAGNOSE MODE — analiza modelu (patch NIE został zaaplikowany)")
+    print("DIAGNOSE MODE — analiza modelu (patch NIE zaaplikowany)")
     print("=" * 70)
-
-    status = (proposal or {}).get("status")
-    print(f"\nStatus:  {status}")
+    print(f"\nStatus:  {(proposal or {}).get('status')}")
     print(f"Summary: {(proposal or {}).get('summary', '')}")
-
-    # model może zwrócić reasoning / analysis / explanation / notes
     for key in ("reasoning", "analysis", "explanation", "notes", "diagnosis"):
         val = (proposal or {}).get(key)
         if val:
-            print(f"\n--- {key} ---")
-            print(val if isinstance(val, str) else repr(val))
-
+            print(f"\n--- {key} ---\n{val}")
     ops = _extract_operations(proposal)
     if ops:
-        print(f"\n--- Proponowane operacje ({len(ops)}; NIE zaaplikowane) ---")
+        print(f"\n--- Proponowane operacje ({len(ops)}; nieaplikowane) ---")
         for i, op in enumerate(ops[:10], 1):
             if isinstance(op, dict):
-                find_txt = str(op.get("find", ""))[:120].replace("\n", " ⏎ ")
-                repl_txt = str(op.get("replace", ""))[:120].replace("\n", " ⏎ ")
-                print(f"  {i}. FIND: {find_txt!r}")
-                print(f"     REPL: {repl_text!r}" if False else f"     REPL: {repl_txt!r}")
-            else:
-                print(f"  {i}. {str(op)[:160]}")
+                f = str(op.get("find", ""))[:120].replace("\n", " ⏎ ")
+                r = str(op.get("replace", ""))[:120].replace("\n", " ⏎ ")
+                print(f"  {i}. FIND: {f!r}")
+                print(f"     REPL: {r!r}")
 
 
 def main():
@@ -131,7 +104,6 @@ def main():
 
     check_clean_tree()
 
-    # --- źródło + kontekst ---
     source_path = ROOT / TARGET_FILE
     if not source_path.exists():
         raise RuntimeError(f"Target file not found: {TARGET_FILE}")
@@ -142,10 +114,8 @@ def main():
 
     print(
         f"Context selected: {result['chars']} chars "
-        f"({len(result['included'])} blocks); "
-        f"index.html: {len(source)} chars"
+        f"({len(result['included'])} blocks); index.html: {len(source)} chars"
     )
-    print(f"Included blocks: {result['included']}")
     print(f"Mode: {'DIAGNOSE_ONLY' if DIAGNOSE_ONLY else 'PATCH'}")
 
     if result["over_limit"]:
@@ -156,16 +126,13 @@ def main():
     if result["missing"]:
         raise RuntimeError(
             f"Context missing blocks: {result['missing']}. "
-            "Fix context_builder.py or the source."
+            "Fix context_builder.py."
         )
 
-    # --- tryb diagnostyczny: jedno wywołanie, zero patchy, zero QA ---
     if DIAGNOSE_ONLY:
-        proposal = propose(task, base_context)
-        _print_diagnosis(proposal)
+        _print_diagnosis(propose(task, base_context))
         return
 
-    # --- tryb patch: retry loop z QA ---
     qa_feedback = ""
     last_verdict = None
     last_error = "brak"
@@ -175,41 +142,27 @@ def main():
 
         model_context = base_context
         if qa_feedback:
-            model_context = (
-                base_context
-                + "\n\n// ===== PREVIOUS QA FEEDBACK (fix these specific issues) =====\n"
-                + qa_feedback
-            )
+            model_context = base_context + "\n\n" + qa_feedback + RETRY_NUDGE
 
         proposal = propose(task, model_context)
         status = (proposal or {}).get("status")
         summary = (proposal or {}).get("summary", "")
         print(f"Code agent: {status} — {summary}")
 
-        # --- statusy terminalne: NATYCHMIAST stop ---
-        if status in TERMINAL_STATUSES:
-            print("\nTerminal status — no retry will help.")
-            print(f"Model's reasoning / summary:\n{summary}")
-            ops = _extract_operations(proposal)
-            if ops:
-                print(f"\nBut model did propose {len(ops)} operation(s) before refusing:")
-                for i, op in enumerate(ops[:5], 1):
-                    if isinstance(op, dict):
-                        print(f"  {i}. {str(op.get('find',''))[:80]!r}")
+        if status in TRULY_TERMINAL:
             raise RuntimeError(
                 f"Code agent returned terminal status={status!r}. "
                 f"Summary: {summary}. "
-                "Run with DIAGNOSE_ONLY=true to see full analysis, "
-                "then use a narrower task."
+                "Use DIAGNOSE_ONLY=true to inspect, then narrow the task."
             )
 
+        # cannot_do_safely / needs_human_review / brak operacji → retry z nudge
         ops = _extract_operations(proposal)
         if not ops:
             last_error = f"no operations (status={status!r})"
-            print(f"  → {last_error}; retrying")
+            print(f"  → {last_error}; retrying with stronger nudge")
             continue
 
-        # --- patch in-memory ---
         try:
             updated = apply_operations(source, proposal)
             enforce_sensitive_guard(source, updated, allow_sensitive)
@@ -218,7 +171,6 @@ def main():
             print(f"  → {last_error}; retrying")
             continue
 
-        # --- diff ---
         source_path.write_text(updated, encoding="utf-8")
         try:
             changed = set(run(["git", "diff", "--name-only"]).splitlines())
@@ -232,11 +184,10 @@ def main():
 
         if not diff.strip():
             source_path.write_text(source, encoding="utf-8")
-            last_error = "no diff produced"
+            last_error = "no diff"
             print(f"  → {last_error}; retrying")
             continue
 
-        # --- QA ---
         verdict = review(task, diff)
         last_verdict = verdict
         qa_verdict = verdict.get("verdict")
@@ -250,26 +201,17 @@ def main():
             print("SUMMARY:", summary or "AltCards change")
             return
 
-        if qa_verdict in ("needs_human_review",):
-            source_path.write_text(source, encoding="utf-8")
-            findings = "\n".join(f"- {x}" for x in verdict.get("findings", []))
-            raise RuntimeError(
-                "QA returned needs_human_review — this is terminal. "
-                "Model or task scope is too vague for automated fix. "
-                "Run with DIAGNOSE_ONLY=true to understand, then narrow "
-                f"the task. QA findings:\n{findings}"
-            )
-
-        # qa_verdict == 'fail' → retry z feedbackiem
-        qa_feedback = "\n".join(
-            f"- {x}" for x in verdict.get("findings", [])
-        ) or "(no detailed findings)"
+        # wszystkie inne QA (fail, needs_human_review) → retry z feedbackiem
+        qa_feedback = (
+            "// ===== PREVIOUS QA FINDINGS — ADDRESS EACH ONE =====\n"
+            + "\n".join(f"- {x}" for x in verdict.get("findings", []))
+        )
         source_path.write_text(source, encoding="utf-8")
-        last_error = f"QA rejected: {qa_feedback[:300]}"
-        print("  → QA rejected; retrying with feedback")
+        last_error = f"QA {qa_verdict}"
+        print(f"  → QA {qa_verdict}; retrying with feedback")
 
     raise RuntimeError(
-        f"All {QA_MAX_ATTEMPTS} QA attempts failed. "
+        f"All {QA_MAX_ATTEMPTS} attempts failed. "
         f"Last verdict: {last_verdict and last_verdict.get('verdict')}. "
         f"Last error: {last_error}"
     )
