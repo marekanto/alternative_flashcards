@@ -16,8 +16,13 @@ ALIASES = {
     "sync": ["Sync", "save"],
     "synchron": ["Sync", "save"],
     "supabase": ["Sync"],
-    "login": ["Sync", "showLogin", "changeLoginLang"],
-    "logowanie": ["Sync", "showLogin"],
+    # Login UI is rendered dynamically in showLogin(); its visible copy lives
+    # in the TR dictionary, not as literal HTML text. Keep auth/sync logic out
+    # of ordinary visual login tasks unless the task explicitly asks for it.
+    "login": ["__LOGIN__"],
+    "logowan": ["__LOGIN__"],
+    "loguj": ["__LOGIN__"],
+    "ekran startow": ["__LOGIN__"],
     "auth": ["Sync"],
     "deck": ["vCards", "addDeck", "delDeck", "dlist"],
     "talie": ["vCards", "addDeck", "delDeck", "dlist"],
@@ -127,6 +132,18 @@ def build_context(task: str, repo_root: Path):
     # Explicit function names in task are also honored.
     declared = {m.group(1) for m in FUNCTION_RE.finditer(source)}
     symbols.extend(name for name in declared if name.lower() in task_low)
+    # Words such as "synchronizować" can be part of the login subtitle itself.
+    # For a login-screen task, do not pull in the full protected Sync object
+    # unless the user clearly asks to change synchronization/auth behavior.
+    login_ui_task = "__LOGIN__" in symbols
+    explicit_sync_logic = any(term in task_low for term in (
+        "supabase", "sync object", "mechanizm synchron", "logika synchron",
+        "synchronizacja danych", "synchronizacjami danych", "sync logic",
+        "sync implementation", "upload", "download", "startsession"
+    ))
+    if login_ui_task and not explicit_sync_logic:
+        symbols = [name for name in symbols if name not in {"Sync", "save"}]
+
     symbols = list(dict.fromkeys(symbols))
 
     # Put visual context first so it is not crowded out by unrelated JS functions.
@@ -141,6 +158,26 @@ def build_context(task: str, repo_root: Path):
             terms = [w for w in re.findall(r"[^\W_][\w-]{3,}", task_low, re.UNICODE)]
             selected = [(i, line) for i, line in enumerate(lines) if any(t in line.lower() for t in terms)]
             blocks.extend(f"TR line {i+1}: {line}" for i, line in selected[:20])
+        elif symbol == "__LOGIN__":
+            # The login form is built at runtime. Include the renderer, the
+            # language-switch function, the exact login translation entries,
+            # and the CSS selectors that actually style this screen.
+            for name in ("showLogin", "changeLoginLang"):
+                block = _extract_function(source, name)
+                if block:
+                    blocks.append(f"FUNCTION {name}:\n{block}")
+
+            tr_start = source.find("'login.title':")
+            tr_end = source.find("'nick.title':", tr_start + 1) if tr_start >= 0 else -1
+            if tr_start >= 0 and tr_end > tr_start:
+                blocks.append("LOGIN TRANSLATIONS (inside const TR):\n" + source[tr_start:tr_end].strip())
+
+            login_css = re.compile(
+                r"(?ms)^[^{}\n]*(?:#login|\.pass-wrap|\.pass-toggle)[^{}\n]*\{[^{}]*\}"
+            )
+            css_rules = login_css.findall(source)
+            if css_rules:
+                blocks.append("LOGIN CSS RULES:\n" + "\n".join(rule.strip() for rule in css_rules))
         elif symbol == "Sync":
             block = _extract_anchor(source, "Sync = {", "\n};\nif(IS_DEV)")
             if block:
