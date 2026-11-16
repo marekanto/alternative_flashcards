@@ -1,0 +1,93 @@
+name: AltCards — DeepSeek PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "One small, precise task for AltCards"
+        required: true
+        type: string
+      allow_sensitive_changes:
+        description: "Allow intentional changes to SRS/XP/limit/Sync/auth logic (extra caution)"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: altcards-deepseek-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deepseek:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run DeepSeek patch + QA
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          TASK: ${{ inputs.task }}
+          ALLOW_SENSITIVE_CHANGES: ${{ inputs.allow_sensitive_changes }}
+          DEEPSEEK_MODEL: deepseek-flash
+          DEEPSEEK_THINKING: disabled
+          MAX_OUTPUT_TOKENS: "3500"
+          MAX_CONTEXT_CHARS: "16000"
+        run: python agent/orchestrator.py
+
+      - name: Static validation
+        run: |
+          git diff --check
+          python tests/smoke_test.py
+
+      - name: Create branch and Pull Request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TASK: ${{ inputs.task }}
+        run: |
+          set -euo pipefail
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes to publish."
+            exit 1
+          fi
+          BRANCH="ai/deepseek-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add -- index.html
+          git commit -m "AI: AltCards update"
+          git push --set-upstream origin "$BRANCH"
+          printf '%s\n' \
+            "## DeepSeek-generated AltCards change" \
+            "" \
+            "**Task:** $TASK" \
+            "" \
+            "- Review the complete diff before merging." \
+            "- Test the affected flow on mobile and desktop." \
+            "- Static checks passed; this is not a substitute for browser testing." \
+            "- No automatic merge or production deployment is performed by this workflow." \
+            > /tmp/pr-body.md
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "AI: AltCards update" \
+            --body-file /tmp/pr-body.md
