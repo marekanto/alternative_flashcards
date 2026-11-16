@@ -57,7 +57,7 @@ jobs:
           DEEPSEEK_MODEL: deepseek-flash
           DEEPSEEK_THINKING: disabled
           MAX_OUTPUT_TOKENS: "3500"
-          MAX_CONTEXT_CHARS: "16000"
+          MAX_CONTEXT_CHARS: "24000"
         run: python agent/orchestrator.py
 
       - name: Static validation
