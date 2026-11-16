@@ -514,7 +514,7 @@ function showLogin(){
   if($('#login')) return;
   const d=document.createElement('div');d.id='login';
   d.innerHTML=`<div class="box">
-    <div style="display:flex;justify-content:flex-end;margin-bottom:16px"><select id="langsel" style="width:auto;margin:0;padding:8px 12px" onchange="UI=this.value;localStorage.setItem('altcards-uilang',this.value);showLogin();">${['pl','en','es'].map(l=>`<option value="${l}"${UI===l?' selected':''}>${l==='pl'?'Polski':l==='en'?'English':'Español'}</option>`).join('')}</select></div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px"><select id="langsel" style="width:auto;margin:0;padding:8px 12px" onchange="changeLoginLang(this.value)">${['pl','en','es'].map(l=>`<option value="${l}"${UI===l?' selected':''}>${l==='pl'?'Polski':l==='en'?'English':'Español'}</option>`).join('')}</select></div>
     <h2 style="text-align:center;margin-bottom:8px;font-size:34px;font-weight:900">Alt<span style="color:var(--ac)">Cards</span></h2>
     <p class="mu" style="text-align:center;margin-bottom:8px;font-style:italic">${t('login.tagline')}</p>
     <p class="mu" style="text-align:center;margin-bottom:28px">${t('login.subtitle')}</p>
@@ -544,6 +544,16 @@ function showLogin(){
   $('#rbtn').onclick=()=>go(true);
   $('#lpass').onkeydown=e=>{if(e.key==='Enter')go(false)};
 }
+
+function changeLoginLang(v){
+  UI = v;
+  localStorage.setItem('altcards-uilang', v);
+  document.documentElement.lang = v;
+  document.querySelectorAll('span[data-nav]').forEach(s => { s.textContent = t('nav.' + s.dataset.nav); });
+  document.getElementById('login')?.remove();
+  showLogin();
+}
+
 function hideLogin(){document.body.classList.remove('locked');$('#login')?.remove()}
 
 // ============ SYNC ============
@@ -749,7 +759,7 @@ if(IS_DEV){Sync.user={id:'dev',email:'dev@local'};Sync.profile={nickname:'Dev'};
 // ============ RENDER ============
 function render(){
   document.documentElement.lang = UI;
-  document.querySelectorAll('nav span[data-nav]').forEach(s=>{s.textContent = t('nav.'+s.dataset.nav)});
+  document.querySelectorAll('span[data-nav]').forEach(s=>{s.textContent = t('nav.'+s.dataset.nav)});
   if(!Sync?.user){showLogin();return}
   if(!Sync.profile){showNicknameModal();return}
   document.body.classList.toggle('reviewing',tab==='study'&&!!sess);
