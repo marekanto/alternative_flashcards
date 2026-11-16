@@ -1,0 +1,176 @@
+name: AI Issue Handler
+
+on:
+  issues:
+    types: [labeled, edited]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: |
+      contains(github.event.issue.labels.*.name, 'ai-task') &&
+      (
+        (github.event_name == 'issues') ||
+        (github.event_name == 'issue_comment'
+         && !github.event.issue.pull_request
+         && github.event.comment.user.login != 'github-actions[bot]')
+      )
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Clarify — does the task need more info?
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: 'deepseek-chat'
+        run: python -B agent/clarifier.py
+
+      - name: Post clarifying questions
+        if: hashFiles('clarification.json') != ''
+        id: clarify
+        run: |
+          STATUS=$(jq -r .status clarification.json)
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          if [ "$STATUS" != "needs_clarification" ]; then
+            exit 0
+          fi
+
+          REASONING=$(jq -r .reasoning clarification.json)
+          QUESTIONS=$(jq -r '.questions[]' clarification.json | nl -ba -w2 -s'. ')
+
+          BODY=$(cat <<EOF
+          🤔 **Potrzebuję doprecyzowania** żeby zrobić to dobrze.
+
+          $QUESTIONS
+
+          <sub>$REASONING</sub>
+
+          Odpowiedz w komentarzu poniżej — agent od razu się uruchomi ponownie.
+          EOF
+          )
+          gh issue comment "$ISSUE_NUMBER" --body "$BODY"
+
+      - name: Stop if clarification needed
+        if: steps.clarify.outputs.status == 'needs_clarification'
+        run: |
+          echo "Waiting for user response. Exiting."
+          exit 0
+
+      - name: Smoke test (builder context)
+        run: python -B tests/smoke_test.py
+
+      - name: Compose TASK from issue
+        id: task
+        run: |
+          # Tytuł + body + wszystkie komentarze użytkownika → jedno zadanie
+          {
+            gh issue view "$ISSUE_NUMBER" --json title,body,comments --jq '
+              .title + "\n\n" + (.body // "") + "\n\n" +
+              ([.comments[] | select(.author.login != "github-actions[bot]") | .body] | join("\n\n---\n\n"))
+            '
+          } > /tmp/task.txt
+          echo "task_file=/tmp/task.txt" >> $GITHUB_OUTPUT
+          echo "TASK_PREVIEW:"; head -c 500 /tmp/task.txt; echo
+
+      - name: Run agent
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          ALLOW_SENSITIVE_CHANGES: 'false'
+          DIAGNOSE_ONLY: 'false'
+          QA_MAX_ATTEMPTS: '3'
+          DEEPSEEK_MODEL: 'deepseek-chat'
+        run: |
+          export TASK="$(cat /tmp/task.txt)"
+          if [ ${#TASK} -gt 2500 ]; then
+            echo "::error::Issue+comments >2500 znaków. Skróć body issue."
+            exit 1
+          fi
+          python -B agent/orchestrator.py
+
+      - name: Commit + PR + auto-merge
+        id: merge
+        if: success()
+        run: |
+          if git diff --quiet; then
+            echo "No changes — agent produced no diff"
+            echo "changed=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          BRANCH="ai/issue-${ISSUE_NUMBER}-${GITHUB_RUN_ID}"
+          git config user.name "AltCards Agent"
+          git config user.email "agent@altcards.local"
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "AI (#${ISSUE_NUMBER}): $(gh issue view $ISSUE_NUMBER --json title -q .title)"
+          git push origin "$BRANCH"
+
+          PR_URL=$(gh pr create --base main --head "$BRANCH" \
+            --title "AI (#${ISSUE_NUMBER}): $(gh issue view $ISSUE_NUMBER --json title -q .title)" \
+            --body "Closes #${ISSUE_NUMBER}
+
+          Automated patch from issue request.
+
+          **Task (from issue + comments):**
+          $(head -c 800 /tmp/task.txt)")
+
+          for i in $(seq 1 30); do
+            STATE=$(gh pr view "$BRANCH" --json mergeable --jq '.mergeable')
+            [ "$STATE" = "MERGEABLE" ] && break
+            sleep 5
+          done
+
+          gh pr merge "$BRANCH" --squash --delete-branch --admin || \
+            gh pr merge "$BRANCH" --squash --delete-branch
+
+          echo "PR_URL=$PR_URL" >> $GITHUB_OUTPUT
+          echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Close issue with summary
+        if: success() && steps.merge.outputs.changed == 'true'
+        run: |
+          gh issue close "$ISSUE_NUMBER" --comment "$(cat <<EOF
+          ✅ **Gotowe** — patch zmergowany do \`main\`.
+
+          $(gh issue view "$ISSUE_NUMBER" --json title -q .title)
+
+          Zmiany będą widoczne na produkcji po deploy GitHub Pages (~1-2 min).
+
+          Aby cofnąć: \`git revert\` ostatniego commita na main.
+          EOF
+          )"
+
+      - name: Comment failure on issue
+        if: failure()
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body "$(cat <<EOF
+          ❌ **Agent nie ukończył zadania.**
+
+          Sprawdź [log workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) — znajdziesz tam konkretny powód (np. \`context truncated\`, \`QA rejected\`, \`no operations\`).
+
+          Po poprawieniu opisu w tym issue (edit) lub dopisaniu komentarza — workflow uruchomi się ponownie.
+          EOF
+          )"
