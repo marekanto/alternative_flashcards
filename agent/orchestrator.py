@@ -9,11 +9,6 @@ Spina cały pipeline:
   5. pilnuje allowlisty plików i ochrony wrażliwych obszarów,
   6. robi niezależny review QA,
   7. dopiero wtedy workflow może utworzyć Pull Request.
-
-WAŻNE: ten plik współpracuje z context_builder.py, który:
-  * przyjmuje (task: str, source: str),
-  * zwraca dict: context, included, missing, over_limit, chars, ok.
-Nie mieszaj tego z poprzednim tuple API.
 """
 import os
 import subprocess
@@ -62,6 +57,20 @@ def check_clean_tree():
         )
 
 
+def _extract_operations(proposal):
+    """
+    DeepSeek może zwrócić operacje pod różnymi kluczami w zależności
+    od wersji promptu / code_agent.py. Sprawdzamy wszystkie znane warianty.
+    """
+    if not isinstance(proposal, dict):
+        return []
+    for key in ("operations", "edits", "patches", "changes"):
+        val = proposal.get(key)
+        if isinstance(val, list) and val:
+            return val
+    return []
+
+
 def main():
     task = os.getenv("TASK", "").strip()
     if not task or len(task) > 2500:
@@ -107,22 +116,28 @@ def main():
 
     # --- 3. Code Agent ---
     proposal = propose(task, context)
-    print(
-        f"Code agent: {proposal.get('status')} — "
-        f"{proposal.get('summary', '')}"
-    )
-    if proposal.get("status") == "need_context":
+    status = (proposal or {}).get("status")
+    summary = (proposal or {}).get("summary", "")
+    print(f"Code agent: {status} — {summary}")
+
+    # Tylko JAWNIE złe statusy blokują dalej.
+    if status == "need_context":
         raise RuntimeError(
-            "Code agent still requested more context after builder pass. "
+            "Code agent requested more context after builder pass. "
             "This means context_builder.py does not extract everything the "
-            "task needs. Summary: "
-            f"{proposal.get('summary', '')}"
+            f"task needs. Summary: {summary}"
         )
-    if proposal.get("status") not in (None, "ok", "applied", "patch"):
-        # każdy inny status (np. error, refused) blokuje dalsze kroki
+    if status in ("refused", "error"):
         raise RuntimeError(
-            f"Code agent returned status={proposal.get('status')!r}. "
-            f"Summary: {proposal.get('summary', '')}"
+            f"Code agent returned status={status!r}. Summary: {summary}"
+        )
+
+    operations = _extract_operations(proposal)
+    if not operations:
+        raise RuntimeError(
+            f"Code agent returned status={status!r} but no operations "
+            "(expected one of: operations / edits / patches / changes). "
+            f"Summary: {summary}"
         )
 
     # --- 4. patch ---
@@ -151,7 +166,7 @@ def main():
         )
 
     print("AI patch passed static validation and independent review.")
-    print("SUMMARY:", proposal.get("summary", "AltCards change"))
+    print("SUMMARY:", summary or "AltCards change")
 
 
 if __name__ == "__main__":
