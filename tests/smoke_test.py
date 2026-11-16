@@ -75,6 +75,38 @@ def main():
     # inline in showLogin(), so requiring a separate stylesheet match would
     # reject valid source layouts unnecessarily.
 
+    xp_task = (
+        "Sprawdź dlaczego XP nie zwiększa się po odpowiedzi na fiszkę; "
+        "przeanalizuj naliczanie, zapis i wyświetlanie poziomu."
+    )
+    _, xp_context = build_context(xp_task, ROOT)
+    xp_checks = {
+        "XP level calculation missing (getLevelInfo)": "FUNCTION getLevelInfo:" in xp_context,
+        "XP rank mapping missing (getRank)": "FUNCTION getRank:" in xp_context,
+        "main render dispatcher missing": "FUNCTION render:" in xp_context,
+        "study dashboard missing (vStudy / lvl-display)": "FUNCTION vStudy:" in xp_context and "lvl-display" in xp_context,
+        "XP award path missing (ans)": "FUNCTION ans:" in xp_context,
+        "card grading path missing (grade)": "FUNCTION grade:" in xp_context,
+        "undo path that can revert XP missing": "FUNCTION undoAnswer:" in xp_context,
+        "local defaults / storage / save context missing": (
+            "XP STATE, DEFAULTS AND LOCAL PERSISTENCE:" in xp_context
+            and "localStorage.getItem('altcards-v1')" in xp_context
+            and "const save=()=>" in xp_context
+            and "xp:0" in xp_context
+        ),
+        "server XP log and state hydration missing": (
+            "SYNC METHODS RELEVANT TO XP" in xp_context
+            and "xp_logs" in xp_context
+            and "serverXp" in xp_context
+            and "async download()" in xp_context
+        ),
+        "entire Sync object should not be sent for an XP investigation": "SYNC OBJECT:" not in xp_context,
+        "XP context was truncated": "CONTEXT CUT" not in xp_context,
+    }
+    xp_failed = [message for message, passed in xp_checks.items() if not passed]
+    if xp_failed:
+        raise SystemExit("XP context selection test failed:\n- " + "\n- ".join(xp_failed))
+
     patterns = [
         r"sk-[A-Za-z0-9_-]{20,}",
         r"DEEPSEEK_API_KEY\s*[:=]\s*['\"][^'\"]+",
@@ -103,7 +135,7 @@ def main():
 
     print(
         f"Static checks passed: HTML parsed, {len(scripts)} inline script(s) syntax-checked; "
-        "login context selection passed."
+        "login and XP context selection passed."
     )
 
 
