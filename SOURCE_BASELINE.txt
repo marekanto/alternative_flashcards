@@ -1,0 +1,4 @@
+Source used to tailor package: user-supplied Pasted text(1).txt
+Lines: 1300
+SHA-256: 6459dc0b4aac6d6849ab6fab57e232d64aecbf962d5148e457c261e36e6c1e2b
+The workflow always checks out current GitHub main and does not replace index.html.
