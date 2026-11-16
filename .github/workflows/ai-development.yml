@@ -26,6 +26,9 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # Prevent Python imports from creating untracked __pycache__ artifacts.
+      PYTHONDONTWRITEBYTECODE: "1"
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
@@ -42,6 +45,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+
+      - name: Remove stale Python cache artifacts
+        run: find . -type d -name __pycache__ -prune -exec rm -rf {} +
 
       - name: Run DeepSeek patch + QA
         env:
