@@ -653,9 +653,10 @@ Sync = {
       const {data} = await this.client.rpc('get_leaderboard',{p_start:yd, p_end:yd});
       if(!data) { localStorage.setItem(key,'1'); return; }
       const idx = data.findIndex(d=>d.user_id===this.user.id);
-      if(idx>=0 && idx<3){
+      if(idx>=0 && idx<3 && S.settings.lastDailyBonus !== yd){
         const bonus = idx===0?100:idx===1?50:25;
         S.settings.xp = (S.settings.xp||0) + bonus;
+        S.settings.lastDailyBonus = yd;
         await this.logXp(bonus);
         save();
         localStorage.setItem(key,'1');
