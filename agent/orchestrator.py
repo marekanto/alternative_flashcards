@@ -1,12 +1,10 @@
 """
 agent/orchestrator.py — AltCards
 
-Pipeline:
+Pipeline z samodoskonalącym się feedbackiem QA:
   1. clean tree check,
-  2. kontekst XP z context_builder,
-  3. Code Agent → operations / analiza,
-  4. patch_validator,
-  5. QA review z retry loop.
+  2. kontekst z ORIGINAL_TASK (raz na cały run),
+  3. pętla: Code Agent → diff → QA vs ORIGINAL_TASK → refiner → retry.
 """
 import os
 import subprocess
@@ -21,23 +19,13 @@ from patch_validator import (
     enforce_sensitive_guard,
 )
 from qa_agent import review
+from task_refiner import refine_task
 from settings import TARGET_FILE
 
 ROOT = Path(__file__).resolve().parents[1]
 QA_MAX_ATTEMPTS = int(os.getenv("QA_MAX_ATTEMPTS", "3"))
 DIAGNOSE_ONLY = os.getenv("DIAGNOSE_ONLY", "false").lower() == "true"
-
-# Tylko te statusy naprawdę kończą pipeline.
 TRULY_TERMINAL = {"need_context", "refused"}
-
-RETRY_NUDGE = (
-    "\n\n// ===== IMPORTANT INSTRUCTIONS FOR THIS RETRY =====\n"
-    "You MUST produce at least one find/replace operation.\n"
-    "Returning `cannot_do_safely`, `needs_human_review`, or empty operations "
-    "is NOT acceptable when QA has given specific fixable feedback.\n"
-    "Read each QA finding below and address it with a concrete code change.\n"
-    "Stay inside the target task scope: no refactors, no unrelated changes.\n"
-)
 
 
 def run(args):
@@ -55,10 +43,9 @@ def check_clean_tree():
             continue
         dirty.append(line)
     if dirty:
-        details = "\n".join(dirty[:30])
         raise RuntimeError(
             "Checkout is not clean before agent run. Unexpected entries:\n"
-            + details
+            + "\n".join(dirty[:30])
         )
 
 
@@ -109,42 +96,42 @@ def main():
         raise RuntimeError(f"Target file not found: {TARGET_FILE}")
     source = source_path.read_text(encoding="utf-8")
 
-    result = build_context(task, source)
-    base_context = result["context"]
+    ctx_result = build_context(task, source)
+    base_context = ctx_result["context"]
 
     print(
-        f"Context selected: {result['chars']} chars "
-        f"({len(result['included'])} blocks); index.html: {len(source)} chars"
+        f"Context selected: {ctx_result['chars']} chars "
+        f"({len(ctx_result['included'])} blocks); index.html: {len(source)} chars"
     )
     print(f"Mode: {'DIAGNOSE_ONLY' if DIAGNOSE_ONLY else 'PATCH'}")
 
-    if result["over_limit"]:
+    if ctx_result["over_limit"]:
         raise RuntimeError(
             f"Context truncated (limit={MAX_CONTEXT_CHARS}). "
-            f"Over limit: {result['over_limit']}. Raise MAX_CONTEXT_CHARS."
+            f"Over limit: {ctx_result['over_limit']}."
         )
-    if result["missing"]:
+    if ctx_result["missing"]:
         raise RuntimeError(
-            f"Context missing blocks: {result['missing']}. "
-            "Fix context_builder.py."
+            f"Context missing blocks: {ctx_result['missing']}."
         )
 
     if DIAGNOSE_ONLY:
         _print_diagnosis(propose(task, base_context))
         return
 
-    qa_feedback = ""
+    current_task = task
+    original_task = task
+    qa_history: list[list[str]] = []
+    previous_diff = ""
     last_verdict = None
     last_error = "brak"
 
     for attempt in range(1, QA_MAX_ATTEMPTS + 1):
         print(f"\n=== Attempt {attempt}/{QA_MAX_ATTEMPTS} ===")
+        if attempt > 1:
+            print(f"Task for agent (refined): {current_task[:200]}...")
 
-        model_context = base_context
-        if qa_feedback:
-            model_context = base_context + "\n\n" + qa_feedback + RETRY_NUDGE
-
-        proposal = propose(task, model_context)
+        proposal = propose(current_task, base_context)
         status = (proposal or {}).get("status")
         summary = (proposal or {}).get("summary", "")
         print(f"Code agent: {status} — {summary}")
@@ -152,15 +139,25 @@ def main():
         if status in TRULY_TERMINAL:
             raise RuntimeError(
                 f"Code agent returned terminal status={status!r}. "
-                f"Summary: {summary}. "
-                "Use DIAGNOSE_ONLY=true to inspect, then narrow the task."
+                f"Summary: {summary}. Use DIAGNOSE_ONLY=true to inspect."
             )
 
-        # cannot_do_safely / needs_human_review / brak operacji → retry z nudge
         ops = _extract_operations(proposal)
         if not ops:
             last_error = f"no operations (status={status!r})"
-            print(f"  → {last_error}; retrying with stronger nudge")
+            print(f"  → {last_error}")
+            if qa_history or attempt == 1:
+                refined = refine_task(
+                    original_task,
+                    [last_error],
+                    previous_diff or "(no previous diff)",
+                    attempt,
+                )
+                if refined["ok"]:
+                    print(f"  → Refined task: {refined['reasoning']}")
+                    current_task = refined["refined_task"]
+                else:
+                    print(f"  → Refiner failed: {refined['reasoning']}")
             continue
 
         try:
@@ -184,15 +181,16 @@ def main():
 
         if not diff.strip():
             source_path.write_text(source, encoding="utf-8")
-            last_error = "no diff"
+            last_error = "no diff produced"
             print(f"  → {last_error}; retrying")
             continue
 
-        verdict = review(task, diff)
+        verdict = review(original_task, diff)
         last_verdict = verdict
         qa_verdict = verdict.get("verdict")
+        findings = verdict.get("findings", [])
         print(f"QA verdict: {qa_verdict}")
-        for f in verdict.get("findings", [])[:8]:
+        for f in findings[:8]:
             print("QA:", f)
 
         if qa_verdict == "pass":
@@ -201,19 +199,34 @@ def main():
             print("SUMMARY:", summary or "AltCards change")
             return
 
-        # wszystkie inne QA (fail, needs_human_review) → retry z feedbackiem
-        qa_feedback = (
-            "// ===== PREVIOUS QA FINDINGS — ADDRESS EACH ONE =====\n"
-            + "\n".join(f"- {x}" for x in verdict.get("findings", []))
-        )
+        qa_history.append(findings)
+        previous_diff = diff
+
+        if attempt < QA_MAX_ATTEMPTS:
+            all_findings = [f for r in qa_history for f in r]
+            refined = refine_task(
+                original_task, all_findings, previous_diff, attempt
+            )
+            if refined["ok"]:
+                print(f"  → Refiner: {refined['reasoning']}")
+                current_task = refined["refined_task"]
+                print(f"  → Next task: {current_task[:300]}...")
+            else:
+                print(f"  → Refiner failed: {refined['reasoning']}")
+                current_task = (
+                    original_task
+                    + "\n\nQA said the previous attempt was wrong. Fix these:\n"
+                    + "\n".join(f"- {f}" for f in all_findings)
+                )
+
         source_path.write_text(source, encoding="utf-8")
         last_error = f"QA {qa_verdict}"
-        print(f"  → QA {qa_verdict}; retrying with feedback")
 
     raise RuntimeError(
         f"All {QA_MAX_ATTEMPTS} attempts failed. "
         f"Last verdict: {last_verdict and last_verdict.get('verdict')}. "
-        f"Last error: {last_error}"
+        f"Last error: {last_error}. "
+        "Try DIAGNOSE_ONLY=true or narrow the original task."
     )
 
 
