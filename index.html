@@ -516,8 +516,7 @@ function showLogin(){
   d.innerHTML=`<div class="box">
     <div style="display:flex;justify-content:flex-end;margin-bottom:16px"><select id="langsel" style="width:auto;margin:0;padding:8px 12px" onchange="changeLoginLang(this.value)">${['pl','en','es'].map(l=>`<option value="${l}"${UI===l?' selected':''}>${l==='pl'?'Polski':l==='en'?'English':'Español'}</option>`).join('')}</select></div>
     <h2 style="text-align:center;margin-bottom:8px;font-size:34px;font-weight:900">Alt<span style="color:var(--ac)">Cards</span></h2>
-    <p class="mu" style="text-align:center;margin-bottom:8px;font-style:italic">${t('login.tagline')}</p>
-    <p class="mu" style="text-align:center;margin-bottom:28px">${t('login.subtitle')}</p>
+    <p class="mu" style="text-align:center;margin-bottom:28px">${t('login.tagline')}</p>
     <input id="lemail" type="email" placeholder="${t('login.email')}">
     <div class="pass-wrap"><input id="lpass" type="password" placeholder="${t('login.password')}"><button class="pass-toggle" type="button" onclick="const p=document.getElementById('lpass');p.type=p.type==='password'?'text':'password';this.textContent=p.type==='password'?'👁️':'🙈'">👁️</button></div>
     <button class="p" id="lbtn" style="margin-top:8px">${t('login.login')}</button>
