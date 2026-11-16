@@ -1,9 +1,5 @@
 """
 tests/smoke_test.py — AltCards
-
-Testy regresyjne selekcji kontekstu. Uruchamiaj:
-    python tests/smoke_test.py
-Kod wyjścia 0 = wszystkie testy przeszły.
 """
 from __future__ import annotations
 
@@ -15,7 +11,6 @@ sys.path.insert(0, str(ROOT))
 
 from agent.context_builder import build_context, MAX_CONTEXT_CHARS, TARGET_FILE  # noqa: E402
 
-
 SOURCE = (ROOT / TARGET_FILE).read_text(encoding="utf-8")
 
 
@@ -24,9 +19,6 @@ def _assert(cond: bool, msg: str) -> None:
         raise AssertionError(msg)
 
 
-# ---------------------------------------------------------------------------
-# 1. Ogólne zadanie XP
-# ---------------------------------------------------------------------------
 def test_generic_xp_task_is_complete() -> None:
     task = "Sprawdź dlaczego XP nie zwiększa się i czy może być gubione"
     res = build_context(task, SOURCE)
@@ -35,53 +27,40 @@ def test_generic_xp_task_is_complete() -> None:
     _assert(res["chars"] <= MAX_CONTEXT_CHARS,
             f"kontekst przekracza limit: {res['chars']} > {MAX_CONTEXT_CHARS}")
     _assert(not res["missing"], f"brakują bloki: {res['missing']}")
-    _assert(not res["over_limit"], f"pominięto z powodu limitu: {res['over_limit']}")
+    _assert(not res["over_limit"], f"pominięto: {res['over_limit']}")
 
     required = [
-        # funkcje
         "function getLevelInfo", "function getRank", "function render",
         "function vStudy", "function vStats",
         "function ans", "function undoAnswer", "function grade",
-        # Sync — pełne metody (queueUpload NIE jest async — patrz index.html)
         "async startSession", "async download", "async logXp",
         "queueUpload", "async upload", "async checkBonuses",
-        # init + save
         "const defaults", "const save", "try{S=JSON.parse",
-        # krytyczne kotwice
-        "lvl-display",
-        "S.settings.xp",
-        "get_leaderboard",
-        "xp_logs",
+        "lvl-display", "S.settings.xp", "get_leaderboard", "xp_logs",
     ]
     for token in required:
         _assert(token in ctx, f"brak w kontekście XP: {token!r}")
 
-    # ucięte bloki — nie mogą kończyć się w środku
-    _assert("return { level: lvl, currentXp: tempXp, nextLevelXp: req };" in ctx,
-            "getLevelInfo wygląda na ucięty — brak pełnego `return`")
-    _assert("Sync?.queueUpload" in ctx,
-            "save() wygląda na ucięty — brak wywołania queueUpload")
+    _assert(
+        "return { level: lvl, currentXp: tempXp, nextLevelXp: req };" in ctx,
+        "getLevelInfo ucięty — brak `return`",
+    )
+    _assert(
+        "Sync?.queueUpload" in ctx,
+        "save() ucięty — brak queueUpload",
+    )
 
 
-# ---------------------------------------------------------------------------
-# 2. Zadanie bonusów rankingowych
-# ---------------------------------------------------------------------------
 def test_ranking_bonus_task() -> None:
     task = "Dlaczego bonus XP za top 3 w rankingu dziennym nie jest widoczny w levelu?"
     res = build_context(task, SOURCE)
     ctx = res["context"]
-
-    # checkBonuses używa logXp (insert do xp_logs), NIE RPC add_xp.
-    # add_xp jest w copyDeck (bonus dla autora talii), które nie należy do tej ścieżki.
     for token in ("checkBonuses", "get_leaderboard", "logXp",
                   "S.settings.xp", "serverXp", "xp_logs"):
         _assert(token in ctx, f"brak w kontekście bonusu: {token!r}")
     _assert(res["chars"] <= MAX_CONTEXT_CHARS, "przekroczony limit znaków")
 
 
-# ---------------------------------------------------------------------------
-# 3. Zadanie logowania
-# ---------------------------------------------------------------------------
 def test_login_task() -> None:
     task = "Usuń podtytuł na ekranie logowania i zmień tagline"
     res = build_context(task, SOURCE)
@@ -92,22 +71,15 @@ def test_login_task() -> None:
     _assert(res["chars"] <= MAX_CONTEXT_CHARS, "przekroczony limit znaków")
 
 
-# ---------------------------------------------------------------------------
-# 4. Brace-matcher na template literalu + zagnieżdżonych klamrach
-# ---------------------------------------------------------------------------
 def test_brace_matcher_handles_templates_and_nested() -> None:
     from agent.context_builder import _match_braces
     sample = 'function f(){ const x = `a${ {b:1}.b }c`; if(1){return 2} }'
     start = sample.index("{")
     end = _match_braces(sample, start)
-    _assert(end is not None, "matcher zwrócił None dla poprawnego bloku")
-    _assert(sample[start:end].endswith("}"),
-            "matcher nie domknął na ostatniej klamrze")
+    _assert(end is not None, "matcher zwrócił None")
+    _assert(sample[start:end].endswith("}"), "matcher nie domknął")
 
 
-# ---------------------------------------------------------------------------
-# Runner
-# ---------------------------------------------------------------------------
 def main() -> int:
     tests = [
         test_brace_matcher_handles_templates_and_nested,
