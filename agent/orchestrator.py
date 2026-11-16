@@ -1,14 +1,24 @@
 """
 agent/orchestrator.py — AltCards
 
-Spina cały pipeline:
-  1. sprawdza czystość drzewa roboczego (bez __pycache__/*.pyc),
-  2. buduje kontekst przez agent/context_builder.build_context(task, source),
-  3. wywołuje Code Agenta (DeepSeek) i dostaje operacje find/replace,
-  4. waliduje i aplikuje patch przez patch_validator,
-  5. pilnuje allowlisty plików i ochrony wrażliwych obszarów,
-  6. robi niezależny review QA,
-  7. dopiero wtedy workflow może utworzyć Pull Request.
+Pipeline:
+  1. clean tree check,
+  2. kontekst z context_builder.build_context(task, source),
+  3. Code Agent → operations,
+  4. patch_validator: aplikacja + wrażliwe strefy,
+  5. QA review.
+
+Retry loop:
+  Gdy QA odrzuci patch, budujemy ponownie ten sam bazowy kontekst
+  i doklejamy findings z QA jako sekcję „PREVIOUS QA FAILURES".
+  Model dostaje konkretne uwagi i drugą szansę. Maks. QA_MAX_ATTEMPTS prób.
+
+Czego NIE retry-ujemy:
+  * need_context — builder nie dostarczył potrzebnych bloków; retry nic nie da,
+  * refused — model odmówił wykonania zadania,
+  * smoke tests — testują builder (Python), nie patch; naprawia się je raz.
+
+Smoke testy powinny być uruchamiane PRZED tym skryptem w workflow.
 """
 import os
 import subprocess
@@ -26,6 +36,7 @@ from qa_agent import review
 from settings import TARGET_FILE
 
 ROOT = Path(__file__).resolve().parents[1]
+QA_MAX_ATTEMPTS = int(os.getenv("QA_MAX_ATTEMPTS", "3"))
 
 
 def run(args):
@@ -35,11 +46,6 @@ def run(args):
 
 
 def check_clean_tree():
-    """
-    Artefakty bytecode Pythona (__pycache__/*.pyc) powstają przy imporcie
-    modułów przez samego orkiestratora — nie są zmianami użytkownika,
-    więc je ignorujemy. Każda inna brudna pozycja = twardy błąd.
-    """
     status = run(["git", "status", "--porcelain", "--untracked-files=all"])
     dirty = []
     for line in status.splitlines():
@@ -58,10 +64,6 @@ def check_clean_tree():
 
 
 def _extract_operations(proposal):
-    """
-    DeepSeek może zwrócić operacje pod różnymi kluczami w zależności
-    od wersji promptu / code_agent.py. Sprawdzamy wszystkie znane warianty.
-    """
     if not isinstance(proposal, dict):
         return []
     for key in ("operations", "edits", "patches", "changes"):
@@ -82,15 +84,15 @@ def main():
 
     check_clean_tree()
 
-    # --- 1. źródło ---
+    # --- źródło + kontekst (raz, na cały loop) ---
     source_path = ROOT / TARGET_FILE
     if not source_path.exists():
         raise RuntimeError(f"Target file not found: {TARGET_FILE}")
     source = source_path.read_text(encoding="utf-8")
 
-    # --- 2. kontekst ---
     result = build_context(task, source)
-    context = result["context"]
+    base_context = result["context"]
+
     print(
         f"Context selected: {result['chars']} chars "
         f"({len(result['included'])} blocks); "
@@ -103,70 +105,108 @@ def main():
             "Context truncated by char limit "
             f"(limit={MAX_CONTEXT_CHARS} chars). "
             f"Over limit: {result['over_limit']}. "
-            "Refine the task scope or raise MAX_CONTEXT_CHARS — "
-            "do NOT proceed with a truncated context."
+            "Raise MAX_CONTEXT_CHARS or refine task scope."
         )
     if result["missing"]:
         raise RuntimeError(
             "Context is missing required blocks: "
             f"{result['missing']}. "
-            "Either the source no longer contains them (refactor) or "
-            "agent/context_builder.py cannot find them — inspect before running."
+            "Fix context_builder.py or the source before running."
         )
 
-    # --- 3. Code Agent ---
-    proposal = propose(task, context)
-    status = (proposal or {}).get("status")
-    summary = (proposal or {}).get("summary", "")
-    print(f"Code agent: {status} — {summary}")
+    # --- pętla prób ---
+    qa_feedback = ""
+    last_verdict = None
+    last_error = None
 
-    # Tylko JAWNIE złe statusy blokują dalej.
-    if status == "need_context":
-        raise RuntimeError(
-            "Code agent requested more context after builder pass. "
-            "This means context_builder.py does not extract everything the "
-            f"task needs. Summary: {summary}"
-        )
-    if status in ("refused", "error"):
-        raise RuntimeError(
-            f"Code agent returned status={status!r}. Summary: {summary}"
-        )
+    for attempt in range(1, QA_MAX_ATTEMPTS + 1):
+        print(f"\n=== Attempt {attempt}/{QA_MAX_ATTEMPTS} ===")
 
-    operations = _extract_operations(proposal)
-    if not operations:
-        raise RuntimeError(
-            f"Code agent returned status={status!r} but no operations "
-            "(expected one of: operations / edits / patches / changes). "
-            f"Summary: {summary}"
-        )
+        model_context = base_context
+        if qa_feedback:
+            model_context = (
+                base_context
+                + "\n\n// ===== PREVIOUS QA FAILURES (must be addressed) =====\n"
+                + qa_feedback
+            )
 
-    # --- 4. patch ---
-    updated = apply_operations(source, proposal)
+        proposal = propose(task, model_context)
+        status = (proposal or {}).get("status")
+        summary = (proposal or {}).get("summary", "")
+        print(f"Code agent: {status} — {summary}")
 
-    enforce_sensitive_guard(source, updated, allow_sensitive)
-    source_path.write_text(updated, encoding="utf-8")
+        # statusy, które natychmiast przerywają cały pipeline
+        if status == "need_context":
+            raise RuntimeError(
+                "need_context after builder pass. "
+                f"context_builder.py does not extract what this task needs. "
+                f"Summary: {summary}"
+            )
+        if status == "refused":
+            raise RuntimeError(
+                f"Code agent refused: {summary}"
+            )
 
-    changed = set(run(["git", "diff", "--name-only"]).splitlines())
-    enforce_file_allowlist(changed)
+        ops = _extract_operations(proposal)
+        if not ops:
+            last_error = f"no operations (status={status!r})"
+            print(f"  → {last_error}; retrying")
+            continue
 
-    diff = run(["git", "diff", "--", TARGET_FILE])
-    if not diff.strip():
-        raise RuntimeError(
-            "No diff produced — patch had no effect on the target file."
-        )
+        # patch in-memory
+        try:
+            updated = apply_operations(source, proposal)
+            enforce_sensitive_guard(source, updated, allow_sensitive)
+        except Exception as e:
+            last_error = f"patch validation: {e}"
+            print(f"  → {last_error}; retrying")
+            continue
 
-    # --- 5. QA ---
-    verdict = review(task, diff)
-    print(f"QA verdict: {verdict.get('verdict')}")
-    for finding in verdict.get("findings", [])[:8]:
-        print("QA:", finding)
-    if verdict.get("verdict") != "pass":
-        raise RuntimeError(
-            "QA did not pass; no Pull Request will be created."
-        )
+        # zapis + diff (potrzebne dla review)
+        source_path.write_text(updated, encoding="utf-8")
+        try:
+            changed = set(run(["git", "diff", "--name-only"]).splitlines())
+            enforce_file_allowlist(changed)
+            diff = run(["git", "diff", "--", TARGET_FILE])
+        except Exception as e:
+            source_path.write_text(source, encoding="utf-8")
+            last_error = f"diff/allowlist: {e}"
+            print(f"  → {last_error}; retrying")
+            continue
 
-    print("AI patch passed static validation and independent review.")
-    print("SUMMARY:", summary or "AltCards change")
+        if not diff.strip():
+            source_path.write_text(source, encoding="utf-8")
+            last_error = "no diff produced"
+            print(f"  → {last_error}; retrying")
+            continue
+
+        # QA
+        verdict = review(task, diff)
+        last_verdict = verdict
+        print(f"QA verdict: {verdict.get('verdict')}")
+        for f in verdict.get("findings", [])[:8]:
+            print("QA:", f)
+
+        if verdict.get("verdict") == "pass":
+            print(f"\n✓ QA passed on attempt {attempt}")
+            print("AI patch passed static validation and independent review.")
+            print("SUMMARY:", summary or "AltCards change")
+            return
+
+        # QA odrzucił — feedback do następnej próby
+        qa_feedback = "\n".join(
+            f"- {x}" for x in verdict.get("findings", [])
+        ) or "(no detailed findings)"
+        source_path.write_text(source, encoding="utf-8")  # restore
+        last_error = f"QA rejected: {qa_feedback[:300]}"
+        print(f"  → QA rejected; retrying with feedback")
+
+    # wszystkie próby wyczerpane
+    raise RuntimeError(
+        f"All {QA_MAX_ATTEMPTS} QA attempts failed. "
+        f"Last verdict: {last_verdict and last_verdict.get('verdict')}. "
+        f"Last error: {last_error}"
+    )
 
 
 if __name__ == "__main__":
