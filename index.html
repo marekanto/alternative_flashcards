@@ -285,14 +285,22 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const IS_DEV = location.protocol === 'file:' || new URLSearchParams(location.search).has('dev');
 
-const L={es:{name:{pl:'hiszpański',en:'Spanish',es:'Español'},pons:'espl',tts:'es-ES'},en:{name:{pl:'angielski',en:'English',es:'Inglés'},pons:'enpl',tts:'en-GB'},de:{name:{pl:'niemiecki',en:'German',es:'Alemán'},pons:'depl',tts:'de-DE'},fr:{name:{pl:'francuski',en:'French',es:'Francés'},pons:'frpl',tts:'fr-FR'},it:{name:{pl:'włoski',en:'Italian',es:'Italiano'},pons:'itpl',tts:'it-IT'}};
-const langName=code=>(L[code]?.name?.[UI])||code;
+const L={
+  es:{name:{pl:'hiszpański',en:'Spanish',es:'Español'},pons:'espl',tts:'es-ES'},
+  en:{name:{pl:'angielski',en:'English',es:'Inglés'},pons:'enpl',tts:'en-GB'},
+  de:{name:{pl:'niemiecki',en:'German',es:'Alemán'},pons:'depl',tts:'de-DE'},
+  fr:{name:{pl:'francuski',en:'French',es:'Francés'},pons:'frpl',tts:'fr-FR'},
+  it:{name:{pl:'włoski',en:'Italian',es:'Italiano'},pons:'itpl',tts:'it-IT'},
+  el:{name:{pl:'grecki',en:'Greek',es:'Griego'},pons:'elpl',tts:'el-GR'}
+};
+const langName=code=>code==='other'?t('lang.other'):((L[code]?.name?.[UI])||code);
 
 const TR={
   'nav.study':{pl:'Nauka',en:'Study',es:'Estudio'},'nav.cards':{pl:'Talie',en:'Decks',es:'Mazos'},'nav.library':{pl:'Biblioteka',en:'Library',es:'Biblioteca'},'nav.stats':{pl:'Postępy',en:'Progress',es:'Progreso'},'nav.feedback':{pl:'Opinia',en:'Feedback',es:'Comentario'},
   'study.title':{pl:'Nauka',en:'Study',es:'Estudio'},'study.allDecks':{pl:'Wszystkie talie',en:'All decks',es:'Todos los mazos'},'study.settings':{pl:'⚙️ Ustawienia',en:'⚙️ Settings',es:'⚙️ Ajustes'},'study.shuffle':{pl:'🔀 Losuj',en:'🔀 Shuffle',es:'🔀 Mezclar'},
   'study.due':{pl:'do powtórki',en:'to review',es:'para repasar'},'study.newLimit':{pl:'dziś (limit: {n})',en:'today (limit: {n})',es:'hoy (límite: {n})'},'study.today':{pl:'fiszek dziś',en:'cards today',es:'tarjetas hoy'},
   'study.start':{pl:'Zacznij naukę',en:'Start studying',es:'Empezar a estudiar'},'study.noCards':{pl:'Brak fiszek.',en:'No cards.',es:'No hay tarjetas.'},'study.tooFewNew':{pl:'Za mało nowych.',en:'Not enough new.',es:'Muy pocas nuevas.'},'study.shuffled':{pl:'Wylosowano {n}.',en:'Shuffled {n}.',es:'Mezcladas {n}.'},'study.noLimit':{pl:'Limit osiągnięty!',en:'Limit reached!',es:'¡Límite alcanzado!'},
+  'study.streakDays':{pl:'dni z rzędu',en:'days in a row',es:'días seguidos'},'study.todayDone':{pl:'✅ Dzisiaj zrobione',en:'✅ Done today',es:'✅ Hecho hoy'},'study.todayPending':{pl:'⚠️ Do zrobienia: {n}',en:'⚠️ To do: {n}',es:'⚠️ Por hacer: {n}'},'study.todayNoCards':{pl:'⚠️ Brak kart do powtórki',en:'⚠️ No cards to review',es:'⚠️ Sin tarjetas para repasar'},
   'sess.remaining':{pl:'Pozostało:',en:'Remaining:',es:'Restantes:'},'sess.end':{pl:'Zakończ',en:'Finish',es:'Terminar'},'sess.discover':{pl:'Dotknij lub naciśnij spację, aby odkryć',en:'Tap or press space',es:'Toca o pulsa espacio'},'sess.image':{pl:'🖼 Pokaż obraz',en:'🖼 Show image',es:'🖼 Mostrar imagen'},'sess.say':{pl:'🔊 Wymowa',en:'🔊 Pronounce',es:'🔊 Pronunciar'},'sess.undo':{pl:'↶ Cofnij',en:'↶ Undo',es:'↶ Deshacer'},
   'sess.again':{pl:'Znowu (1)',en:'Again (1)',es:'Otra vez (1)'},'sess.hard':{pl:'Trudne (2)',en:'Hard (2)',es:'Difícil (2)'},'sess.good':{pl:'Dobrze (3)',en:'Good (3)',es:'Bien (3)'},'sess.easy':{pl:'Łatwe (4)',en:'Easy (4)',es:'Fácil (4)'},'sess.keysHint':{pl:'Klawisze: spacja · 1–4 · z · o · m',en:'Keys: space · 1–4 · z · o · m',es:'Teclas: espacio · 1–4 · z · o · m'},
   'sess.done':{pl:'Gotowe! 🎉',en:'Done! 🎉',es:'¡Listo! 🎉'},'sess.doneSub':{pl:'Sesja ukończona.',en:'Session finished.',es:'Sesión completada.'},'sess.back':{pl:'Wróć',en:'Back',es:'Volver'},'sess.noUndo':{pl:'Nic do cofnięcia',en:'Nothing to undo',es:'Nada que deshacer'},'sess.undone':{pl:'Cofnięto',en:'Undone',es:'Deshecho'},
@@ -313,15 +321,17 @@ const TR={
   'settings.deleteAccount':{pl:'Usuń konto',en:'Delete account',es:'Eliminar cuenta'},'settings.deleteAccountTitle':{pl:'Usunąć konto?',en:'Delete account?',es:'¿Eliminar cuenta?'},'settings.deleteAccountConfirm':{pl:'Czy na pewno chcesz bezpowrotnie usunąć konto?',en:'Are you sure you want to permanently delete your account?',es:'¿Seguro que quieres eliminar tu cuenta permanentemente?'},'settings.deleteConfirmBtn':{pl:'Tak, usuń',en:'Yes, delete',es:'Sí, eliminar'},'settings.deleted':{pl:'Konto usunięte.',en:'Account deleted.',es:'Cuenta eliminada.'},
   'settings.newLimit':{pl:'Dzienny limit powtórek',en:'Daily review limit',es:'Límite diario de repaso'},'settings.newLimitInfo':{pl:'Maksymalna liczba kart (nowych + powtórek) na dzień.',en:'Max cards per day.',es:'Máximo de tarjetas por día.'},'settings.save':{pl:'Zapisz',en:'Save',es:'Guardar'},'settings.back':{pl:'← Wróć',en:'← Back',es:'← Volver'},'settings.saved':{pl:'Zapisano',en:'Saved',es:'Guardado'},'settings.loggedOut':{pl:'Wylogowano',en:'Signed out',es:'Sesión cerrada'},'settings.showTut':{pl:'📖 Pokaż instrukcję',en:'📖 Show tutorial',es:'📖 Mostrar tutorial'},
   'ui.lang':{pl:'Język interfejsu',en:'Interface language',es:'Idioma de la interfaz'},'ui.pet':{pl:'Wybierz zwierzaka',en:'Choose pet',es:'Elige mascota'},'ui.pet.dog':{pl:'🐕 Piesek',en:'🐕 Dog',es:'🐕 Perro'},'ui.pet.cat':{pl:'🐈 Kotek',en:'🐈 Cat',es:'🐈 Gato'},'ui.nick':{pl:'Pseudonim',en:'Nickname',es:'Apodo'},'ui.nick.change':{pl:'Zmień nick',en:'Change nickname',es:'Cambiar apodo'},
+  'lang.other':{pl:'Inne (język systemowy)',en:'Other (system language)',es:'Otro (idioma del sistema)'},
   'library.title':{pl:'Biblioteka publiczna',en:'Public Library',es:'Biblioteca pública'},'library.desc':{pl:'Kopiuj talie od innych. Autorzy dostają +50 XP za każdą kopię!',en:'Copy decks from others. Authors get +50 XP for each copy!',es:'¡Copia mazos de otros! Los autores reciben +50 XP por cada copia.'},
-  'library.copy':{pl:'Kopiuj',en:'Copy',es:'Copiar'},'library.copied':{pl:'Skopiowano! Sprawdź zakładkę Talie.',en:'Copied! Check the Decks tab.',es:'¡Copiado! Revisa la pestaña Mazos.'},'library.empty':{pl:'Brak udostępnionych talii.',en:'No shared decks.',es:'No hay mazos compartidos.'},'library.author':{pl:'Autor',en:'Author',es:'Autor'},'library.alreadyCopied':{pl:'Już skopiowałeś tę talię.',en:'Already copied this deck.',es:'Ya has copiado este mazo.'},'library.loading':{pl:'Ładowanie...',en:'Loading...',es:'Cargando...'},'library.downloads':{pl:'pobrań',en:'downloads',es:'descargas'},'library.suspicious':{pl:'Podejrzane zachowanie: skopiowałeś i usunąłeś tę talię dzisiaj. Spróbuj ponownie jutro.',en:'Suspicious behavior: you copied and deleted this deck today. Try again tomorrow.',es:'Comportamiento sospechoso: copiaste y eliminaste este mazo hoy. Inténtalo mañana.'},'library.notFound':{pl:'Nie znaleziono talii',en:'Deck not found',es:'Mazo no encontrado'},
-  'login.title':{pl:'AltCards',en:'AltCards',es:'AltCards'},'login.subtitle':{pl:'Zaloguj się, aby zsynchronizować fiszki.',en:'Sign in to sync your cards.',es:'Inicia sesión para sincronizar tus tarjetas.'},'login.email':{pl:'E-mail',en:'Email',es:'Correo'},'login.password':{pl:'Hasło (min. 6 znaków)',en:'Password (min. 6)',es:'Contraseña (mín. 6)'},'login.login':{pl:'Zaloguj',en:'Sign in',es:'Iniciar sesión'},'login.signup':{pl:'Załóż konto',en:'Create account',es:'Crear cuenta'},'login.err.notConfig':{pl:'Brak konfiguracji.',en:'Not configured.',es:'Sin configuración.'},'login.err.confirm':{pl:'Sprawdź e-mail.',en:'Check email.',es:'Revisa el correo.'},'login.err.email':{pl:'Poprawny e-mail.',en:'Valid email.',es:'Correo válido.'},'login.err.pass':{pl:'Min. 6 znaków.',en:'Min. 6 characters.',es:'Mín. 6 caracteres.'},
+  'library.copy':{pl:'Kopiuj',en:'Copy',es:'Copiar'},'library.copied':{pl:'Skopiowano! Sprawdź zakładkę Talie.',en:'Copied! Check the Decks tab.',es:'¡Copiado! Revisa la pestaña Mazos.'},'library.empty':{pl:'Brak udostępnionych talii.',en:'No shared decks.',es:'No hay mazos compartidos.'},'library.author':{pl:'Autor',en:'Author',es:'Autor'},'library.alreadyCopied':{pl:'Już skopiowałeś tę talię.',en:'Already copied this deck.',es:'Ya has copiado este mazo.'},'library.loading':{pl:'Ładowanie...',en:'Loading...',es:'Cargando...'},'library.copies':{pl:'kopii',en:'copies',es:'copias'},'library.suspicious':{pl:'Podejrzane zachowanie: skopiowałeś i usunąłeś tę talię dzisiaj. Spróbuj ponownie jutro.',en:'Suspicious behavior: you copied and deleted this deck today. Try again tomorrow.',es:'Comportamiento sospechoso: copiaste y eliminaste este mazo hoy. Inténtalo mañana.'},'library.notFound':{pl:'Nie znaleziono talii',en:'Deck not found',es:'Mazo no encontrado'},
+  'library.search':{pl:'Szukaj talii...',en:'Search decks...',es:'Buscar mazos...'},'library.catLangs':{pl:'Języki',en:'Languages',es:'Idiomas'},'library.catOther':{pl:'Inne',en:'Other',es:'Otros'},
+  'login.title':{pl:'AltCards',en:'AltCards',es:'AltCards'},'login.tagline':{pl:'Alternatywny sposób nauki.',en:'An alternative way to learn.',es:'Una forma alternativa de aprender.'},'login.subtitle':{pl:'Zaloguj się, aby zsynchronizować fiszki.',en:'Sign in to sync your cards.',es:'Inicia sesión para sincronizar tus tarjetas.'},'login.email':{pl:'E-mail',en:'Email',es:'Correo'},'login.password':{pl:'Hasło (min. 6 znaków)',en:'Password (min. 6)',es:'Contraseña (mín. 6)'},'login.login':{pl:'Zaloguj',en:'Sign in',es:'Iniciar sesión'},'login.signup':{pl:'Załóż konto',en:'Create account',es:'Crear cuenta'},'login.err.notConfig':{pl:'Brak konfiguracji.',en:'Not configured.',es:'Sin configuración.'},'login.err.confirm':{pl:'Sprawdź e-mail.',en:'Check email.',es:'Revisa el correo.'},'login.err.email':{pl:'Poprawny e-mail.',en:'Valid email.',es:'Correo válido.'},'login.err.pass':{pl:'Min. 6 znaków.',en:'Min. 6 characters.',es:'Mín. 6 caracteres.'},
   'nick.title':{pl:'Witaj w społeczności!',en:'Welcome to the community!',es:'¡Bienvenido a la comunidad!'},'nick.desc':{pl:'Aplikacja się rozwija! Wprowadzamy rankingi i bibliotekę talii. Wybierz swój unikalny pseudonim, który będzie widoczny publicznie.',en:'The app is growing! We are adding leaderboards and a deck library. Choose your unique nickname, which will be publicly visible.',es:'¡La aplicación está creciendo! Añadimos clasificaciones y una biblioteca de mazos. Elige tu apodo único, que será visible públicamente.'},'nick.btn':{pl:'Zapisz pseudonim',en:'Save nickname',es:'Guardar apodo'},'nick.taken':{pl:'Ten nick jest już zajęty.',en:'This nickname is taken.',es:'Este apodo ya está en uso.'},'nick.short':{pl:'Min. 3 znaki.',en:'Min. 3 characters.',es:'Mín. 3 caracteres.'},'nick.welcome':{pl:'Witaj, {n}!',en:'Welcome, {n}!',es:'¡Bienvenido, {n}!'},
   'common.cancel':{pl:'Anuluj',en:'Cancel',es:'Cancelar'},'common.ok':{pl:'OK',en:'OK',es:'OK'},'common.info':{pl:'Info',en:'Info',es:'Info'},
   'tut.title':{pl:'Witaj w AltCards! 👋',en:'Welcome to AltCards! 👋',es:'¡Bienvenido a AltCards! 👋'},'tut.step1':{pl:'➕ <b>Dodawaj karty</b> – wpisz słowo i tłumaczenie.',en:'➕ <b>Add cards</b> – enter word and translation.',es:'➕ <b>Añade tarjetas</b> – introduce la palabra y su traducción.'},'tut.step2':{pl:'🧠 <b>Ucz się</b> – apka sama przypomni Ci, kiedy powtórzyć materiał.',en:'🧠 <b>Study</b> – the app reminds you when to review.',es:'🧠 <b>Estudia</b> – la app te recuerda cuándo repasar.'},'tut.step3':{pl:'☁️ <b>Synchronizuj</b> – Twoje postępy w chmurze.',en:'☁️ <b>Sync</b> – your progress in the cloud.',es:'☁️ <b>Sincroniza</b> – tu progreso en la nube.'},'tut.btn':{pl:'Zaczynamy! 🚀',en:'Let\'s start! 🚀',es:'¡Empecemos! 🚀'},'tut.moreBtn':{pl:'📚 Szczegółowa instrukcja',en:'📚 Detailed guide',es:'📚 Guía detallada'},'tut.g.back':{pl:'← Wróć',en:'← Back',es:'← Volver'},
   'tut.g.study':{pl:'<b>🧠 NAUKA I XP</b><br>Ucz się regularnie. Oceniaj karty: Trudne (+5 XP), Dobrze (+10 XP), Łatwe (+15 XP). Dzienny limit chroni przed przebodźcowaniem, a zwierzak (piesek/kotek) motywuje do codziennej nauki. Osiągnięcie 100 XP daje awans (im wyższy level, tym trudniej).',en:'<b>🧠 STUDY & XP</b><br>Study regularly. Rate cards: Hard (+5 XP), Good (+10 XP), Easy (+15 XP). The daily limit prevents burnout, and your pet motivates you. Reaching 100 XP levels you up (higher levels require more XP).',es:'<b>🧠 ESTUDIO Y XP</b><br>Estudia con regularidad. Califica las tarjetas: Difícil (+5 XP), Bien (+10 XP), Fácil (+15 XP). El límite diario evita la sobrecarga y tu mascota te motiva. Alcanzar 100 XP te hace subir de nivel (los niveles altos requieren más XP).'},
-  'tut.g.decks':{pl:'<b>🗂 TALIE</b><br>Dodawaj, edytuj (✎) i usuwaj (🗑) karty. Kliknij 🌍, aby udostępnić talię innym. Aby usunąć ją z biblioteki, kliknij 🚫. Skopiowane talie (🔒) nie mogą być ponownie udostępniane. Kliknij „Zobacz fiszki”, by zobaczyć listę kart.',en:'<b>🗂 DECKS</b><br>Add, edit (✎) and delete (🗑) cards. Click 🌍 to share. To unshare, click 🚫. Copied decks (🔒) cannot be shared. Click "View cards" to see the list.',es:'<b>🗂 MAZOS</b><br>Añade, edita (✎) y elimina (🗑) tarjetas. Pulsa 🌍 para compartir el mazo. Para dejar de compartirlo, pulsa 🚫. Los mazos copiados (🔒) no se pueden compartir. Pulsa "Ver tarjetas" para ver la lista.'},
-  'tut.g.library':{pl:'<b>📚 BIBLIOTEKA PUBLICZNA</b><br>Przeglądaj talie innych (Autor: nick, pobrania: 📥). Za każdą Twoją kopię autor dostaje +50 XP. Możesz skopiować tę samą talię ponownie dopiero następnego dnia (zabezpieczenie przed farmieniem XP).',en:'<b>📚 PUBLIC LIBRARY</b><br>Browse decks from others. Each copy gives the author +50 XP. You can only copy the same deck once per day (anti-farming protection).',es:'<b>📚 BIBLIOTECA PÚBLICA</b><br>Explora mazos de otros (Autor: apodo, descargas: 📥). Cada copia da al autor +50 XP. Solo puedes copiar el mismo mazo una vez al día (protección anti-farming).'},
+  'tut.g.decks':{pl:'<b>🗂 TALIE</b><br>Dodawaj, edytuj (✎) i usuwaj (🗑) karty. Kliknij 🌍, aby udostępnić talię innym. Aby usunąć ją z biblioteki, kliknij 🚫. Skopiowane talie (🔒) nie mogą być ponownie udostępniane. Talie w kategorii „Inne" używają języka systemowego do wymowy.',en:'<b>🗂 DECKS</b><br>Add, edit (✎) and delete (🗑) cards. Click 🌍 to share. To unshare, click 🚫. Copied decks (🔒) cannot be shared. Decks in the "Other" category use your system language for pronunciation.',es:'<b>🗂 MAZOS</b><br>Añade, edita (✎) y elimina (🗑) tarjetas. Pulsa 🌍 para compartir el mazo. Para dejar de compartirlo, pulsa 🚫. Los mazos copiados (🔒) no se pueden compartir. Los mazos en la categoría "Otros" usan el idioma del sistema para la pronunciación.'},
+  'tut.g.library':{pl:'<b>📚 BIBLIOTEKA PUBLICZNA</b><br>Przeglądaj talie innych (Autor: nick, kopii: 📥). Talie są pogrupowane w języki i inne. Wyszukiwarka na górze filtruje wszystkie talie. Za każdą Twoją kopię autor dostaje +50 XP. Możesz skopiować tę samą talię ponownie dopiero następnego dnia.',en:'<b>📚 PUBLIC LIBRARY</b><br>Browse decks from others (Author: nickname, copies: 📥). Decks are grouped by language and other. The search bar at the top filters all decks. Each copy gives the author +50 XP. You can only copy the same deck once per day.',es:'<b>📚 BIBLIOTECA PÚBLICA</b><br>Explora mazos de otros (Autor: apodo, copias: 📥). Los mazos se agrupan por idioma y otros. La barra de búsqueda superior filtra todos los mazos. Cada copia da al autor +50 XP. Solo puedes copiar el mismo mazo una vez al día.'},
   'tut.g.stats':{pl:'<b>📊 POSTĘPY I RANKING</b><br>Śledź swoją skuteczność, historię i serię dni (streak 🔥). Rywalizuj w rankingu dziennym i miesięcznym. Top 3 osoby w rankingu dziennym zdobywają bonus XP (100, 50, 25)!',en:'<b>📊 PROGRESS & LEADERBOARD</b><br>Track your accuracy and streak 🔥. Compete in the daily and monthly leaderboard. The Top 3 daily players get bonus XP (100, 50, 25)!',es:'<b>📊 PROGRESO Y CLASIFICACIÓN</b><br>Sigue tu precisión y racha 🔥. Compite en la clasificación diaria y mensual. ¡Los 3 primeros del ranking diario reciben XP extra (100, 50, 25)!'},
   'tut.g.settings':{pl:'<b>⚙️ USTAWIENIA</b><br>Zmień język interfejsu, wybierz zwierzaka, dostosuj dzienny limit kart, wyloguj się lub całkowicie usuń konto z bazy.',en:'<b>⚙️ SETTINGS</b><br>Change interface language, choose your pet, set the daily card limit, log out, or permanently delete your account.',es:'<b>⚙️ AJUSTES</b><br>Cambia el idioma de la interfaz, elige tu mascota, ajusta el límite diario de tarjetas, cierra sesión o elimina tu cuenta permanentemente.'},
   'tut.g.shortcuts':{pl:'<b>⌨️ SKRÓTY</b><br>Spacja – odkryj · 1-4 – oceń · Z – cofnij · O – obraz · M – wymowa',en:'<b>⌨️ SHORTCUTS</b><br>Space – reveal · 1-4 – rate · Z – undo · O – image · M – pronounce',es:'<b>⌨️ ATAJOS</b><br>Espacio – revelar · 1-4 – calificar · Z – deshacer · O – imagen · M – pronunciar'},
@@ -349,6 +359,13 @@ function getLevelInfo(xp) {
 function getRank(lvl) {
   const k = lvl<5?'novice':lvl<10?'apprentice':lvl<25?'adept':lvl<45?'expert':'master';
   return t('rank.'+k);
+}
+function computeStreak(){
+  let streak = 0;
+  const d = new Date();
+  if (!S.log[dk(d)]) d.setDate(d.getDate() - 1);
+  while (S.log[dk(d)]) { streak++; d.setDate(d.getDate() - 1); }
+  return streak;
 }
 function fitSize(text, base) { const len=(text||'').length; if(len<=12) return base+'px'; if(len<=20) return Math.round(base*.78)+'px'; if(len<=30) return Math.round(base*.62)+'px'; if(len<=45) return Math.round(base*.5)+'px'; if(len<=60) return Math.round(base*.42)+'px'; return Math.round(base*.35)+'px'; }
 const pad=n=>String(n).padStart(2,'0');
@@ -499,13 +516,13 @@ function showLogin(){
   d.innerHTML=`<div class="box">
     <div style="display:flex;justify-content:flex-end;margin-bottom:16px"><select id="langsel" style="width:auto;margin:0;padding:8px 12px" onchange="UI=this.value;localStorage.setItem('altcards-uilang',this.value);showLogin();">${['pl','en','es'].map(l=>`<option value="${l}"${UI===l?' selected':''}>${l==='pl'?'Polski':l==='en'?'English':'Español'}</option>`).join('')}</select></div>
     <h2 style="text-align:center;margin-bottom:8px;font-size:34px;font-weight:900">Alt<span style="color:var(--ac)">Cards</span></h2>
+    <p class="mu" style="text-align:center;margin-bottom:8px;font-style:italic">${t('login.tagline')}</p>
     <p class="mu" style="text-align:center;margin-bottom:28px">${t('login.subtitle')}</p>
     <input id="lemail" type="email" placeholder="${t('login.email')}">
     <div class="pass-wrap"><input id="lpass" type="password" placeholder="${t('login.password')}"><button class="pass-toggle" type="button" onclick="const p=document.getElementById('lpass');p.type=p.type==='password'?'text':'password';this.textContent=p.type==='password'?'👁️':'🙈'">👁️</button></div>
     <button class="p" id="lbtn" style="margin-top:8px">${t('login.login')}</button>
     <button class="s" id="rbtn" style="width:100%;border:none;background:transparent;color:var(--ac)">${t('login.signup')}</button>
     <p class="mu" id="lerr" style="color:#ef4444;text-align:center;margin-top:12px"></p>
-    <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--bd)"><a href="#" onclick="openFbx();return false" style="font-size:14px;color:var(--mu)">${t('feedback.title')}</a></div>
   </div>`;
   document.body.appendChild(d);
   const go=async(signUp)=>{
@@ -574,14 +591,11 @@ Sync = {
     try {
       const {data} = await this.client.from('changelog').select('*').order('created_at', {ascending: false}).limit(1);
       if(!data || !data.length) return;
-      
       const latest = data[0];
       const lastSeen = localStorage.getItem('altcards-changelog');
-      
       if (lastSeen !== latest.version) {
         const titleTxt = latest['title_' + UI] || latest.title_pl || latest.title_en || latest.title || '';
         const contentTxt = latest['content_' + UI] || latest.content_pl || latest.content_en || latest.content || '';
-        
         setTimeout(() => {
           if($('#md')) $('#md').remove();
           const m = document.createElement('div'); m.id = 'md';
@@ -624,18 +638,19 @@ Sync = {
     if(IS_DEV||!this.user)return;
     const key = 'altcards-bonus-'+dk(new Date());
     if(localStorage.getItem(key)) return;
-    localStorage.setItem(key,'1');
     const yest = new Date(); yest.setDate(yest.getDate()-1);
     const yd = dk(yest);
     try {
       const {data} = await this.client.rpc('get_leaderboard',{p_start:yd, p_end:yd});
-      if(!data) return;
+      if(!data) { localStorage.setItem(key,'1'); return; }
       const idx = data.findIndex(d=>d.user_id===this.user.id);
       if(idx>=0 && idx<3){
         const bonus = idx===0?100:idx===1?50:25;
         S.settings.xp = (S.settings.xp||0) + bonus;
         await this.logXp(bonus);
         save();
+        localStorage.setItem(key,'1');
+        try { render(); } catch(e) {}
         setTimeout(()=>{
           if($('#md')) $('#md').remove();
           const m = document.createElement('div'); m.id = 'md';
@@ -644,10 +659,12 @@ Sync = {
             <h3>Gratulacje!</h3>
             <p class="mu" style="margin-bottom:20px">Zająłeś <b>${idx + 1}. miejsce</b> w wczorajszym rankingu!</p>
             <p style="font-size:24px;font-weight:800;color:var(--ac)">+${bonus} XP</p>
-            <button class="p" style="margin-top:20px" onclick="document.getElementById('md').remove()">Super!</button>
+            <button class="p" style="margin-top:20px" onclick="document.getElementById('md').remove();try{render()}catch(e){}">Super!</button>
           </div>`;
           document.body.appendChild(m);
         }, 1500);
+      } else {
+        localStorage.setItem(key,'1');
       }
     } catch(e){}
   },
@@ -677,17 +694,12 @@ Sync = {
       const {data:exist, error:e1} = await this.client.from('deck_copies')
         .select('id, created_at').eq('user_id', this.user.id).eq('deck_id', sharedId).maybeSingle();
       if(e1) return 'Błąd kopiowania: ' + e1.message;
-
       if(exist) {
         const copyDate = new Date(exist.created_at);
-        const today = new Date();
-        if (dk(copyDate) === dk(today)) {
-          return t('library.suspicious');
-        }
+        if (dk(copyDate) === dk(new Date())) return t('library.suspicious');
         const {error:e2} = await this.client.from('deck_copies').delete().eq('id', exist.id);
         if(e2) return 'Błąd czyszczenia: ' + e2.message;
       }
-
       const newDeckId = uid();
       S.decks.push({id:newDeckId, name, lang, isCopied:true, copiedFrom:sharedId, author:authorName});
       (cards||[]).forEach(c=>S.cards.push({
@@ -697,15 +709,11 @@ Sync = {
         imageEnabled:false, ease:2.5, int:0, reps:0, lapses:0, due:0
       }));
       save();
-
       const {error:e3} = await this.client.from('deck_copies').insert({user_id:this.user.id, deck_id:sharedId});
       if(e3) {
         console.warn('deck_copies INSERT:', e3.message);
-        if(/duplicate key|unique/i.test(e3.message)) {
-          return 'Błąd: konflikt UNIQUE w deck_copies';
-        }
+        if(/duplicate key|unique/i.test(e3.message)) return 'Błąd: konflikt UNIQUE w deck_copies';
       }
-
       const {data:sd} = await this.client.from('shared_decks').select('author_id').eq('id', sharedId).single();
       if(sd && sd.author_id !== this.user.id){
         try{await this.client.rpc('add_xp',{target_user_id:sd.author_id, xp_amount:50})}catch(e){}
@@ -785,7 +793,15 @@ function vStudy(v){
   const rv = allDue.filter(c=>!isNew(c)).length;
   const sessionSize = Math.min(allDue.length, remaining);
   const lvlInfo = getLevelInfo(S.settings.xp||0);
+  const streak = computeStreak();
+  const todayDone = (S.log[dk(new Date())]||0) > 0;
+  const totalDue = due('').length;
+  const streakStatus = todayDone ? t('study.todayDone') : (totalDue > 0 ? t('study.todayPending').replace('{n}', totalDue) : t('study.todayNoCards'));
   v.innerHTML = `<h2>${t('study.title')}</h2>
+    <div class="c" style="padding:10px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;${todayDone ? '' : 'background:rgba(245,158,11,0.12);'}">
+      <span style="font-weight:700">🔥 ${streak} ${t('study.streakDays')}</span>
+      <span class="mu" style="font-size:13px">${streakStatus}</span>
+    </div>
     <div class="c" style="background:var(--sf);padding:10px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div><span style="font-weight:700" id="lvl-display">🏆 Lvl ${lvlInfo.level} - ${getRank(lvlInfo.level)}</span><span class="info-icon" onclick="showInfo(t('info.rankTitle'), t('info.level')+'<br><br>'+t('info.ranks'))">i</span></div>
       <span class="mu">${lvlInfo.currentXp}/${lvlInfo.nextLevelXp} XP</span>
@@ -821,7 +837,12 @@ function shuffleNewInDeck(){
 }
 function say(id){
   const c=S.cards.find(x=>x.id==id),d=S.decks.find(x=>x.id==c.deck);
-  try{const u=new SpeechSynthesisUtterance(c.front);u.lang=(L[d?.lang]||L.es).tts;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}
+  try{
+    const u=new SpeechSynthesisUtterance(c.front);
+    u.lang = (d?.lang && L[d.lang]) ? L[d.lang].tts : (navigator.language || 'en-US');
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  }catch(e){}
 }
 function grade(c,g){
   if(g===0){c.lapses++;c.ease=Math.max(1.3,c.ease-.2);c.int=0;c.due=Date.now();return}
@@ -906,7 +927,7 @@ function vCards(v){
     </details>
 
     <h3>${t('cards.decksTitle')}</h3><div id="dl"></div>
-    <div class="row"><input id="nn" placeholder="${t('cards.newDeckPlaceholder')}"><select id="nl">${Object.entries(L).map(([k,x])=>`<option value="${k}">${x.name[UI]||k}</option>`).join('')}</select></div>
+    <div class="row"><input id="nn" placeholder="${t('cards.newDeckPlaceholder')}"><select id="nl">${Object.entries(L).map(([k,x])=>`<option value="${k}">${x.name[UI]||k}</option>`).join('')}<option value="other">${t('lang.other')}</option></select></div>
     <button class="p" onclick="addDeck()">${t('cards.createDeck')}</button>
     <h3>${t('cards.importTitle')}</h3>
     <select id="idk">${S.decks.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('')}</select>
@@ -1086,31 +1107,67 @@ function addCard(){
 let _libDecks = [], _libNicks = {};
 
 function vLibrary(v){
-  v.innerHTML = `<h2>${t('library.title')}</h2><p class="mu" style="margin-bottom:20px">${t('library.desc')}</p><div id="lib-list"><p class="mu">${t('library.loading')}</p></div>`;
+  v.innerHTML = `
+    <h2>${t('library.title')}</h2>
+    <p class="mu" style="margin-bottom:16px">${t('library.desc')}</p>
+    <input id="lib-search" placeholder="${t('library.search')}" oninput="renderLibGroups()" style="margin-bottom:16px">
+    <div id="lib-groups"><p class="mu">${t('library.loading')}</p></div>
+  `;
   Sync.client.from('shared_decks').select('*').order('created_at',{ascending:false}).then(async ({data: decks, error}) => {
-    if(error) { $('#lib-list').innerHTML = `<p class="mu" style="color:#ef4444">Błąd: ${esc(error.message)}</p>`; return; }
-    if(!decks || !decks.length) { $('#lib-list').innerHTML = `<p class="mu">${t('library.empty')}</p>`; return; }
-
+    if(error) { $('#lib-groups').innerHTML = `<p class="mu" style="color:#ef4444">Błąd: ${esc(error.message)}</p>`; return; }
+    if(!decks || !decks.length) { $('#lib-groups').innerHTML = `<p class="mu">${t('library.empty')}</p>`; return; }
     const authorIds = [...new Set(decks.map(d=>d.author_id))];
     const {data: profiles} = await Sync.client.from('profiles').select('id,nickname').in('id', authorIds);
     _libNicks = {};
     (profiles||[]).forEach(p=>_libNicks[p.id]=p.nickname);
     _libDecks = decks;
-
-    $('#lib-list').innerHTML = decks.map((d, i) => `
-      <div class="c" style="padding:16px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-          <div style="flex:1">
-            <b>${esc(d.name)}</b><br>
-            <span class="mu">${langName(d.lang)} · ${t('library.author')}: ${esc(_libNicks[d.author_id]||'?')} · ${d.cards.length} · 📥 ${d.copy_count || 0} ${t('library.downloads')}</span>
-          </div>
-          <button class="s" onclick="copyDeckAt(${i})">${t('library.copy')}</button>
-        </div>
-      </div>
-    `).join('');
+    renderLibGroups();
   }).catch(e => {
-    $('#lib-list').innerHTML = `<p class="mu" style="color:#ef4444">Błąd: ${esc(e.message||e)}</p>`;
+    const host = $('#lib-groups');
+    if(host) host.innerHTML = `<p class="mu" style="color:#ef4444">Błąd: ${esc(e.message||e)}</p>`;
   });
+}
+
+function renderLibGroups(){
+  const host = $('#lib-groups');
+  if(!host) return;
+  const q = ($('#lib-search')?.value || '').toLowerCase().trim();
+  const langs = {}, others = [];
+  _libDecks.forEach((d, i) => {
+    const match = !q || d.name.toLowerCase().includes(q) || (d.cards||[]).some(c=>((c.front||'')+(c.back||'')).toLowerCase().includes(q));
+    if(!match) return;
+    if(d.lang && L[d.lang]) {
+      if(!langs[d.lang]) langs[d.lang] = [];
+      langs[d.lang].push({deck: d, idx: i});
+    } else {
+      others.push({deck: d, idx: i});
+    }
+  });
+  
+  const renderRow = items => `
+    <div style="display:flex;gap:12px;overflow-x:auto;padding:8px 0;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity">
+      ${items.map(({deck, idx}) => `
+        <div class="c" style="min-width:240px;max-width:280px;flex-shrink:0;padding:14px;margin:0;scroll-snap-align:start">
+          <b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(deck.name)}</b>
+          <span class="mu" style="font-size:13px;display:block;margin-top:4px">${t('library.author')}: ${esc(_libNicks[deck.author_id]||'?')} · ${(deck.cards||[]).length} · 📥 ${deck.copy_count||0} ${t('library.copies')}</span>
+          <button class="s" style="margin-top:10px;width:100%;font-size:14px;padding:10px" onclick="copyDeckAt(${idx})">${t('library.copy')}</button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  
+  let html = '';
+  const langKeys = Object.keys(langs);
+  if(langKeys.length) {
+    html += `<h2 style="font-size:20px;margin:16px 0 8px">${t('library.catLangs')}</h2>`;
+    langKeys.forEach(k => {
+      html += `<h3 style="font-size:16px;margin:12px 0 4px">${langName(k)}</h3>${renderRow(langs[k])}`;
+    });
+  }
+  if(others.length) {
+    html += `<h2 style="font-size:20px;margin:16px 0 8px">${t('library.catOther')}</h2>${renderRow(others)}`;
+  }
+  host.innerHTML = html || `<p class="mu">${t('library.empty')}</p>`;
 }
 
 function copyDeckAt(i){
@@ -1128,9 +1185,7 @@ function vStats(v){
   const mast = C.filter(c=>c.int>=21).length, nw = C.filter(isNew).length, lr = C.length-mast-nw;
   const today = S.daily[tk]||0;
   const reviewedEver = C.filter(c=>c.reps>0).length;
-  let streak=0; const d=new Date();
-  if(!S.log[dk(d)]) d.setDate(d.getDate()-1);
-  while(S.log[dk(d)]){streak++;d.setDate(d.getDate()-1)}
+  const streak = computeStreak();
   const aks = Object.keys(S.log).filter(k=>S.log[k]>0).sort();
   let longest=0,cur=0,prev=null;
   aks.forEach(k=>{if(prev){const diff=Math.round((new Date(k+'T00:00:00')-new Date(prev+'T00:00:00'))/864e5);cur=diff===1?cur+1:1}else cur=1;if(cur>longest)longest=cur;prev=k});
