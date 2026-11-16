@@ -4,9 +4,12 @@ import re
 import shutil
 import subprocess
 import tempfile
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 HTML = ROOT / "index.html"
+sys.path.insert(0, str(ROOT / "agent"))
+from context_builder import build_context
 
 
 class Parser(HTMLParser):
@@ -31,6 +34,25 @@ def main():
     missing = [item for item in required if item not in src]
     if missing:
         raise SystemExit("Missing expected AltCards symbols: " + ", ".join(missing))
+
+    # Verify that login-screen tasks receive the dynamic renderer, the
+    # translated strings, and the relevant CSS rather than a false need_context.
+    _, login_context = build_context(
+        'Na ekranie logowania AltCards ustaw tekst „Alternatywny sposób nauki” '
+        'oraz „Zaloguj się, aby zsynchronizować fiszki” kursywą.',
+        ROOT,
+    )
+    login_checks = [
+        "FUNCTION showLogin:" in login_context,
+        "FUNCTION changeLoginLang:" in login_context,
+        "Alternatywny sposób nauki." in login_context,
+        "Zaloguj się, aby zsynchronizować fiszki." in login_context,
+        "LOGIN CSS RULES:" in login_context,
+        "SYNC OBJECT:" not in login_context,
+        "CONTEXT CUT" not in login_context,
+    ]
+    if not all(login_checks):
+        raise SystemExit("Login context selection test failed")
 
     # Catch obvious credential accidents in the app source.
     patterns = [
@@ -58,7 +80,7 @@ def main():
                 raise SystemExit(f"Inline script {i} syntax error:\n{result.stderr}")
         finally:
             Path(tmp_path).unlink(missing_ok=True)
-    print(f"Static checks passed: HTML parsed, {len(scripts)} inline script(s) syntax-checked.")
+    print(f"Static checks passed: HTML parsed, {len(scripts)} inline script(s) syntax-checked; login context selection passed.")
 
 
 if __name__ == "__main__":
