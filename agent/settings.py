@@ -13,8 +13,7 @@ MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "8000"))
 
 # HARDCODED — nie czytamy env, żeby żadna zmienna w workflow / GitHub
 # Variables nie mogła tego nadpisać na 16000 (był taki bug).
-MAX_CONTEXT_CHARS = 24000
-
+MAX_CONTEXT_CHARS = 32000
 MAX_SNIPPETS = int(os.getenv("MAX_SNIPPETS", "24"))
 
 TARGET_FILE = "index.html"
