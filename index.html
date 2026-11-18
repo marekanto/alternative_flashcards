@@ -576,6 +576,8 @@ Sync = {
     }
   },
   async startSession(){
+    if(this._starting) return this._starting;
+    this._starting = (async()=>{
     const {data:prof} = await this.client.from('profiles').select('*').eq('id',this.user.id).maybeSingle();
     this.profile = prof;
     await this.download();
@@ -594,6 +596,8 @@ Sync = {
     
     if(!this.profile) { showNicknameModal(); }
     else { hideLogin(); render(); } 
+    })();
+    try { await this._starting; } finally { this._starting = null; }
   },
   async checkChangelog() {
     if(IS_DEV) return;
