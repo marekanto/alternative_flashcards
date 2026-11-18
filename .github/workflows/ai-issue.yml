@@ -177,18 +177,18 @@ jobs:
           EOF
           )"
 
-          - name: Advance queue
+      - name: Advance queue
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh issue edit "$ISSUE_NUMBER" --remove-label ai-task || true
-
+      
           NEXT=$(gh issue list --repo "$GITHUB_REPOSITORY" \
                    --label ai-queue --state open --limit 100 \
                    --json number,labels \
                    --jq '[.[] | select([.labels[].name] | index("ai-task") | not)] | sort_by(.number) | .[0].number')
-
+      
           if [ -n "$NEXT" ] && [ "$NEXT" != "null" ]; then
             echo "→ Uruchamiam następne w kolejce: #$NEXT"
             gh issue edit "$NEXT" --add-label ai-task --remove-label ai-queue
