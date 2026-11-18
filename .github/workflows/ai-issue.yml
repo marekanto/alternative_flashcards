@@ -100,7 +100,7 @@ jobs:
       - name: Run agent
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          ALLOW_SENSITIVE_CHANGES: 'false'
+          ALLOW_SENSITIVE_CHANGES: 'true'
           DIAGNOSE_ONLY: 'false'
           QA_MAX_ATTEMPTS: '3'
           DEEPSEEK_MODEL: 'deepseek-chat'
