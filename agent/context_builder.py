@@ -188,7 +188,14 @@ def extract_sync_method(source: str, method: str) -> str | None:
     end = _match_braces(body, brace)
     if end is None:
         return None
-    return body[m.start():end]
+    line_start = body.rfind("\n", 0, m.start())
+    line_start = 0 if line_start == -1 else line_start + 1
+    k = end
+    while k < len(body) and body[k] in " \t":
+        k += 1
+    if k < len(body) and body[k] == ",":
+        k += 1
+    return body[line_start:k]
 
 
 def extract_init_block(source: str) -> str:
@@ -245,7 +252,7 @@ def build_context(task: str, source: str) -> dict:
         for name in ("vStudy", "vStats", "ans", "undoAnswer", "grade"):
             push(name, extract_named(source, name))
         for method in (
-            "startSession", "download", "logXp",
+            "init", "startSession", "download", "logXp",
             "queueUpload", "upload", "checkBonuses",
         ):
             push(f"Sync.{method}", extract_sync_method(source, method))
