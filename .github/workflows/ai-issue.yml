@@ -104,6 +104,7 @@ jobs:
           DIAGNOSE_ONLY: 'false'
           QA_MAX_ATTEMPTS: '3'
           DEEPSEEK_MODEL: 'deepseek-chat'
+          LC_ALL: 'C.UTF-8'
         run: |
           export TASK="$(cat /tmp/task.txt)"
           if [ ${#TASK} -gt 2500 ]; then
