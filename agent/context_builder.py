@@ -234,10 +234,14 @@ def _is_login_task(task_low: str) -> bool:
     return any(k in task_low for k in LOGIN_KEYWORDS)
 
 
+def _is_cards_task(task_low: str) -> bool:
+    return any(k in task_low for k in CARD_KEYWORDS)
+
 def build_context(task: str, source: str) -> dict:
     task_low = task.lower()
     is_xp = _is_xp_task(task_low)
     is_login = _is_login_task(task_low)
+    is_cards = _is_cards_task(task_low)
 
     ordered: list[tuple[str, str]] = []
 
@@ -271,14 +275,29 @@ def build_context(task: str, source: str) -> dict:
             )
             if m:
                 push(f"TR[{k}]", m.group(0))
-
+    if is_cards:
+        for name in ("vCards", "renderCards", "dlist", "addDeck", "delDeck",
+                     "editDeckName", "editCard", "delCard"):
+            push(name, extract_named(source, name))
+        for k in ("cards.editTitle", "cards.edit", "cards.del", "cards.exclude",
+                  "cards.include", "cards.viewCards", "cards.deckSettings"):
+            m = re.search(
+                rf"['\"]{re.escape(k)}['\"]\s*:\s*\{{[^}}]*\}}",
+                source,
+            )
+            if m:
+                push(f"TR[{k}]", m.group(0))
     parts: list[str] = []
     included: list[str] = []
     over_limit: list[str] = []
     seen_bodies: set[str] = set()
     budget = MAX_CONTEXT_CHARS
     used = 0
-    snippet_cap = XP_SNIPPET_BUDGET if is_xp else 12
+    snippet_cap = 12
+    if is_xp:
+        snippet_cap += 12
+    if is_cards:
+        snippet_cap += 16
 
     for label, body in ordered:
         key = body.strip()
