@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+clarification.json
 .env
 .env.*
 .venv/
