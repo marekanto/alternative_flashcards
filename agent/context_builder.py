@@ -220,6 +220,10 @@ LOGIN_KEYWORDS = (
     "login", "logowania", "zaloguj", "tagline", "subtitle", "showlogin",
     "changelang", "ekran logowania",
 )
+CARD_KEYWORDS = (
+    "kart", "fiszk", "tali", "deck", "rendercards", "dlist", "delcard",
+    "editcard", "vcards", "excluded", "wyklucz", "kolejk", "srs",
+)
 
 
 def _is_xp_task(task_low: str) -> bool:
