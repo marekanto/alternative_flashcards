@@ -1082,7 +1082,7 @@ function vAdd(v){
     <textarea id="fr" placeholder="${t('add.front')}" onchange="suggest()" oninput="plink()"></textarea>
     <div class="row" style="margin-bottom:12px"><button class="s" onclick="suggest()">${t('add.suggest')}</button><a class="s" id="pl" target="_blank" style="text-decoration:none;padding:12px">${t('add.pons')}</a></div>
     <div id="sg" class="chips"></div>
-    <textarea id="bk" placeholder="${t('add.back')}"></textarea>
+    <textarea id="bk" placeholder="${t('add.back')}" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();addCard()}"></textarea>
     <button class="p" onclick="addCard()">${t('add.add')}</button>
     <button class="s" style="width:100%;margin-top:10px" onclick="tab='cards';render()">${t('settings.back')}</button>`;
   plink();
