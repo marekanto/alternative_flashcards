@@ -78,7 +78,9 @@ jobs:
         run: |
           echo "Waiting for user response. Exiting."
           exit 0
-
+      - name: Clean workflow artifacts
+        if: always()
+        run: rm -f clarification.json
       - name: Smoke test (builder context)
         run: python -B tests/smoke_test.py
 
