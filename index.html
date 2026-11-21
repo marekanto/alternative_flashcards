@@ -797,7 +797,7 @@ function vStudy(v){
         <button class="s" style="padding:6px 12px;font-size:13px" onclick="sess=null;render()">${t('sess.end')}</button>
       </div>
       <div class="card" style="margin-top:12px;position:relative" onclick="if(!flip){flip=true;render()}">${prompt}${flip?flipContent:`<div class="hint" style="margin-top:24px">${t('sess.discover')}</div>`}</div>
-      <div class="row" style="margin-top:12px"><button class="s" onclick="say('${c.id}')">${t('sess.say')}</button><button class="s" onclick="undoAnswer()">${t('sess.undo')}</button><button class="s" onclick="toggleExclude('${c.id}');render()">${c.excluded?'IN':'OUT'}</button></div>
+      <div class="row" style="margin-top:12px"><button class="s" onclick="say('${c.id}')">${t('sess.say')}</button><button class="s" onclick="undoAnswer()">${t('sess.undo')}</button><button class="s" onclick="toggleExclude('${c.id}');render()">${c.excluded?t('cards.include'):t('cards.exclude')}</button></div>
       ${flip?`<div class="g"><button style="background:#ef4444" onclick="ans(0)">${t('sess.again')}</button><button style="background:#f59e0b" onclick="ans(1)">${t('sess.hard')}</button><button style="background:#10b981" onclick="ans(2)">${t('sess.good')}</button><button style="background:#3b82f6" onclick="ans(3)">${t('sess.easy')}</button></div><p class="hint" style="text-align:center;margin-top:12px;opacity:0.7">${t('sess.keysHint')}</p>`:''}`;
     if(flip && imgRev) loadCardImage(c);
     return;
