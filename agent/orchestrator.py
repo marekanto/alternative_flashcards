@@ -82,9 +82,8 @@ def _print_diagnosis(proposal):
 
 def main():
     task = os.getenv("TASK", "").strip()
-    if not task or len(task) > 2500:
-        raise RuntimeError("TASK must contain 1–2500 characters")
-
+    if not task or len(task) > 4000:
+        raise RuntimeError("TASK must contain 1–4000 characters")
     allow_sensitive = (
         os.getenv("ALLOW_SENSITIVE_CHANGES", "false").lower() == "true"
     )
