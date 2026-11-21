@@ -1,0 +1,206 @@
+name: AI Development
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Zadanie dla agenta (PL/EN)'
+        required: true
+        type: string
+      allow_sensitive:
+        description: 'Pozwól zmieniać SRS/XP/Sync (ochrona)'
+        required: false
+        default: false
+        type: boolean
+      diagnose_only:
+        description: 'Tylko diagnoza (bez patcha, bez PR)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  checks: read
+  statuses: read
+  pull-requests: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: github.ref == 'refs/heads/main'
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ALT_CARDS_AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Smoke test (before patch)
+        id: pre_smoke
+        run: |
+          set -o pipefail
+          python -B tests/smoke_test.py 2>&1 | tee /tmp/pre-smoke.log
+
+      - name: Run agent
+        id: agent
+        continue-on-error: true
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          TASK: ${{ inputs.task }}
+          ALLOW_SENSITIVE_CHANGES: ${{ inputs.allow_sensitive }}
+          DIAGNOSE_ONLY: ${{ inputs.diagnose_only }}
+          QA_MAX_ATTEMPTS: '3'
+          CONTEXT_REBUILD_MAX: '2'
+          DEEPSEEK_API_MAX_ATTEMPTS: '3'
+          DEEPSEEK_MODEL: 'deepseek-flash'
+        run: |
+          set -o pipefail
+          python -B agent/orchestrator.py 2>&1 | tee /tmp/agent-dev.log
+
+      - name: Self-repair automation infrastructure
+        id: maintenance
+        if: >-
+          always() &&
+          (failure() || steps.pre_smoke.outcome == 'failure' || steps.agent.outcome == 'failure')
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: 'deepseek-flash'
+          DEEPSEEK_API_MAX_ATTEMPTS: '3'
+          DEEPSEEK_REVIEW_MODEL: 'deepseek-v4-pro'
+        run: |
+          { cat /tmp/pre-smoke.log 2>/dev/null || true; cat /tmp/agent-dev.log 2>/dev/null || true; } > /tmp/maintenance-failure.log
+          if [ ! -s /tmp/maintenance-failure.log ]; then
+            gh run view "$GITHUB_RUN_ID" --log-failed > /tmp/maintenance-failure.log 2>&1 || true
+          fi
+          python -B agent/maintenance_agent.py --log /tmp/maintenance-failure.log
+
+      - name: Commit and merge infrastructure repair
+        id: maintenance_merge
+        if: always() && steps.maintenance.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.ALT_CARDS_AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+          MAINTENANCE_FILES: ${{ steps.maintenance.outputs.files }}
+        run: |
+          BRANCH="ai/maintenance-dev-${GITHUB_RUN_ID}"
+          git config user.name "AltCards Maintenance Agent"
+          git config user.email "maintenance@altcards.local"
+          git checkout -b "$BRANCH"
+          FILES="$MAINTENANCE_FILES"
+          if [ -z "$FILES" ]; then
+            echo "::error::Maintenance Agent did not report changed files."
+            exit 1
+          fi
+          # shellcheck disable=SC2086
+          git add -- $FILES
+          git commit -m "AI maintenance: repair automation infrastructure"
+          git push origin "$BRANCH"
+
+          PR_URL=$(gh pr create --base main --head "$BRANCH" \
+            --title "AI maintenance: repair automation infrastructure" \
+            --body "Automated infrastructure repair after AI Development workflow failure.
+
+          Independent Maintenance Agent review, local smoke tests, Python compilation, and workflow YAML validation passed. No product files were modified.")
+          echo "Infrastructure PR: $PR_URL"
+          timeout 900s gh pr checks "$PR_URL" --required --watch --fail-fast
+          gh pr merge "$PR_URL" --squash --delete-branch
+
+          STATE=$(gh pr view "$PR_URL" --json state --jq .state)
+          if [ "$STATE" != "MERGED" ]; then
+            echo "::error::Infrastructure PR was not merged (state=$STATE)."
+            exit 1
+          fi
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Retry original manual task after infrastructure repair
+        id: retry_agent
+        if: always() && steps.maintenance_merge.outputs.changed == 'true'
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          TASK: ${{ inputs.task }}
+          ALLOW_SENSITIVE_CHANGES: ${{ inputs.allow_sensitive }}
+          DIAGNOSE_ONLY: ${{ inputs.diagnose_only }}
+          QA_MAX_ATTEMPTS: '2'
+          CONTEXT_REBUILD_MAX: '2'
+          DEEPSEEK_API_MAX_ATTEMPTS: '3'
+          DEEPSEEK_MODEL: 'deepseek-flash'
+        run: |
+          set -o pipefail
+          python -B agent/orchestrator.py 2>&1 | tee /tmp/agent-dev-retry.log
+
+      - name: Confirm agent completed
+        id: recovery
+        if: always()
+        env:
+          FIRST_OUTCOME: ${{ steps.agent.outcome }}
+          RETRY_OUTCOME: ${{ steps.retry_agent.outcome }}
+        run: |
+          if [ "$FIRST_OUTCOME" = "success" ] || [ "$RETRY_OUTCOME" = "success" ]; then
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "::error::The agent did not complete after the available recovery attempt."
+          exit 1
+
+      - name: Smoke test (after patch)
+        id: post_smoke
+        if: always() && steps.recovery.outputs.passed == 'true'
+        run: python -B tests/smoke_test.py
+
+      - name: Commit + PR + auto-merge
+        if: always() && steps.recovery.outputs.passed == 'true' && steps.post_smoke.outcome == 'success' && inputs.diagnose_only == false
+        env:
+          GH_TOKEN: ${{ secrets.ALT_CARDS_AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+          TASK_INPUT: ${{ inputs.task }}
+        run: |
+          if git diff --quiet; then
+            echo "No changes — skipping commit"
+            exit 0
+          fi
+
+          CHANGED=$(git diff --name-only)
+          if [ "$CHANGED" != "index.html" ]; then
+            echo "::error::Unexpected changed paths: $CHANGED"
+            exit 1
+          fi
+          BRANCH="ai/deepseek-${GITHUB_RUN_ID}"
+          git config user.name "AltCards Agent"
+          git config user.email "agent@altcards.local"
+          git checkout -b "$BRANCH"
+          git add -- index.html
+          git commit -m "AI Development run ${GITHUB_RUN_ID}"
+          git push origin "$BRANCH"
+
+          cat > /tmp/ai-development-pr-body.md <<'EOF_PR'
+          Automated patch by AltCards agent.
+
+          Independent QA review and local smoke tests passed. Required GitHub checks must also pass before merge.
+          EOF_PR
+          printf "\nTask:\n%s\n" "$TASK_INPUT" >> /tmp/ai-development-pr-body.md
+          PR_URL=$(gh pr create --base main --head "$BRANCH" \
+            --title "AI Development run ${GITHUB_RUN_ID}" \
+            --body-file /tmp/ai-development-pr-body.md)
+          echo "Created PR: $PR_URL"
+
+          timeout 900s gh pr checks "$PR_URL" --required --watch --fail-fast
+          gh pr merge "$PR_URL" --squash --delete-branch
+          STATE=$(gh pr view "$PR_URL" --json state --jq .state)
+          if [ "$STATE" != "MERGED" ]; then
+            echo "::error::Application PR was not merged (state=$STATE)."
+            exit 1
+          fi
+          echo "Merged $BRANCH into main"

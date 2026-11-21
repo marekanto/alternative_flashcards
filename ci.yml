@@ -1,0 +1,62 @@
+name: AltCards CI
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: AltCards required quality gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check --retries 3 --timeout 30 -r requirements.txt
+
+      - name: Run smoke tests
+        run: python -B tests/smoke_test.py
+
+      - name: Compile Python sources
+        run: python -B -m py_compile agent/*.py tests/*.py
+
+      - name: Validate workflow YAML and shell syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          import subprocess
+          import yaml
+
+          for path in sorted(Path(".github/workflows").glob("*.yml")):
+              raw = path.read_text(encoding="utf-8")
+              document = yaml.safe_load(raw)
+              if not isinstance(document, dict) or not isinstance(document.get("jobs"), dict):
+                  raise SystemExit(f"Invalid workflow structure: {path}")
+              for job_name, job in document["jobs"].items():
+                  for index, step in enumerate(job.get("steps", [])):
+                      command = step.get("run")
+                      if not command:
+                          continue
+                      command = re.sub(r"\$\{\{.*?\}\}", "placeholder", command)
+                      result = subprocess.run(
+                          ["bash", "-n"], input=command, text=True, capture_output=True
+                      )
+                      if result.returncode:
+                          raise SystemExit(
+                              f"Shell syntax error in {path}, job={job_name}, step={index}:\n"
+                              + result.stderr
+                          )
+          print("All workflow YAML and run-step shell syntax checks passed.")
+          PY

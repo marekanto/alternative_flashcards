@@ -1,0 +1,394 @@
+name: AI Issue Handler
+
+on:
+  issues:
+    types: [labeled, edited]
+  issue_comment:
+    types: [created]
+
+# Etykieta ai-sensitive-approved jest jawną zgodą właściciela na chronione zmiany
+# w konkretnym Issue. Nie ustawiaj globalnie ALLOW_SENSITIVE_CHANGES=true.
+# Jeden aktywny worker dla całego repozytorium.
+# Zadania oczekujące pozostają oznaczone ai-queue; następne uruchamia
+# dopiero krok Advance queue po potwierdzonym sukcesie poprzedniego zadania.
+concurrency:
+  group: altcards-ai-issue-queue
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  checks: read
+  statuses: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    if: |
+      github.event.issue.state == 'open' &&
+      contains(github.event.issue.labels.*.name, 'ai-task') &&
+      (
+        (github.event_name == 'issues') ||
+        (github.event_name == 'issue_comment'
+         && !github.event.issue.pull_request
+         && github.event.comment.user.login != 'github-actions[bot]')
+      )
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      GH_TOKEN: ${{ secrets.ALT_CARDS_AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ALT_CARDS_AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Ensure agent control labels exist
+        run: |
+          gh label create ai-sensitive-approved --color 0E8A16 \
+            --description "Explicit owner approval for protected AltCards logic changes" || true
+          gh label create ai-blocked --color B60205 \
+            --description "Agent failed; queue is paused until human intervention" || true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Event payload może być nieaktualny, jeśli workflow czekał w concurrency.
+      # Sprawdzamy aktualny stan Issue, zanim agent zacznie pracę.
+      - name: Verify issue is still the active queue item
+        id: active
+        run: |
+          CURRENT=$(gh issue view "$ISSUE_NUMBER" --json state,labels)
+          STATE=$(echo "$CURRENT" | jq -r '.state')
+          HAS_ACTIVE_LABEL=$(echo "$CURRENT" | jq -r '[.labels[].name] | index("ai-task") != null')
+          HAS_SENSITIVE_APPROVAL=$(echo "$CURRENT" | jq -r '[.labels[].name] | index("ai-sensitive-approved") != null')
+          if [ "$STATE" != "OPEN" ] || [ "$HAS_ACTIVE_LABEL" != "true" ]; then
+            echo "active=false" >> "$GITHUB_OUTPUT"
+            echo "allow_sensitive=false" >> "$GITHUB_OUTPUT"
+            echo "Issue is no longer the active queue item; skipping stale workflow run."
+            exit 0
+          fi
+          echo "active=true" >> "$GITHUB_OUTPUT"
+          echo "allow_sensitive=$HAS_SENSITIVE_APPROVAL" >> "$GITHUB_OUTPUT"
+          if [ "$HAS_SENSITIVE_APPROVAL" = "true" ]; then
+            echo "Sensitive changes explicitly approved by ai-sensitive-approved label."
+          else
+            echo "Sensitive changes are NOT approved; protected areas remain blocked."
+          fi
+
+      - name: Clarify — does the task need more info?
+        id: clarifier
+        if: steps.active.outputs.active == 'true'
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: 'deepseek-flash'
+        run: |
+          set -o pipefail
+          python -B agent/clarifier.py 2>&1 | tee /tmp/clarifier.log
+
+      - name: Post clarifying questions
+        id: clarify
+        if: always() && steps.active.outputs.active == 'true' && hashFiles('clarification.json') != ''
+        run: |
+          STATUS=$(jq -r .status clarification.json)
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          if [ "$STATUS" != "needs_clarification" ]; then
+            exit 0
+          fi
+
+          REASONING=$(jq -r .reasoning clarification.json)
+          QUESTIONS=$(jq -r '.questions[]' clarification.json | nl -ba -w2 -s'. ')
+          BODY=$(cat <<EOF_COMMENT
+          🤔 **Potrzebuję doprecyzowania**, żeby wykonać zadanie poprawnie.
+
+          $QUESTIONS
+
+          <sub>$REASONING</sub>
+
+          Odpowiedz w komentarzu. Kolejka pozostanie wstrzymana, a agent wróci do tego Issue po Twojej odpowiedzi.
+          EOF_COMMENT
+          )
+          gh issue comment "$ISSUE_NUMBER" --body "$BODY"
+
+      - name: Clean clarification artifact
+        if: always() && steps.active.outputs.active == 'true'
+        run: rm -f clarification.json
+
+      - name: Smoke test (before patch)
+        id: pre_smoke
+        if: steps.active.outputs.active == 'true' && steps.clarify.outputs.status != 'needs_clarification'
+        run: |
+          set -o pipefail
+          python -B tests/smoke_test.py 2>&1 | tee /tmp/pre-smoke.log
+
+      - name: Compose TASK from issue
+        id: task
+        if: steps.active.outputs.active == 'true' && steps.clarify.outputs.status != 'needs_clarification'
+        run: |
+          if ! gh issue view "$ISSUE_NUMBER" --json title,body,comments --jq '
+            .title + "\n\n" + (.body // "") + "\n\n" +
+            ([.comments[]
+              | select(.author.login != "github-actions[bot]")
+              | select((.body // "") | startswith("Protected-change approval recorded by AltCards Orchestrator.") | not)
+              | select((.body // "") | startswith("Protected-change approval revoked by AltCards Orchestrator.") | not)
+              | .body] | join("\n\n---\n\n"))
+          ' > /tmp/task.txt 2>/tmp/task-compose.log; then
+            cat /tmp/task-compose.log
+            exit 1
+          fi
+          echo "TASK_PREVIEW:"; head -c 500 /tmp/task.txt; echo
+
+      - name: Run agent
+        id: agent
+        if: steps.active.outputs.active == 'true' && steps.clarify.outputs.status != 'needs_clarification'
+        continue-on-error: true
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          # Zgoda jest pobierana z aktualnych etykiet Issue, nie ze starego payloadu eventu.
+          # Bez ai-sensitive-approved chronione obszary pozostają zablokowane.
+          ALLOW_SENSITIVE_CHANGES: ${{ steps.active.outputs.allow_sensitive }}
+          DIAGNOSE_ONLY: 'false'
+          QA_MAX_ATTEMPTS: '3'
+          CONTEXT_REBUILD_MAX: '2'
+          DEEPSEEK_API_MAX_ATTEMPTS: '3'
+          DEEPSEEK_MODEL: 'deepseek-flash'
+          LC_ALL: 'C.UTF-8'
+        run: |
+          set -o pipefail
+          export TASK="$(cat /tmp/task.txt)"
+          if [ ${#TASK} -gt 4000 ]; then
+            echo "::error::Issue + comments >4000 characters. Shorten the issue or split the task."
+            exit 1
+          fi
+          python -B agent/orchestrator.py 2>&1 | tee /tmp/agent.log
+
+      # Warstwa utrzymaniowa jest uruchamiana po naprawialnym błędzie pipeline'u.
+      # Ma ścisłą listę edytowalnych plików; walidatory i prompty QA są read-only.
+      - name: Self-repair automation infrastructure
+        id: maintenance
+        if: >-
+          always() && steps.active.outputs.active == 'true' &&
+          steps.clarify.outputs.status != 'needs_clarification' &&
+          (failure() || steps.clarifier.outcome == 'failure' || steps.pre_smoke.outcome == 'failure' ||
+           steps.task.outcome == 'failure' || steps.agent.outcome == 'failure')
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: 'deepseek-flash'
+          DEEPSEEK_API_MAX_ATTEMPTS: '3'
+          DEEPSEEK_REVIEW_MODEL: 'deepseek-v4-pro'
+        run: |
+          { cat /tmp/clarifier.log 2>/dev/null || true; cat /tmp/pre-smoke.log 2>/dev/null || true;
+            cat /tmp/task-compose.log 2>/dev/null || true; cat /tmp/agent.log 2>/dev/null || true; } > /tmp/maintenance-failure.log
+          if [ ! -s /tmp/maintenance-failure.log ]; then
+            gh run view "$GITHUB_RUN_ID" --log-failed > /tmp/maintenance-failure.log 2>&1 || true
+          fi
+          python -B agent/maintenance_agent.py --log /tmp/maintenance-failure.log
+
+      - name: Commit and merge infrastructure repair
+        id: maintenance_merge
+        if: always() && steps.maintenance.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.ALT_CARDS_AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+          MAINTENANCE_FILES: ${{ steps.maintenance.outputs.files }}
+        run: |
+          BRANCH="ai/maintenance-${ISSUE_NUMBER}-${GITHUB_RUN_ID}"
+          git config user.name "AltCards Maintenance Agent"
+          git config user.email "maintenance@altcards.local"
+          git checkout -b "$BRANCH"
+          # Exact allowlisted paths reported by the Maintenance Agent.
+          FILES="$MAINTENANCE_FILES"
+          if [ -z "$FILES" ]; then
+            echo "::error::Maintenance Agent did not report changed files."
+            exit 1
+          fi
+          # shellcheck disable=SC2086
+          git add -- $FILES
+          git commit -m "AI maintenance: repair automation infrastructure"
+          git push origin "$BRANCH"
+
+          PR_URL=$(gh pr create --base main --head "$BRANCH" \
+            --title "AI maintenance: repair automation infrastructure" \
+            --body "Automated infrastructure self-repair after failure in Issue #${ISSUE_NUMBER}.
+
+          Independent Maintenance Agent review passed. Smoke tests, Python compilation, workflow YAML parsing (when changed), and git diff checks passed locally. No application files were modified.")
+          echo "Infrastructure PR: $PR_URL"
+
+          # Required GitHub checks must pass; branch protection is never bypassed.
+          timeout 900s gh pr checks "$PR_URL" --required --watch --fail-fast
+          gh pr merge "$PR_URL" --squash --delete-branch
+
+          STATE=$(gh pr view "$PR_URL" --json state --jq .state)
+          if [ "$STATE" != "MERGED" ]; then
+            echo "::error::Infrastructure PR was not merged (state=$STATE)."
+            exit 1
+          fi
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Retry original Issue after infrastructure repair
+        id: retry_agent
+        if: always() && steps.maintenance_merge.outputs.changed == 'true'
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          ALLOW_SENSITIVE_CHANGES: ${{ steps.active.outputs.allow_sensitive }}
+          DIAGNOSE_ONLY: 'false'
+          QA_MAX_ATTEMPTS: '2'
+          CONTEXT_REBUILD_MAX: '2'
+          DEEPSEEK_API_MAX_ATTEMPTS: '3'
+          DEEPSEEK_MODEL: 'deepseek-flash'
+          LC_ALL: 'C.UTF-8'
+        run: |
+          set -o pipefail
+          # If the failure happened before task composition (e.g. pre-smoke or
+          # clarification API), rebuild the task from the current Issue state.
+          if [ ! -s /tmp/task.txt ]; then
+            gh issue view "$ISSUE_NUMBER" --json title,body,comments --jq '
+              .title + "\n\n" + (.body // "") + "\n\n" +
+              ([.comments[]
+                | select(.author.login != "github-actions[bot]")
+                | select((.body // "") | startswith("Protected-change approval recorded by AltCards Orchestrator.") | not)
+                | select((.body // "") | startswith("Protected-change approval revoked by AltCards Orchestrator.") | not)
+                | .body] | join("\n\n---\n\n"))
+            ' > /tmp/task.txt
+          fi
+          if [ ! -s /tmp/task.txt ] || [ "$(wc -c < /tmp/task.txt)" -gt 4000 ]; then
+            echo "::error::Could not rebuild a valid 1-4000 character task after infrastructure repair."
+            exit 1
+          fi
+          export TASK="$(cat /tmp/task.txt)"
+          python -B agent/orchestrator.py 2>&1 | tee /tmp/agent-retry.log
+
+      - name: Confirm the original task passed after any recovery
+        id: recovery
+        if: always() && steps.active.outputs.active == 'true' && steps.clarify.outputs.status != 'needs_clarification'
+        env:
+          FIRST_OUTCOME: ${{ steps.agent.outcome }}
+          RETRY_OUTCOME: ${{ steps.retry_agent.outcome }}
+        run: |
+          if [ "$FIRST_OUTCOME" = "success" ] || [ "$RETRY_OUTCOME" = "success" ]; then
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "::error::The original task did not pass after the available recovery attempt."
+          exit 1
+
+      - name: Smoke test (after patch)
+        id: post_smoke
+        if: always() && steps.recovery.outputs.passed == 'true'
+        run: python -B tests/smoke_test.py
+
+      - name: Commit + PR + auto-merge
+        id: merge
+        if: always() && steps.recovery.outputs.passed == 'true' && steps.post_smoke.outcome == 'success'
+        run: |
+          if git diff --quiet; then
+            echo "::error::Agent completed without producing a code change. Queue will remain blocked."
+            exit 1
+          fi
+
+          BRANCH="ai/issue-${ISSUE_NUMBER}-${GITHUB_RUN_ID}"
+          ISSUE_TITLE=$(gh issue view "$ISSUE_NUMBER" --json title --jq .title)
+          git config user.name "AltCards Agent"
+          git config user.email "agent@altcards.local"
+          git checkout -b "$BRANCH"
+          git add -- index.html
+          git commit -m "AI (#${ISSUE_NUMBER}): ${ISSUE_TITLE}"
+          git push origin "$BRANCH"
+
+          PR_URL=$(gh pr create --base main --head "$BRANCH" \
+            --title "AI (#${ISSUE_NUMBER}): ${ISSUE_TITLE}" \
+            --body "Closes #${ISSUE_NUMBER}
+
+          Automated patch from the AltCards coding agent.
+
+          **Task:**
+          $(head -c 1200 /tmp/task.txt)
+
+          Pre- and post-patch smoke tests passed. The agent QA review passed.")
+
+          echo "Created PR: $PR_URL"
+
+          # Nie omijamy branch protection. Jeśli wymagane kontrole nie przejdą,
+          # merge zakończy się błędem, a kolejka pozostanie zatrzymana.
+          for i in $(seq 1 30); do
+            STATE=$(gh pr view "$PR_URL" --json mergeable --jq '.mergeable')
+            if [ "$STATE" = "MERGEABLE" ]; then
+              break
+            fi
+            echo "Waiting for PR to become mergeable (state=$STATE, attempt $i)..."
+            sleep 5
+          done
+
+          if [ "$STATE" != "MERGEABLE" ]; then
+            echo "::error::PR is not mergeable after waiting. Queue will remain blocked."
+            exit 1
+          fi
+
+          timeout 900s gh pr checks "$PR_URL" --required --watch --fail-fast
+          gh pr merge "$PR_URL" --squash --delete-branch
+          STATE=$(gh pr view "$PR_URL" --json state --jq .state)
+          if [ "$STATE" != "MERGED" ]; then
+            echo "::error::Application PR was not merged (state=$STATE)."
+            exit 1
+          fi
+          echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Close issue with summary
+        if: always() && steps.merge.outputs.changed == 'true'
+        run: |
+          gh issue close "$ISSUE_NUMBER" --comment "$(cat <<EOF_COMMENT
+          ✅ **Gotowe** — PR został scalony z \\`main\\`.
+
+          $(gh issue view "$ISSUE_NUMBER" --json title --jq .title)
+
+          Zadanie zakończone. Kontroler może uruchomić następne Issue z kolejki.
+          EOF_COMMENT
+          )"
+
+      - name: Block failed issue and stop automatic retries
+        if: failure() && steps.active.outputs.active == 'true' && steps.merge.outputs.changed != 'true'
+        run: |
+          # Oznaczamy problem i zdejmujemy ai-task, aby komentarze nie uruchamiały
+          # kolejnych prób w pętli. Człowiek musi świadomie ponownie dodać ai-task.
+          gh issue edit "$ISSUE_NUMBER" --add-label ai-blocked --remove-label ai-task
+          gh issue comment "$ISSUE_NUMBER" --body "$(cat <<EOF_COMMENT
+          ❌ **Agent nie ukończył zadania. Kolejka została zatrzymana.**
+
+          Issue otrzymało etykietę \`ai-blocked\`, a aktywna etykieta \`ai-task\` została zdjęta.
+          Sprawdź [log workflow](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}).
+
+          Po usunięciu przyczyny błędu usuń \`ai-blocked\` i ponownie dodaj \`ai-task\`. Dopiero wtedy agent wznowi to zadanie. Kolejka nie przejdzie do następnego Issue automatycznie.
+          EOF_COMMENT
+          )"
+
+      - name: Advance queue
+        if: always() && steps.merge.outputs.changed == 'true'
+        run: |
+          # Usuwamy aktywną etykietę dopiero po merge i zamknięciu bieżącego Issue.
+          gh issue edit "$ISSUE_NUMBER" --remove-label ai-task
+
+          NEXT=$(gh issue list --repo "$GITHUB_REPOSITORY" \
+            --label ai-queue --state open --limit 100 \
+            --json number,labels \
+            --jq '[.[] | select([.labels[].name] | index("ai-task") | not)] | sort_by(.number) | .[0].number')
+
+          if [ -n "$NEXT" ] && [ "$NEXT" != "null" ]; then
+            echo "Starting next queued issue: #$NEXT"
+            # Jedna operacja etykiet uruchamia następny workflow.
+            gh issue edit "$NEXT" --add-label ai-task --remove-label ai-queue
+          else
+            echo "Queue empty — all tasks completed."
+          fi
