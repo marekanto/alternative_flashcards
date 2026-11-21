@@ -277,7 +277,8 @@ def build_context(task: str, source: str) -> dict:
                 push(f"TR[{k}]", m.group(0))
     if is_cards:
         for name in ("vCards", "renderCards", "dlist", "addDeck", "delDeck",
-                     "editDeckName", "editCard", "delCard"):
+                     "editDeckName", "editCard", "delCard", "toggleExclude",
+                     "deckMenu", "toggleDeckDir", "say", "vStudy"):
             push(name, extract_named(source, name))
         for k in ("cards.editTitle", "cards.edit", "cards.del", "cards.exclude",
                   "cards.include", "cards.viewCards", "cards.deckSettings"):
