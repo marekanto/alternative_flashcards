@@ -6,6 +6,8 @@ on:
   issue_comment:
     types: [created]
 
+# Etykieta ai-sensitive-approved jest jawną zgodą właściciela na chronione zmiany
+# w konkretnym Issue. Nie ustawiaj globalnie ALLOW_SENSITIVE_CHANGES=true.
 # Jeden aktywny worker dla całego repozytorium.
 # Zadania oczekujące pozostają oznaczone ai-queue; następne uruchamia
 # dopiero krok Advance queue po potwierdzonym sukcesie poprzedniego zadania.
@@ -43,6 +45,13 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Ensure agent control labels exist
+        run: |
+          gh label create ai-sensitive-approved --color 0E8A16 \
+            --description "Explicit owner approval for protected AltCards logic changes" || true
+          gh label create ai-blocked --color B60205 \
+            --description "Agent failed; queue is paused until human intervention" || true
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -59,12 +68,20 @@ jobs:
           CURRENT=$(gh issue view "$ISSUE_NUMBER" --json state,labels)
           STATE=$(echo "$CURRENT" | jq -r '.state')
           HAS_ACTIVE_LABEL=$(echo "$CURRENT" | jq -r '[.labels[].name] | index("ai-task") != null')
+          HAS_SENSITIVE_APPROVAL=$(echo "$CURRENT" | jq -r '[.labels[].name] | index("ai-sensitive-approved") != null')
           if [ "$STATE" != "OPEN" ] || [ "$HAS_ACTIVE_LABEL" != "true" ]; then
             echo "active=false" >> "$GITHUB_OUTPUT"
+            echo "allow_sensitive=false" >> "$GITHUB_OUTPUT"
             echo "Issue is no longer the active queue item; skipping stale workflow run."
             exit 0
           fi
           echo "active=true" >> "$GITHUB_OUTPUT"
+          echo "allow_sensitive=$HAS_SENSITIVE_APPROVAL" >> "$GITHUB_OUTPUT"
+          if [ "$HAS_SENSITIVE_APPROVAL" = "true" ]; then
+            echo "Sensitive changes explicitly approved by ai-sensitive-approved label."
+          else
+            echo "Sensitive changes are NOT approved; protected areas remain blocked."
+          fi
 
       - name: Clarify — does the task need more info?
         if: steps.active.outputs.active == 'true'
@@ -119,8 +136,9 @@ jobs:
         if: steps.active.outputs.active == 'true' && steps.clarify.outputs.status != 'needs_clarification'
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          # Wrażliwe obszary (SRS/XP/Sync/auth) wymagają osobnej ścieżki akceptacji.
-          ALLOW_SENSITIVE_CHANGES: 'false'
+          # Zgoda jest pobierana z aktualnych etykiet Issue, nie ze starego payloadu eventu.
+          # Bez ai-sensitive-approved chronione obszary pozostają zablokowane.
+          ALLOW_SENSITIVE_CHANGES: ${{ steps.active.outputs.allow_sensitive }}
           DIAGNOSE_ONLY: 'false'
           QA_MAX_ATTEMPTS: '3'
           DEEPSEEK_MODEL: 'deepseek-chat'
@@ -200,15 +218,19 @@ jobs:
           EOF_COMMENT
           )"
 
-      - name: Comment failure on issue
+      - name: Block failed issue and stop automatic retries
         if: failure() && steps.active.outputs.active == 'true'
         run: |
+          # Oznaczamy problem i zdejmujemy ai-task, aby komentarze nie uruchamiały
+          # kolejnych prób w pętli. Człowiek musi świadomie ponownie dodać ai-task.
+          gh issue edit "$ISSUE_NUMBER" --add-label ai-blocked --remove-label ai-task
           gh issue comment "$ISSUE_NUMBER" --body "$(cat <<EOF_COMMENT
           ❌ **Agent nie ukończył zadania. Kolejka została zatrzymana.**
 
+          Issue otrzymało etykietę \`ai-blocked\`, a aktywna etykieta \`ai-task\` została zdjęta.
           Sprawdź [log workflow](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}).
 
-          Po poprawieniu opisu lub dodaniu komentarza workflow spróbuje ponownie. Nie uruchamiam następnego Issue, dopóki to zadanie nie zakończy się sukcesem.
+          Po usunięciu przyczyny błędu usuń \`ai-blocked\` i ponownie dodaj \`ai-task\`. Dopiero wtedy agent wznowi to zadanie. Kolejka nie przejdzie do następnego Issue automatycznie.
           EOF_COMMENT
           )"
 
