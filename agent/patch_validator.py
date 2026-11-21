@@ -61,13 +61,17 @@ def changed_protected_areas(before, after):
     return sorted(set(changed))
 
 
+class SensitiveChangeNotApproved(PermissionError):
+    """Patch touches protected logic without explicit per-Issue approval."""
+
+
 def enforce_sensitive_guard(before, after, allow_sensitive):
     changed = changed_protected_areas(before, after)
     if changed and not allow_sensitive:
-        raise RuntimeError(
+        raise SensitiveChangeNotApproved(
             "Protected AltCards logic changed without explicit approval: "
             + ", ".join(changed)
-            + ". Re-run only if the task intentionally changes this subsystem and allow_sensitive_changes=true."
+            + ". Add the ai-sensitive-approved label only after approving this exact scope."
         )
 
 

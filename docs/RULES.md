@@ -31,3 +31,12 @@ Do not change these areas unless:
 - If context is insufficient, return `need_context`; do not invent code.
 - Do not output whole-file replacements.
 - Do not claim runtime behavior is verified by static checks.
+
+## GitHub Issue approval for protected changes
+
+The Issue workflow reads the current labels from GitHub immediately before running the agent:
+- `ai-sensitive-approved` is the explicit per-Issue approval to modify protected behavior. Add it only after reviewing and approving the exact scope in that Issue.
+- Without that label, `ALLOW_SENSITIVE_CHANGES` remains false and the patch validator blocks protected changes.
+- A failed Issue is labeled `ai-blocked` and loses `ai-task`. To retry after human intervention, remove `ai-blocked` and add `ai-task` again.
+- Do not grant sensitive approval globally in workflow YAML or repository variables.
+

@@ -8,7 +8,9 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "agent"))
 
+from agent.patch_validator import SensitiveChangeNotApproved, enforce_sensitive_guard  # noqa: E402
 from agent.context_builder import build_context, MAX_CONTEXT_CHARS, TARGET_FILE  # noqa: E402
 
 SOURCE = (ROOT / TARGET_FILE).read_text(encoding="utf-8")
@@ -80,9 +82,44 @@ def test_brace_matcher_handles_templates_and_nested() -> None:
     _assert(sample[start:end].endswith("}"), "matcher nie domknął")
 
 
+def test_sensitive_guard_requires_explicit_approval() -> None:
+    before = "const defaults={newLimit:50,xp:0};"
+    after = "const defaults={newLimit:50,dailyGoal:20,xp:0};"
+    try:
+        enforce_sensitive_guard(before, after, False)
+    except SensitiveChangeNotApproved:
+        pass
+    else:
+        raise AssertionError("protected defaults change passed without approval")
+
+    enforce_sensitive_guard(before, after, True)
+
+
+def test_validation_failure_refines_next_instruction() -> None:
+    import orchestrator
+    from unittest.mock import patch
+
+    expected = "Narrowed instruction with exact correction"
+    with patch.object(
+        orchestrator,
+        "refine_task",
+        return_value={"ok": True, "refined_task": expected, "reasoning": "added validation feedback"},
+    ) as mocked:
+        actual = orchestrator._refine_after_failure(
+            "original task", "previous instruction", "FIND text occurs 2 times",
+            "(Patch rejected before a diff was created.)", 1,
+        )
+    _assert(actual == expected, "retry helper did not use the refined instruction")
+    _assert(mocked.call_args.args[1] == [
+        "Patch attempt 1 failed validation: FIND text occurs 2 times"
+    ], "retry helper did not pass the validation error to the refiner")
+
+
 def main() -> int:
     tests = [
         test_brace_matcher_handles_templates_and_nested,
+        test_sensitive_guard_requires_explicit_approval,
+        test_validation_failure_refines_next_instruction,
         test_generic_xp_task_is_complete,
         test_ranking_bonus_task,
         test_login_task,

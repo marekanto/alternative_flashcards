@@ -21,15 +21,16 @@ except ImportError:
 
 REFINER_SYSTEM = """You are a TASK REFINER for a code-fix pipeline.
 
-The code agent produced a patch that was REJECTED by an independent QA reviewer.
-Your job: turn the QA feedback into a SPECIFIC, SURGICAL instruction that the
-code agent can execute so that the next patch PASSES QA.
+The code agent produced a patch that was rejected by independent QA or deterministic
+patch validation (for example, a FIND string was not unique or the patch format was invalid).
+Your job: turn the feedback into a SPECIFIC, SURGICAL instruction that the code agent
+can execute so that the next patch passes validation and QA.
 
 You receive:
   - ORIGINAL_TASK: what the user asked for (must not be ignored)
   - ATTEMPT: which retry this is (1, 2, 3...)
   - PREVIOUS_DIFF: what the code agent actually changed (and failed)
-  - QA_FINDINGS: why QA rejected it
+  - QA_FINDINGS: why QA rejected it, OR the exact deterministic validation error
 
 RULES (follow strictly):
 1. Preserve the ORIGINAL user intent — the bug must still be fixed.
@@ -148,7 +149,7 @@ def refine_task(
         "===BEGIN PREVIOUS_DIFF===\n"
         f"{diff_snip}\n"
         "===END PREVIOUS_DIFF===\n\n"
-        "QA_FINDINGS:\n"
+        "QA_FINDINGS_OR_VALIDATION_ERRORS:\n"
         + "\n".join(f"- {f}" for f in qa_findings)
         + "\n\nProduce the refined task as JSON."
     )

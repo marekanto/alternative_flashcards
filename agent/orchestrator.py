@@ -14,6 +14,7 @@ from pathlib import Path
 from code_agent import propose
 from context_builder import build_context, MAX_CONTEXT_CHARS
 from patch_validator import (
+    SensitiveChangeNotApproved,
     apply_operations,
     enforce_file_allowlist,
     enforce_sensitive_guard,
@@ -57,6 +58,29 @@ def _extract_operations(proposal):
         if isinstance(val, list) and val:
             return val
     return []
+
+
+def _refine_after_failure(original_task, current_task, failure, previous_diff, attempt):
+    """Turn a concrete patch-generation/validation failure into the next instruction."""
+    feedback = [f"Patch attempt {attempt} failed validation: {failure}"]
+    refined = refine_task(
+        original_task,
+        feedback,
+        previous_diff or "(Patch rejected before a diff was created.)",
+        attempt,
+    )
+    if refined.get("ok") and refined.get("refined_task"):
+        print(f"  → Refiner: {refined.get('reasoning', 'task refined')}")
+        return refined["refined_task"]
+
+    # Even if the refiner is unavailable, do not repeat the identical prompt.
+    print(f"  → Refiner unavailable: {refined.get('reasoning', 'unknown error')}")
+    return (
+        current_task
+        + "\n\nThe previous patch was rejected by deterministic validation. "
+        + "Correct this exact problem without weakening safeguards:\n- "
+        + str(failure)
+    )
 
 
 def _print_diagnosis(proposal):
@@ -145,27 +169,32 @@ def main():
         if not ops:
             last_error = f"no operations (status={status!r})"
             print(f"  → {last_error}")
-            if qa_history or attempt == 1:
-                refined = refine_task(
-                    original_task,
-                    [last_error],
-                    previous_diff or "(no previous diff)",
-                    attempt,
+            if attempt < QA_MAX_ATTEMPTS:
+                current_task = _refine_after_failure(
+                    original_task, current_task, last_error, previous_diff, attempt
                 )
-                if refined["ok"]:
-                    print(f"  → Refined task: {refined['reasoning']}")
-                    current_task = refined["refined_task"]
-                else:
-                    print(f"  → Refiner failed: {refined['reasoning']}")
             continue
 
         try:
             updated = apply_operations(source, proposal)
-            enforce_sensitive_guard(source, updated, allow_sensitive)
         except Exception as e:
             last_error = f"patch validation: {e}"
-            print(f"  → {last_error}; retrying")
+            print(f"  → {last_error}; retrying with validation feedback")
+            if attempt < QA_MAX_ATTEMPTS:
+                current_task = _refine_after_failure(
+                    original_task, current_task, last_error, previous_diff, attempt
+                )
             continue
+
+        try:
+            enforce_sensitive_guard(source, updated, allow_sensitive)
+        except SensitiveChangeNotApproved as e:
+            # Brak zgody to blokada uprawnień, a nie błąd jakości patcha.
+            # Nie wolno próbować obchodzić jej przez kolejne prompty.
+            raise RuntimeError(
+                f"{e} Workflow stopped without retrying. "
+                "Obtain explicit approval for this Issue before rerunning."
+            ) from e
 
         source_path.write_text(updated, encoding="utf-8")
         try:
