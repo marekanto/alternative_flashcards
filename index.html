@@ -1061,7 +1061,7 @@ function editCard(id,fromStudy=false){
 }
 function toggleExclude(id){
   const c=S.cards.find(x=>x.id==id); if(!c) return;
-  c.excluded=!c.excluded; save(); renderCards(); dlist();
+  c.excluded=!c.excluded; save(); renderCards(); dlist(); if(sess&&sess.q&&c.excluded){sess.q=sess.q.filter(x=>x!==c.id);flip=false;render();}
 }
 function delCard(id){
   if(!confirm(t('cards.deleteCard'))) return;
