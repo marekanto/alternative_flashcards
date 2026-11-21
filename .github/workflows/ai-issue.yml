@@ -6,6 +6,13 @@ on:
   issue_comment:
     types: [created]
 
+# Jeden aktywny worker dla całego repozytorium.
+# Zadania oczekujące pozostają oznaczone ai-queue; następne uruchamia
+# dopiero krok Advance queue po potwierdzonym sukcesie poprzedniego zadania.
+concurrency:
+  group: altcards-ai-issue-queue
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: write
@@ -14,8 +21,9 @@ permissions:
 jobs:
   process:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     if: |
+      github.event.issue.state == 'open' &&
       contains(github.event.issue.labels.*.name, 'ai-task') &&
       (
         (github.event_name == 'issues') ||
@@ -27,6 +35,7 @@ jobs:
       PYTHONDONTWRITEBYTECODE: '1'
       ISSUE_NUMBER: ${{ github.event.issue.number }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,157 +51,182 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # Event payload może być nieaktualny, jeśli workflow czekał w concurrency.
+      # Sprawdzamy aktualny stan Issue, zanim agent zacznie pracę.
+      - name: Verify issue is still the active queue item
+        id: active
+        run: |
+          CURRENT=$(gh issue view "$ISSUE_NUMBER" --json state,labels)
+          STATE=$(echo "$CURRENT" | jq -r '.state')
+          HAS_ACTIVE_LABEL=$(echo "$CURRENT" | jq -r '[.labels[].name] | index("ai-task") != null')
+          if [ "$STATE" != "OPEN" ] || [ "$HAS_ACTIVE_LABEL" != "true" ]; then
+            echo "active=false" >> "$GITHUB_OUTPUT"
+            echo "Issue is no longer the active queue item; skipping stale workflow run."
+            exit 0
+          fi
+          echo "active=true" >> "$GITHUB_OUTPUT"
+
       - name: Clarify — does the task need more info?
+        if: steps.active.outputs.active == 'true'
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           DEEPSEEK_MODEL: 'deepseek-chat'
         run: python -B agent/clarifier.py
 
       - name: Post clarifying questions
-        if: hashFiles('clarification.json') != ''
         id: clarify
+        if: always() && steps.active.outputs.active == 'true' && hashFiles('clarification.json') != ''
         run: |
           STATUS=$(jq -r .status clarification.json)
-          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
           if [ "$STATUS" != "needs_clarification" ]; then
             exit 0
           fi
 
           REASONING=$(jq -r .reasoning clarification.json)
           QUESTIONS=$(jq -r '.questions[]' clarification.json | nl -ba -w2 -s'. ')
-
-          BODY=$(cat <<EOF
-          🤔 **Potrzebuję doprecyzowania** żeby zrobić to dobrze.
+          BODY=$(cat <<EOF_COMMENT
+          🤔 **Potrzebuję doprecyzowania**, żeby wykonać zadanie poprawnie.
 
           $QUESTIONS
 
           <sub>$REASONING</sub>
 
-          Odpowiedz w komentarzu poniżej — agent od razu się uruchomi ponownie.
-          EOF
+          Odpowiedz w komentarzu. Kolejka pozostanie wstrzymana, a agent wróci do tego Issue po Twojej odpowiedzi.
+          EOF_COMMENT
           )
           gh issue comment "$ISSUE_NUMBER" --body "$BODY"
 
-      - name: Stop if clarification needed
-        if: steps.clarify.outputs.status == 'needs_clarification'
-        run: |
-          echo "Waiting for user response. Exiting."
-          exit 0
-      - name: Clean workflow artifacts
-        if: always()
+      - name: Clean clarification artifact
+        if: always() && steps.active.outputs.active == 'true'
         run: rm -f clarification.json
-      - name: Smoke test (builder context)
+
+      - name: Smoke test (before patch)
+        if: steps.active.outputs.active == 'true' && steps.clarify.outputs.status != 'needs_clarification'
         run: python -B tests/smoke_test.py
 
       - name: Compose TASK from issue
         id: task
+        if: steps.active.outputs.active == 'true' && steps.clarify.outputs.status != 'needs_clarification'
         run: |
-          # Tytuł + body + wszystkie komentarze użytkownika → jedno zadanie
-          {
-            gh issue view "$ISSUE_NUMBER" --json title,body,comments --jq '
-              .title + "\n\n" + (.body // "") + "\n\n" +
-              ([.comments[] | select(.author.login != "github-actions[bot]") | .body] | join("\n\n---\n\n"))
-            '
-          } > /tmp/task.txt
-          echo "task_file=/tmp/task.txt" >> $GITHUB_OUTPUT
+          gh issue view "$ISSUE_NUMBER" --json title,body,comments --jq '
+            .title + "\n\n" + (.body // "") + "\n\n" +
+            ([.comments[] | select(.author.login != "github-actions[bot]") | .body] | join("\n\n---\n\n"))
+          ' > /tmp/task.txt
           echo "TASK_PREVIEW:"; head -c 500 /tmp/task.txt; echo
 
       - name: Run agent
+        if: steps.active.outputs.active == 'true' && steps.clarify.outputs.status != 'needs_clarification'
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          ALLOW_SENSITIVE_CHANGES: 'true'
+          # Wrażliwe obszary (SRS/XP/Sync/auth) wymagają osobnej ścieżki akceptacji.
+          ALLOW_SENSITIVE_CHANGES: 'false'
           DIAGNOSE_ONLY: 'false'
           QA_MAX_ATTEMPTS: '3'
           DEEPSEEK_MODEL: 'deepseek-chat'
           LC_ALL: 'C.UTF-8'
         run: |
           export TASK="$(cat /tmp/task.txt)"
-          if [ ${#TASK} -gt 2500 ]; then
-            echo "::error::Issue+comments >2500 znaków. Skróć body issue."
+          if [ ${#TASK} -gt 4000 ]; then
+            echo "::error::Issue + comments >4000 characters. Shorten the issue or split the task."
             exit 1
           fi
           python -B agent/orchestrator.py
 
+      - name: Smoke test (after patch)
+        if: success() && steps.active.outputs.active == 'true' && steps.clarify.outputs.status != 'needs_clarification'
+        run: python -B tests/smoke_test.py
+
       - name: Commit + PR + auto-merge
         id: merge
-        if: success()
+        if: success() && steps.active.outputs.active == 'true' && steps.clarify.outputs.status != 'needs_clarification'
         run: |
           if git diff --quiet; then
-            echo "No changes — agent produced no diff"
-            echo "changed=false" >> $GITHUB_OUTPUT
-            exit 0
+            echo "::error::Agent completed without producing a code change. Queue will remain blocked."
+            exit 1
           fi
 
           BRANCH="ai/issue-${ISSUE_NUMBER}-${GITHUB_RUN_ID}"
+          ISSUE_TITLE=$(gh issue view "$ISSUE_NUMBER" --json title --jq .title)
           git config user.name "AltCards Agent"
           git config user.email "agent@altcards.local"
           git checkout -b "$BRANCH"
-          git add -A
-          git commit -m "AI (#${ISSUE_NUMBER}): $(gh issue view $ISSUE_NUMBER --json title -q .title)"
+          git add -- index.html
+          git commit -m "AI (#${ISSUE_NUMBER}): ${ISSUE_TITLE}"
           git push origin "$BRANCH"
 
           PR_URL=$(gh pr create --base main --head "$BRANCH" \
-            --title "AI (#${ISSUE_NUMBER}): $(gh issue view $ISSUE_NUMBER --json title -q .title)" \
+            --title "AI (#${ISSUE_NUMBER}): ${ISSUE_TITLE}" \
             --body "Closes #${ISSUE_NUMBER}
 
-          Automated patch from issue request.
+          Automated patch from the AltCards coding agent.
 
-          **Task (from issue + comments):**
-          $(head -c 800 /tmp/task.txt)")
+          **Task:**
+          $(head -c 1200 /tmp/task.txt)
 
+          Pre- and post-patch smoke tests passed. The agent QA review passed.")
+
+          echo "Created PR: $PR_URL"
+
+          # Nie omijamy branch protection. Jeśli wymagane kontrole nie przejdą,
+          # merge zakończy się błędem, a kolejka pozostanie zatrzymana.
           for i in $(seq 1 30); do
-            STATE=$(gh pr view "$BRANCH" --json mergeable --jq '.mergeable')
-            [ "$STATE" = "MERGEABLE" ] && break
+            STATE=$(gh pr view "$PR_URL" --json mergeable --jq '.mergeable')
+            if [ "$STATE" = "MERGEABLE" ]; then
+              break
+            fi
+            echo "Waiting for PR to become mergeable (state=$STATE, attempt $i)..."
             sleep 5
           done
 
-          gh pr merge "$BRANCH" --squash --delete-branch --admin || \
-            gh pr merge "$BRANCH" --squash --delete-branch
+          if [ "$STATE" != "MERGEABLE" ]; then
+            echo "::error::PR is not mergeable after waiting. Queue will remain blocked."
+            exit 1
+          fi
 
-          echo "PR_URL=$PR_URL" >> $GITHUB_OUTPUT
-          echo "changed=true" >> $GITHUB_OUTPUT
+          gh pr merge "$PR_URL" --squash --delete-branch
+          echo "url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Close issue with summary
         if: success() && steps.merge.outputs.changed == 'true'
         run: |
-          gh issue close "$ISSUE_NUMBER" --comment "$(cat <<EOF
-          ✅ **Gotowe** — patch zmergowany do \`main\`.
+          gh issue close "$ISSUE_NUMBER" --comment "$(cat <<EOF_COMMENT
+          ✅ **Gotowe** — PR został scalony z \\`main\\`.
 
-          $(gh issue view "$ISSUE_NUMBER" --json title -q .title)
+          $(gh issue view "$ISSUE_NUMBER" --json title --jq .title)
 
-          Zmiany będą widoczne na produkcji po deploy GitHub Pages (~1-2 min).
-
-          Aby cofnąć: \`git revert\` ostatniego commita na main.
-          EOF
+          Zadanie zakończone. Kontroler może uruchomić następne Issue z kolejki.
+          EOF_COMMENT
           )"
 
       - name: Comment failure on issue
-        if: failure()
+        if: failure() && steps.active.outputs.active == 'true'
         run: |
-          gh issue comment "$ISSUE_NUMBER" --body "$(cat <<EOF
-          ❌ **Agent nie ukończył zadania.**
+          gh issue comment "$ISSUE_NUMBER" --body "$(cat <<EOF_COMMENT
+          ❌ **Agent nie ukończył zadania. Kolejka została zatrzymana.**
 
-          Sprawdź [log workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) — znajdziesz tam konkretny powód (np. \`context truncated\`, \`QA rejected\`, \`no operations\`).
+          Sprawdź [log workflow](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}).
 
-          Po poprawieniu opisu w tym issue (edit) lub dopisaniu komentarza — workflow uruchomi się ponownie.
-          EOF
+          Po poprawieniu opisu lub dodaniu komentarza workflow spróbuje ponownie. Nie uruchamiam następnego Issue, dopóki to zadanie nie zakończy się sukcesem.
+          EOF_COMMENT
           )"
 
       - name: Advance queue
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: success() && steps.merge.outputs.changed == 'true'
         run: |
-          gh issue edit "$ISSUE_NUMBER" --remove-label ai-task || true
-      
+          # Usuwamy aktywną etykietę dopiero po merge i zamknięciu bieżącego Issue.
+          gh issue edit "$ISSUE_NUMBER" --remove-label ai-task
+
           NEXT=$(gh issue list --repo "$GITHUB_REPOSITORY" \
-                   --label ai-queue --state open --limit 100 \
-                   --json number,labels \
-                   --jq '[.[] | select([.labels[].name] | index("ai-task") | not)] | sort_by(.number) | .[0].number')
-      
+            --label ai-queue --state open --limit 100 \
+            --json number,labels \
+            --jq '[.[] | select([.labels[].name] | index("ai-task") | not)] | sort_by(.number) | .[0].number')
+
           if [ -n "$NEXT" ] && [ "$NEXT" != "null" ]; then
-            echo "→ Uruchamiam następne w kolejce: #$NEXT"
+            echo "Starting next queued issue: #$NEXT"
+            # Jedna operacja etykiet uruchamia następny workflow.
             gh issue edit "$NEXT" --add-label ai-task --remove-label ai-queue
           else
-            echo "✓ Kolejka pusta — koniec serii."
+            echo "Queue empty — all tasks completed."
           fi
