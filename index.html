@@ -851,7 +851,8 @@ function shuffleNewInDeck(){
   render();
 }
 function say(id){
-  const c=S.cards.find(x=>x.id==id),d=S.decks.find(x=>x.id==c.deck);
+  const c0=S.cards.find(x=>x.id==id),d=S.decks.find(x=>x.id==c0.deck);
+  const c=((d||{}).reverse)?{...c0,front:c0.back}:c0;
   try{
     const u=new SpeechSynthesisUtterance(c.front);
     u.lang = (d?.lang && L[d.lang]) ? L[d.lang].tts : (navigator.language || 'en-US');
