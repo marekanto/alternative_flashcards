@@ -452,7 +452,7 @@ function showTutorial(){
       <div style="display:flex;gap:14px"><span style="font-size:24px">2️⃣</span><p style="margin:0">${t('tut.step2')}</p></div>
       <div style="display:flex;gap:14px"><span style="font-size:24px">3️⃣</span><p style="margin:0">${t('tut.step3')}</p></div>
     </div>
-    <button class="p" onclick="document.getElementById('md').remove();localStorage.setItem('altcards-tut','1')">${t('tut.btn')}</button>
+    <button class="p" onclick="document.getElementById('md').remove();localStorage.setItem('altcards-tut','1');tab=S.cards.length?'study':'add';render()">${t('tut.btn')}</button>
     <button class="s" style="width:100%;margin-top:10px" onclick="showDetailedGuide()">${t('tut.moreBtn')}</button>
   </div>`;
   document.body.appendChild(m);
