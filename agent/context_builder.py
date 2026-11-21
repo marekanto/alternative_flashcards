@@ -280,14 +280,12 @@ def build_context(task: str, source: str) -> dict:
                      "editDeckName", "editCard", "delCard", "toggleExclude",
                      "deckMenu", "toggleDeckDir", "say", "vStudy"):
             push(name, extract_named(source, name))
-        for k in ("cards.editTitle", "cards.edit", "cards.del", "cards.exclude",
-                  "cards.include", "cards.viewCards", "cards.deckSettings"):
-            m = re.search(
-                rf"['\"]{re.escape(k)}['\"]\s*:\s*\{{[^}}]*\}}",
-                source,
-            )
-            if m:
-                push(f"TR[{k}]", m.group(0))
+        m = re.search(r"'cards\.editTitle':\{[^}]*\}", source)
+        if m:
+            line_start = source.rfind("\n", 0, m.start())
+            line_end = source.find("\n", m.end())
+            line = source[line_start + 1:line_end if line_end != -1 else m.end() + 200]
+            push("TR[cards.editTitle-line]", line)
     parts: list[str] = []
     included: list[str] = []
     over_limit: list[str] = []
