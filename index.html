@@ -389,7 +389,7 @@ let Sync=null, S=null, undoStack=[], tab='study', sess=null, flip=false, imgRev=
 
 try{S=JSON.parse(localStorage.getItem('altcards-v1'))}catch(e){}
 if(!S){ S={decks:[{id:'d1',name:'Deck 1',lang:'es'}],cards:[],log:{}}; }
-const defaults={newLimit:50, xp:0, pet:'🐕'};
+const defaults={newLimit:50, dailyGoal:20, xp:0, pet:'🐕'};
 S.settings={...defaults,...(S.settings||{})};
 S.daily={...(S.daily||{})};
 S.ratings=S.ratings||{};
@@ -631,6 +631,7 @@ Sync = {
       if(!S.daily)S.daily={};
       if(!S.ratings)S.ratings={};
       if(S.settings.xp===undefined)S.settings.xp=0;
+      if(S.settings.dailyGoal===undefined)S.settings.dailyGoal=20;
       if(!S.settings.pet)S.settings.pet='🐕';
       S.cards.forEach(c=>{if(typeof c.imageEnabled!=='boolean')c.imageEnabled=false;});
       localStorage.setItem('altcards-v1',JSON.stringify(S));
@@ -809,7 +810,8 @@ function vStudy(v){
   const sessionSize = Math.min(allDue.length, remaining);
   const lvlInfo = getLevelInfo(S.settings.xp||0);
   const streak = computeStreak();
-  const todayDone = (S.log[dk(new Date())]||0) > 0;
+  const goal = Math.min(S.settings.dailyGoal||20, S.settings.newLimit);
+  const todayDone = todayCount >= goal;
   const totalDue = Math.min(due('').length, remaining);
   const streakStatus = todayDone ? t('study.todayDone') : (totalDue > 0 ? t('study.todayPending').replace('{n}', totalDue) : t('study.todayNoCards'));
   v.innerHTML = `<h2>${t('study.title')}</h2>
