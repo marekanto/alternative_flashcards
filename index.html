@@ -586,8 +586,7 @@ Sync = {
       const {data} = await this.client.from('xp_logs').select('amount').eq('user_id', this.user.id);
       if(data) {
         const serverXp = data.reduce((sum, row) => sum + (row.amount||0), 0);
-        S.settings.xp = Math.max(S.settings.xp || 0, serverXp);
-        save();
+        if(!S.settings.xpBase) S.settings.xpBase = serverXp;
       }
     } catch(e) {}
     
