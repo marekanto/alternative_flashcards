@@ -211,10 +211,24 @@ def extract_init_block(source: str) -> str:
     return source[start:end].rstrip() + "\n"
 
 
+def extract_translation_entry(source: str, key: str) -> str | None:
+    """Extract one complete TR dictionary entry without copying the whole dictionary."""
+    pattern = rf"(?P<q>['\"]){re.escape(key)}(?P=q)\s*:\s*\{{"
+    match = re.search(pattern, source)
+    if not match:
+        return None
+    brace = source.find("{", match.start(), match.end())
+    end = _match_braces(source, brace)
+    return source[match.start():end] if end is not None else None
+
+
+# Only XP-specific signals belong here. Generic words such as render/save/undo
+# frequently appear in acceptance criteria or "do not change" sections and
+# must not pull the entire XP/Sync context into unrelated card tasks.
 XP_KEYWORDS = (
     "xp", "level", "poziom", "lvl", "bonus", "ranking", "leaderboard",
-    "getlevelinfo", "getrank", "render", "save", "lvl-display",
-    "undo", "cofnij",
+    "getlevelinfo", "getrank", "lvl-display", "logxp", "checkbonuses",
+    "xp_logs",
 )
 LOGIN_KEYWORDS = (
     "login", "logowania", "zaloguj", "tagline", "subtitle", "showlogin",
@@ -224,6 +238,15 @@ CARD_KEYWORDS = (
     "kart", "fiszk", "tali", "deck", "rendercards", "dlist", "delcard",
     "editcard", "vcards", "excluded", "wyklucz", "kolejk", "srs",
 )
+
+
+def _positive_scope_for_classification(task: str) -> str:
+    """Ignore explicit exclusions when classifying which code context is needed."""
+    match = re.search(
+        r"(?im)^\s*(?:#{1,6}\s*)?(?:nie zmieniaj|nie ruszaj|do not change|must not change|out of scope|constraints)\s*:?[ \t]*$",
+        task,
+    )
+    return task[:match.start()] if match else task
 
 
 def _is_xp_task(task_low: str) -> bool:
@@ -239,22 +262,35 @@ def _is_cards_task(task_low: str) -> bool:
 
 def build_context(task: str, source: str) -> dict:
     task_low = task.lower()
-    is_xp = _is_xp_task(task_low)
-    is_login = _is_login_task(task_low)
+    classification_text = _positive_scope_for_classification(task).lower()
+    is_xp = _is_xp_task(classification_text)
+    is_login = _is_login_task(classification_text)
     is_cards = _is_cards_task(task_low)
 
     ordered: list[tuple[str, str]] = []
+    missing: list[str] = []
 
     def push(label: str, body: str | None) -> None:
         if body:
             ordered.append((label, body))
 
-    push("init_block", extract_init_block(source))
-    push("defaults", extract_named(source, "defaults"))
-    push("save", extract_named(source, "save"))
-    push("getLevelInfo", extract_named(source, "getLevelInfo"))
-    push("getRank", extract_named(source, "getRank"))
-    push("render", extract_named(source, "render"))
+    if is_xp:
+        push("init_block", extract_init_block(source))
+        push("defaults", extract_named(source, "defaults"))
+        push("save", extract_named(source, "save"))
+        push("getLevelInfo", extract_named(source, "getLevelInfo"))
+        push("getRank", extract_named(source, "getRank"))
+        push("render", extract_named(source, "render"))
+    elif is_cards:
+        # Card-management tasks need persistence and render call context, not
+        # the large XP/Sync initialization blocks.
+        push("save", extract_named(source, "save"))
+        push("render", extract_named(source, "render"))
+    else:
+        push("init_block", extract_init_block(source))
+        push("defaults", extract_named(source, "defaults"))
+        push("save", extract_named(source, "save"))
+        push("render", extract_named(source, "render"))
 
     if is_xp:
         for name in ("vStudy", "vStats", "ans", "undoAnswer", "grade"):
@@ -276,16 +312,39 @@ def build_context(task: str, source: str) -> dict:
             if m:
                 push(f"TR[{k}]", m.group(0))
     if is_cards:
-        for name in ("vCards", "renderCards", "dlist", "addDeck", "delDeck",
-                     "editDeckName", "editCard", "delCard", "toggleExclude",
-                     "deckMenu", "toggleDeckDir", "say", "vStudy"):
+        # Deck management spans both the Cards and Settings views. Include the
+        # full current implementations, including called share/unshare handlers.
+        for name in (
+            "vCards", "vSettings", "renderCards", "dlist", "addDeck",
+            "delDeck", "editDeckName", "shareDeck", "unshareDeck",
+            "deckMenu", "toggleDeckDir", "editCard", "delCard",
+            "toggleExclude", "say",
+        ):
             push(name, extract_named(source, name))
-        m = re.search(r"'cards\.editTitle':\{[^}]*\}", source)
-        if m:
-            line_start = source.rfind("\n", 0, m.start())
-            line_end = source.find("\n", m.end())
-            line = source[line_start + 1:line_end if line_end != -1 else m.end() + 200]
-            push("TR[cards.editTitle-line]", line)
+
+        # Include only translation entries relevant to the existing deck/settings
+        # UI. New keys requested by the Issue are absent by design and are authored
+        # by the coding agent from the Issue specification.
+        card_translation_keys = (
+            "cards.decksTitle", "cards.editName", "cards.share", "cards.unshare",
+            "cards.copiedLock", "cards.keepOneDeck", "cards.deleteDeck",
+            "settings.newLimit", "settings.newLimitInfo", "settings.showTut",
+            "settings.back", "tut.g.decks", "tut.g.settings",
+        )
+        # Also extract dictionary keys explicitly mentioned in the task.
+        mentioned_keys = re.findall(
+            r"(?:['\"])(cards|settings|tut\.g|library)\.([A-Za-z0-9_.]+)(?:['\"])",
+            task,
+        )
+        dynamic_keys = [f"{namespace}.{suffix}" for namespace, suffix in mentioned_keys]
+        for key in dict.fromkeys((*card_translation_keys, *dynamic_keys)):
+            push(f"TR[{key}]", extract_translation_entry(source, key))
+
+        # Fail closed when a card-management task requires current handlers that
+        # are present in this repository but could not be extracted.
+        for name in ("vCards", "vSettings", "dlist", "shareDeck", "unshareDeck", "deckMenu"):
+            if extract_named(source, name) is None:
+                missing.append(f"function:{name}")
     parts: list[str] = []
     included: list[str] = []
     over_limit: list[str] = []
@@ -296,7 +355,8 @@ def build_context(task: str, source: str) -> dict:
     if is_xp:
         snippet_cap += 12
     if is_cards:
-        snippet_cap += 16
+        # Include all deck handlers plus the relevant existing TR entries.
+        snippet_cap += 30
 
     for label, body in ordered:
         key = body.strip()
@@ -315,7 +375,6 @@ def build_context(task: str, source: str) -> dict:
         used += len(chunk)
 
     ctx = "".join(parts)
-    missing: list[str] = []
     for label, _ in ordered:
         if label not in included and label not in over_limit:
             missing.append(label)

@@ -18,7 +18,7 @@ Do not claim static review proves runtime correctness. Review only the task, dif
 
 def review(task, diff):
     prompt = (
-        "TASK (the user's explicit request):\n" + task[:1800]
+        "TASK (the user's complete explicit request; max 4000 chars):\n" + task
         + "\n\nDIFF TO REVIEW:\n" + diff[:10000]
         + "\n\nReturn JSON only. A concern must cite a concrete contradiction or regression visible in the task, diff, or supplied context."
     )

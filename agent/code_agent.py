@@ -19,9 +19,10 @@ Rules:
 - Preserve all existing behavior outside the requested change.
 - Treat SRS, grade/ans/undoAnswer/start, XP, daily limit, save/localStorage, Sync/Supabase/auth/account deletion and shared-deck operations as sensitive.
 - If the task does not explicitly request a sensitive subsystem, do not alter it.
+- The Issue may contain stale FIND/REPLACE examples. Treat the supplied repository source as authoritative; never assume an Issue snippet matches current main. Derive exact FIND text from supplied source.
 - If code needed for safe modification is missing, return need_context.
 - Keep replacements compact. No markdown, no explanation outside JSON."""
 
 
 def propose(task, context):
-    return chat(SYSTEM, "TASK:\n" + task[:2500] + "\n\nALTcards CONTEXT AND SOURCE:\n" + context + "\n\nReturn JSON only.", max_tokens=3500)
+    return chat(SYSTEM, "TASK (complete; upstream limit 4000 chars):\n" + task + "\n\nALTcards CONTEXT AND SOURCE:\n" + context + "\n\nReturn JSON only.", max_tokens=3500)

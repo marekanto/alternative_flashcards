@@ -115,6 +115,49 @@ def test_validation_failure_refines_next_instruction() -> None:
     ], "retry helper did not pass the validation error to the refiner")
 
 
+
+def test_card_management_context_has_full_dependencies() -> None:
+    task = """Przenieś akcje zarządzania taliami z Talie do Ustawień.
+
+Zmiany w kodzie:
+- Przerób dlist na wspólny renderer listy.
+- Wyświetl listę w vCards i vSettings.
+- Zachowaj obsługę shareDeck, unshareDeck i deckMenu.
+- Zaktualizuj tut.g.decks i tut.g.settings.
+
+Kryteria: po akcji save(); render(); obie listy są aktualne.
+
+Nie zmieniaj
+- SRS, XP, dzienny limit, undo, Sync, save/load, auth.
+"""
+    res = build_context(task, SOURCE)
+    ctx = res["context"]
+    _assert(res["ok"], f"kontekst talii niekompletny: missing={res['missing']} over={res['over_limit']}")
+    for token in (
+        "function vCards", "function vSettings", "function dlist",
+        "function shareDeck", "function unshareDeck", "function deckMenu",
+        "Sync.shareDeck(deck)", "Sync.unshareDeck(deck.sharedId)",
+        "document.body.appendChild(m);", "'tut.g.decks':", "'tut.g.settings':",
+    ):
+        _assert(token in ctx, f"brak pełnej zależności w kontekście talii: {token!r}")
+    _assert(not any(name in res["included"] for name in ("vStudy", "vStats", "ans", "undoAnswer", "grade")),
+            "wykluczony XP/Undo nie powinien powodować dołączania kontekstu XP")
+    _assert(res["chars"] <= MAX_CONTEXT_CHARS, "przekroczony limit kontekstu talii")
+
+
+def test_agent_prompts_receive_complete_task() -> None:
+    from unittest.mock import patch
+    import code_agent
+    import qa_agent
+
+    task = "A" * 3900
+    with patch.object(code_agent, "chat", return_value={"status": "need_context", "summary": "test"}) as code_chat:
+        code_agent.propose(task, "source context")
+        _assert(task in code_chat.call_args.args[1], "Code Agent task został obcięty")
+    with patch.object(qa_agent, "chat", return_value={"verdict": "pass", "findings": []}) as qa_chat:
+        qa_agent.review(task, "diff")
+        _assert(task in qa_chat.call_args.args[1], "QA task został obcięty")
+
 def main() -> int:
     tests = [
         test_brace_matcher_handles_templates_and_nested,
@@ -123,6 +166,8 @@ def main() -> int:
         test_generic_xp_task_is_complete,
         test_ranking_bonus_task,
         test_login_task,
+        test_card_management_context_has_full_dependencies,
+        test_agent_prompts_receive_complete_task,
     ]
     failed = 0
     for t in tests:
