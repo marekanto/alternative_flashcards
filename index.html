@@ -972,7 +972,7 @@ function dlist(){
     }
     const authorInfo = d.isCopied && d.author ? ` · ${t('library.author')}: ${esc(d.author)}` : '';
     return `<div class="it"><div>${esc(d.name)} <span class="mu">· ${langName(d.lang)} · ${S.cards.filter(c=>c.deck==d.id).length}${authorInfo}</span></div>
-      <button onclick="editDeckName('${d.id}')" title="${t('cards.editName')}">✎</button><button onclick="toggleDeckDir('${d.id}')" title="${t('cards.deckDir')}">${d.reverse?'🔄':'➡️'}</button>
+      <button onclick="deckMenu('${d.id}')">⚙️</button>
       ${actionBtn}
       <button onclick="delDeck('${d.id}')">🗑</button></div>`;
   }).join('');
@@ -1018,6 +1018,17 @@ async function unshareDeck(id){
 function addDeck(){
   const n = $('#nn').value.trim(); if(!n) return;
   S.decks.push({id:uid(),name:n,lang:$('#nl').value}); save(); render();
+}
+function deckMenu(id){
+  const d=S.decks.find(x=>x.id===id); if(!d) return;
+  if($('#md')) $('#md').remove();
+  const m=document.createElement('div'); m.id='md';
+  m.innerHTML=`<div class="mb"><h3>${esc(d.name)}</h3>
+    <button class="s" style="width:100%;margin-bottom:8px;justify-content:flex-start" onclick="document.getElementById('md').remove();editDeckName('${d.id}')">✎ ${t('cards.editName')}</button>
+    <button class="s" style="width:100%;margin-bottom:8px;justify-content:flex-start" onclick="document.getElementById('md').remove();toggleDeckDir('${d.id}')">${d.reverse?'🔄':'➡️'} ${d.reverse?t('cards.dirRev'):t('cards.dirFwd')}</button>
+    <button class="s" style="width:100%;margin-bottom:8px;justify-content:flex-start;border-color:#ef4444;color:#ef4444" onclick="document.getElementById('md').remove();delDeck('${d.id}')">🗑 ${t('cards.del')}</button>
+    <button class="s" style="width:100%" onclick="document.getElementById('md').remove()">${t('common.cancel')}</button></div>`;
+  document.body.appendChild(m);
 }
 function toggleDeckDir(id){
   const d=S.decks.find(x=>x.id===id); if(!d) return;
