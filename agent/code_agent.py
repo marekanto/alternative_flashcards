@@ -8,7 +8,8 @@ Return ONLY a JSON object:
   "summary": "max 140 characters",
   "reason": "short reason",
   "operations": [{"find": "exact literal source", "replace": "replacement"}],
-  "risk_notes": []
+  "risk_notes": [],
+  "missing_context": ["exact function, method, or symbol names when status is need_context"]
 }
 Rules:
 - Modify only index.html.
@@ -20,7 +21,7 @@ Rules:
 - Treat SRS, grade/ans/undoAnswer/start, XP, daily limit, save/localStorage, Sync/Supabase/auth/account deletion and shared-deck operations as sensitive.
 - If the task does not explicitly request a sensitive subsystem, do not alter it.
 - The Issue may contain stale FIND/REPLACE examples. Treat the supplied repository source as authoritative; never assume an Issue snippet matches current main. Derive exact FIND text from supplied source.
-- If code needed for safe modification is missing, return need_context.
+- If code needed for safe modification is missing, return need_context and list the exact missing function/method/symbol names in missing_context.
 - Keep replacements compact. No markdown, no explanation outside JSON."""
 
 

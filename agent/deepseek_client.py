@@ -1,10 +1,19 @@
 """Minimal stdlib DeepSeek Chat Completions client."""
 import json
 import os
+import socket
+import time
 import urllib.error
 import urllib.request
 
-from settings import API_BASE, MODEL, THINKING, MAX_OUTPUT_TOKENS
+try:
+    from .settings import API_BASE, MODEL, THINKING, MAX_OUTPUT_TOKENS
+except ImportError:
+    from settings import API_BASE, MODEL, THINKING, MAX_OUTPUT_TOKENS
+
+
+RETRYABLE_HTTP_CODES = {408, 425, 429, 500, 502, 503, 504}
+API_MAX_ATTEMPTS = int(os.getenv("DEEPSEEK_API_MAX_ATTEMPTS", "3"))
 
 
 def chat(
@@ -56,14 +65,26 @@ def chat(
         method="POST",
     )
 
-    try:
-        with urllib.request.urlopen(req, timeout=180) as response:
-            result = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:1200]
-        raise RuntimeError(f"DeepSeek API HTTP {exc.code}: {detail}") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"DeepSeek API connection error: {exc}") from exc
+    result = None
+    max_attempts = max(1, API_MAX_ATTEMPTS)
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=180) as response:
+                result = json.loads(response.read().decode("utf-8"))
+            break
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:1200]
+            message = f"DeepSeek API HTTP {exc.code}: {detail}"
+            if exc.code not in RETRYABLE_HTTP_CODES or attempt >= max_attempts:
+                raise RuntimeError(message) from exc
+            print(f"{message}; retry {attempt}/{max_attempts - 1}")
+        except (urllib.error.URLError, TimeoutError, socket.timeout) as exc:
+            message = f"DeepSeek API connection error: {exc}"
+            if attempt >= max_attempts:
+                raise RuntimeError(message) from exc
+            print(f"{message}; retry {attempt}/{max_attempts - 1}")
+        # Backoff: 2s, 4s; capped to avoid long workflow stalls.
+        time.sleep(min(2 ** attempt, 8))
 
     usage = result.get("usage", {})
     details = usage.get("prompt_tokens_details", {})

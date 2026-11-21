@@ -260,7 +260,7 @@ def _is_login_task(task_low: str) -> bool:
 def _is_cards_task(task_low: str) -> bool:
     return any(k in task_low for k in CARD_KEYWORDS)
 
-def build_context(task: str, source: str) -> dict:
+def build_context(task: str, source: str, extra_names: list[str] | None = None) -> dict:
     task_low = task.lower()
     classification_text = _positive_scope_for_classification(task).lower()
     is_xp = _is_xp_task(classification_text)
@@ -273,6 +273,21 @@ def build_context(task: str, source: str) -> dict:
     def push(label: str, body: str | None) -> None:
         if body:
             ordered.append((label, body))
+
+    if extra_names:
+        # Targeted context expansion requested by the Code Agent. Names are
+        # resolved against current source; no model-supplied code is trusted.
+        for raw_name in extra_names[:12]:
+            name = str(raw_name).strip()
+            if not re.fullmatch(r"[A-Za-z_$][\w$]{0,80}", name):
+                continue
+            body = extract_named(source, name)
+            if body:
+                push(f"expanded:{name}", body)
+                continue
+            sync_body = extract_sync_method(source, name)
+            if sync_body:
+                push(f"expanded:Sync.{name}", sync_body)
 
     if is_xp:
         push("init_block", extract_init_block(source))

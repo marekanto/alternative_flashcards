@@ -7,6 +7,7 @@ Pipeline z samodoskonalącym się feedbackiem QA:
   3. pętla: Code Agent → diff → QA vs ORIGINAL_TASK → refiner → retry.
 """
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -24,9 +25,10 @@ from task_refiner import refine_task
 from settings import TARGET_FILE
 
 ROOT = Path(__file__).resolve().parents[1]
-QA_MAX_ATTEMPTS = int(os.getenv("QA_MAX_ATTEMPTS", "3"))
+QA_MAX_ATTEMPTS = max(1, int(os.getenv("QA_MAX_ATTEMPTS", "3")))
+CONTEXT_REBUILD_MAX = max(0, int(os.getenv("CONTEXT_REBUILD_MAX", "2")))
 DIAGNOSE_ONLY = os.getenv("DIAGNOSE_ONLY", "false").lower() == "true"
-TRULY_TERMINAL = {"need_context", "refused"}
+TRULY_TERMINAL = {"cannot_do_safely", "refused"}
 
 
 def run(args):
@@ -81,6 +83,24 @@ def _refine_after_failure(original_task, current_task, failure, previous_diff, a
         + "Correct this exact problem without weakening safeguards:\n- "
         + str(failure)
     )
+
+
+def _requested_context_names(proposal, task):
+    """Extract likely symbol names, never source code, from a need_context reply."""
+    values = []
+    direct_names = []
+    if isinstance(proposal, dict):
+        names = proposal.get("missing_context", [])
+        if isinstance(names, list):
+            direct_names = [str(x).strip() for x in names[:12]]
+        values.extend(str(proposal.get(k, "")) for k in ("reason", "summary", "diagnosis"))
+    values.append(task)
+    candidates = list(direct_names)
+    for value in values:
+        candidates.extend(re.findall(r"`([A-Za-z_$][\w$]{0,80})`", value))
+        candidates.extend(re.findall(r"\b(?:function|method|symbol|handler)\s+([A-Za-z_$][\w$]{0,80})", value, re.I))
+    common = {"need_context", "context", "function", "method", "source", "missing", "undefined", "return", "const", "async"}
+    return list(dict.fromkeys(x for x in candidates if x.lower() not in common))[:12]
 
 
 def _print_diagnosis(proposal):
@@ -149,29 +169,61 @@ def main():
     last_verdict = None
     last_error = "brak"
 
-    for attempt in range(1, QA_MAX_ATTEMPTS + 1):
-        print(f"\n=== Attempt {attempt}/{QA_MAX_ATTEMPTS} ===")
-        if attempt > 1:
-            print(f"Task for agent (refined): {current_task[:200]}...")
+    patch_attempt = 0
+    context_rebuilds = 0
+    while patch_attempt < QA_MAX_ATTEMPTS:
+        print(f"\n=== Patch attempt {patch_attempt + 1}/{QA_MAX_ATTEMPTS} "
+              f"(context rebuilds: {context_rebuilds}/{CONTEXT_REBUILD_MAX}) ===")
+        if patch_attempt or context_rebuilds:
+            print(f"Task for agent (refined): {current_task[:240]}...")
 
         proposal = propose(current_task, base_context)
         status = (proposal or {}).get("status")
         summary = (proposal or {}).get("summary", "")
         print(f"Code agent: {status} — {summary}")
 
+        if status == "need_context":
+            if context_rebuilds >= CONTEXT_REBUILD_MAX:
+                raise RuntimeError(
+                    f"Code agent still needs context after {CONTEXT_REBUILD_MAX} "
+                    f"rebuilds. Summary: {summary}. Reason: {(proposal or {}).get('reason', '')}"
+                )
+            names = _requested_context_names(proposal, original_task)
+            expanded = build_context(original_task, source, extra_names=names)
+            new_context = expanded["context"]
+            if new_context == base_context or not expanded.get("ok", False):
+                # A failed extraction is not papered over. Stop instead of asking
+                # the model to guess at missing or truncated code.
+                raise RuntimeError(
+                    "Code agent returned need_context and targeted expansion "
+                    f"did not produce a complete larger context. Names={names}; "
+                    f"missing={expanded.get('missing')}; over_limit={expanded.get('over_limit')}"
+                )
+            base_context = new_context
+            context_rebuilds += 1
+            current_task = (
+                current_task
+                + "\n\nCONTEXT RECOVERY: The previous response requested more source context. "
+                + "Use the expanded, current source snippets below. Do not infer missing code. "
+                + ("Requested symbols: " + ", ".join(names) if names else "Re-check the complete supplied snippets.")
+            )
+            print(f"  → Context expanded with: {names or '(task-selected blocks)'}")
+            continue
+
         if status in TRULY_TERMINAL:
             raise RuntimeError(
                 f"Code agent returned terminal status={status!r}. "
-                f"Summary: {summary}. Use DIAGNOSE_ONLY=true to inspect."
+                f"Summary: {summary}. No automatic retry is allowed for a safety refusal."
             )
 
+        patch_attempt += 1
         ops = _extract_operations(proposal)
         if not ops:
             last_error = f"no operations (status={status!r})"
             print(f"  → {last_error}")
-            if attempt < QA_MAX_ATTEMPTS:
+            if patch_attempt < QA_MAX_ATTEMPTS:
                 current_task = _refine_after_failure(
-                    original_task, current_task, last_error, previous_diff, attempt
+                    original_task, current_task, last_error, previous_diff, patch_attempt
                 )
             continue
 
@@ -180,17 +232,15 @@ def main():
         except Exception as e:
             last_error = f"patch validation: {e}"
             print(f"  → {last_error}; retrying with validation feedback")
-            if attempt < QA_MAX_ATTEMPTS:
+            if patch_attempt < QA_MAX_ATTEMPTS:
                 current_task = _refine_after_failure(
-                    original_task, current_task, last_error, previous_diff, attempt
+                    original_task, current_task, last_error, previous_diff, patch_attempt
                 )
             continue
 
         try:
             enforce_sensitive_guard(source, updated, allow_sensitive)
         except SensitiveChangeNotApproved as e:
-            # Brak zgody to blokada uprawnień, a nie błąd jakości patcha.
-            # Nie wolno próbować obchodzić jej przez kolejne prompty.
             raise RuntimeError(
                 f"{e} Workflow stopped without retrying. "
                 "Obtain explicit approval for this Issue before rerunning."
@@ -203,9 +253,7 @@ def main():
             diff = run(["git", "diff", "--", TARGET_FILE])
         except Exception as e:
             source_path.write_text(source, encoding="utf-8")
-            last_error = f"diff/allowlist: {e}"
-            print(f"  → {last_error}; retrying")
-            continue
+            raise RuntimeError(f"Patch touched a forbidden path or diff check failed: {e}") from e
 
         if not diff.strip():
             source_path.write_text(source, encoding="utf-8")
@@ -213,42 +261,47 @@ def main():
             print(f"  → {last_error}; retrying")
             continue
 
-        verdict = review(original_task, diff)
+        try:
+            verdict = review(original_task, diff)
+        except Exception:
+            source_path.write_text(source, encoding="utf-8")
+            raise
         last_verdict = verdict
-        qa_verdict = verdict.get("verdict")
-        findings = verdict.get("findings", [])
+        qa_verdict = verdict.get("verdict") if isinstance(verdict, dict) else None
+        findings = verdict.get("findings", []) if isinstance(verdict, dict) else []
         print(f"QA verdict: {qa_verdict}")
-        for f in findings[:8]:
+        for f in findings[:8] if isinstance(findings, list) else []:
             print("QA:", f)
 
         if qa_verdict == "pass":
-            print(f"\n✓ QA passed on attempt {attempt}")
+            print(f"\n✓ QA passed on patch attempt {patch_attempt}")
             print("AI patch passed static validation and independent review.")
             print("SUMMARY:", summary or "AltCards change")
             return
-
-        qa_history.append(findings)
-        previous_diff = diff
-
-        if attempt < QA_MAX_ATTEMPTS:
-            all_findings = [f for r in qa_history for f in r]
-            refined = refine_task(
-                original_task, all_findings, previous_diff, attempt
+        if qa_verdict == "needs_human_review":
+            source_path.write_text(source, encoding="utf-8")
+            raise RuntimeError(
+                "Independent QA requested human review. Patch was discarded; "
+                f"findings: {findings}"
             )
-            if refined["ok"]:
-                print(f"  → Refiner: {refined['reasoning']}")
-                current_task = refined["refined_task"]
-                print(f"  → Next task: {current_task[:300]}...")
-            else:
-                print(f"  → Refiner failed: {refined['reasoning']}")
-                current_task = (
-                    original_task
-                    + "\n\nQA said the previous attempt was wrong. Fix these:\n"
-                    + "\n".join(f"- {f}" for f in all_findings)
-                )
 
+        qa_history.append(findings if isinstance(findings, list) else [str(findings)])
+        previous_diff = diff
         source_path.write_text(source, encoding="utf-8")
         last_error = f"QA {qa_verdict}"
+
+        if patch_attempt < QA_MAX_ATTEMPTS:
+            all_findings = [f for r in qa_history for f in r]
+            refined = refine_task(original_task, all_findings, previous_diff, patch_attempt)
+            if refined.get("ok"):
+                print(f"  → Refiner: {refined['reasoning']}")
+                current_task = refined["refined_task"]
+            else:
+                print(f"  → Refiner failed: {refined.get('reasoning', 'unknown')}")
+                current_task = (
+                    original_task + "\n\nQA rejected the previous patch. Fix only these concrete findings:\n"
+                    + "\n".join(f"- {f}" for f in all_findings)
+                )
 
     raise RuntimeError(
         f"All {QA_MAX_ATTEMPTS} attempts failed. "

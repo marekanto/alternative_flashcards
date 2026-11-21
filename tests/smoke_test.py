@@ -158,6 +158,183 @@ def test_agent_prompts_receive_complete_task() -> None:
         qa_agent.review(task, "diff")
         _assert(task in qa_chat.call_args.args[1], "QA task został obcięty")
 
+def test_context_builder_targeted_expansion() -> None:
+    source = """
+const outside = () => 1;
+function shareDeck(id) {
+  return Sync.shareDeck(id);
+}
+function unshareDeck(id) {
+  return Sync.unshareDeck(id);
+}
+"""
+    res = build_context("Change a small UI label", source, extra_names=["shareDeck", "unshareDeck"])
+    _assert(res["ok"], f"targeted context should be complete: {res['missing']} {res['over_limit']}")
+    _assert("expanded:shareDeck" in res["included"], "shareDeck expansion was not included")
+    _assert("expanded:unshareDeck" in res["included"], "unshareDeck expansion was not included")
+    _assert("return Sync.shareDeck(id);" in res["context"], "expanded function body is incomplete")
+
+
+def test_need_context_symbol_extraction() -> None:
+    import orchestrator
+    proposal = {
+        "status": "need_context",
+        "reason": "Need complete `shareDeck` and function unshareDeck source.",
+        "missing_context": ["deckMenu"],
+    }
+    names = orchestrator._requested_context_names(proposal, "Move shareDeck actions")
+    _assert(set(names) >= {"shareDeck", "unshareDeck", "deckMenu"}, f"missing symbols not extracted: {names}")
+
+
+def test_orchestrator_recovers_need_context() -> None:
+    import tempfile
+    from unittest.mock import patch
+    import orchestrator
+
+    with tempfile.TemporaryDirectory(prefix="altcards-context-recovery-") as td:
+        root = pathlib.Path(td)
+        target = root / "index.html"
+        target.write_text("baseline source", encoding="utf-8")
+        initial_context = {"context": "BASE CONTEXT", "chars": 12, "included": ["base"],
+                           "missing": [], "over_limit": [], "ok": True}
+        expanded_context = {"context": "EXPANDED CONTEXT WITH renderCards", "chars": 34,
+                            "included": ["base", "expanded:renderCards"],
+                            "missing": [], "over_limit": [], "ok": True}
+        proposals = [
+            {"status": "need_context", "summary": "Need complete renderer", "reason": "missing source",
+             "missing_context": ["renderCards"], "operations": []},
+            {"status": "ready", "summary": "Updated label", "operations": [{"find": "baseline", "replace": "updated"}]},
+        ]
+
+        def fake_run(args):
+            if args[1:] == ["diff", "--name-only"]:
+                return "index.html"
+            if args[1:] == ["diff", "--", "index.html"]:
+                return "diff --git a/index.html b/index.html\n-baseline\n+updated\n"
+            raise AssertionError(f"Unexpected git command in test: {args}")
+
+        with patch.object(orchestrator, "ROOT", root), \
+             patch.object(orchestrator, "TARGET_FILE", "index.html"), \
+             patch.object(orchestrator, "check_clean_tree"), \
+             patch.object(orchestrator, "build_context", side_effect=[initial_context, expanded_context]) as context_builder, \
+             patch.object(orchestrator, "propose", side_effect=proposals) as code_agent, \
+             patch.object(orchestrator, "apply_operations", return_value="updated source"), \
+             patch.object(orchestrator, "enforce_sensitive_guard"), \
+             patch.object(orchestrator, "enforce_file_allowlist"), \
+             patch.object(orchestrator, "review", return_value={"verdict": "pass", "findings": []}), \
+             patch.object(orchestrator, "run", side_effect=fake_run):
+            with patch.dict("os.environ", {"TASK": "Update a label", "ALLOW_SENSITIVE_CHANGES": "false"}):
+                orchestrator.main()
+
+        _assert(context_builder.call_count == 2, "orchestrator did not rebuild context")
+        _assert(context_builder.call_args.kwargs.get("extra_names") == ["renderCards"],
+                "orchestrator did not request the exact missing symbol")
+        _assert(code_agent.call_count == 2, "Code Agent was not retried after context expansion")
+        _assert("CONTEXT RECOVERY" in code_agent.call_args_list[1].args[0],
+                "retried task did not explain the expanded context")
+        _assert(code_agent.call_args_list[1].args[1] == expanded_context["context"],
+                "retried Code Agent did not receive expanded source context")
+        _assert(target.read_text(encoding="utf-8") == "updated source",
+                "successful patch was not retained after independent QA")
+
+
+def test_deepseek_retries_transient_http_errors() -> None:
+    import io
+    import json
+    import urllib.error
+    import deepseek_client
+    from unittest.mock import patch
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+        def __exit__(self, *_args):
+            return False
+        def read(self):
+            return json.dumps({
+                "usage": {},
+                "choices": [{"finish_reason": "stop", "message": {"content": "{\"ok\":true}"}}],
+            }).encode("utf-8")
+
+    transient = urllib.error.HTTPError(
+        "https://api.deepseek.com/chat/completions", 429, "rate limited", {}, io.BytesIO(b"try later")
+    )
+    with patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"}), \
+         patch.object(deepseek_client, "API_MAX_ATTEMPTS", 2), \
+         patch.object(deepseek_client.urllib.request, "urlopen", side_effect=[transient, FakeResponse()]) as urlopen, \
+         patch.object(deepseek_client.time, "sleep"):
+        result = deepseek_client.chat("system", "user")
+    _assert(result == {"ok": True}, f"unexpected retry result: {result}")
+    _assert(urlopen.call_count == 2, "transient 429 response was not retried exactly once")
+
+
+def test_maintenance_allowlist_and_workflow_guards() -> None:
+    from agent import maintenance_agent
+    _assert(maintenance_agent._allowed("agent/orchestrator.py"), "orchestrator must be repairable")
+    _assert(maintenance_agent._allowed(".github/workflows/ai-issue.yml"), "issue workflow must be repairable")
+    _assert(maintenance_agent._allowed(".github/workflows/ci.yml"), "CI workflow must be repairable")
+    _assert(not maintenance_agent._allowed("index.html"), "product code must never be maintenance-editable")
+    _assert(not maintenance_agent._allowed("requirements.txt"), "dependency changes must remain manual")
+    _assert(not maintenance_agent._allowed("agent/maintenance_agent.py"), "maintenance agent must not self-modify")
+    _assert(not maintenance_agent._allowed("agent/patch_validator.py"), "patch security validator must be read-only")
+    _assert(not maintenance_agent._allowed("agent/qa_agent.py"), "independent QA prompt must be read-only")
+    _assert(maintenance_agent.REVIEW_MODEL == "deepseek-v4-pro", "maintenance review must use the separate Pro model by default")
+    original_chat = maintenance_agent.chat
+    review_call = {}
+    def fake_review_chat(system, user, **kwargs):
+        review_call.update(kwargs)
+        return {"verdict": "pass", "findings": []}
+    maintenance_agent.chat = fake_review_chat
+    try:
+        maintenance_agent._independent_review("failure", "diff")
+    finally:
+        maintenance_agent.chat = original_chat
+    _assert(review_call.get("model") == "deepseek-v4-pro", "review must use a different model than the Flash repair agent")
+    _assert(review_call.get("thinking") == "enabled", "review must enable reasoning mode")
+    valid = (ROOT / ".github/workflows/ai-issue.yml").read_text(encoding="utf-8")
+    maintenance_agent._workflow_invariants(".github/workflows/ai-issue.yml", valid)
+    issue_workflow = (ROOT / ".github/workflows/ai-issue.yml").read_text(encoding="utf-8")
+    dev_workflow = (ROOT / ".github/workflows/ai-development.yml").read_text(encoding="utf-8")
+    _assert("set -o pipefail\n          python -B agent/clarifier.py" in issue_workflow, "clarifier pipeline must propagate failures")
+    _assert("set -o pipefail\n          python -B tests/smoke_test.py" in issue_workflow, "issue pre-smoke pipeline must propagate failures")
+    _assert("set -o pipefail\n          python -B tests/smoke_test.py" in dev_workflow, "development pre-smoke pipeline must propagate failures")
+    maintenance_agent._source_invariants("agent/orchestrator.py", (ROOT / "agent/orchestrator.py").read_text(encoding="utf-8"))
+    maintenance_agent._source_invariants("agent/context_builder.py", (ROOT / "agent/context_builder.py").read_text(encoding="utf-8"))
+    maintenance_agent._source_invariants("agent/deepseek_client.py", (ROOT / "agent/deepseek_client.py").read_text(encoding="utf-8"))
+    maintenance_agent._source_invariants("agent/task_refiner.py", (ROOT / "agent/task_refiner.py").read_text(encoding="utf-8"))
+    maintenance_agent._source_invariants("tests/smoke_test.py", (ROOT / "tests/smoke_test.py").read_text(encoding="utf-8"))
+    dev_workflow = (ROOT / ".github/workflows/ai-development.yml").read_text(encoding="utf-8")
+    maintenance_agent._workflow_invariants(".github/workflows/ai-development.yml", dev_workflow)
+    ci_workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    maintenance_agent._workflow_invariants(".github/workflows/ci.yml", ci_workflow)
+    _assert("pull-requests: write" not in ci_workflow, "PR CI workflow must stay read-only")
+    permissions = maintenance_agent._permission_stanza(ci_workflow)
+    safe_ci_edit = ci_workflow.replace("All workflow YAML and run-step shell syntax checks passed.",
+                                       "All workflow YAML and run-step shell syntax checks passed; safe edit.")
+    elevated_ci = ci_workflow.replace("  contents: read", "  contents: write", 1)
+    _assert(permissions == maintenance_agent._permission_stanza(safe_ci_edit),
+            "non-permission CI edit should preserve the permissions stanza")
+    _assert(permissions != maintenance_agent._permission_stanza(elevated_ci),
+            "permission escalation was not detected by stanza comparison")
+    try:
+        maintenance_agent._workflow_invariants(".github/workflows/ci.yml", ci_workflow.replace("python -B tests/smoke_test.py", "echo skipped"))
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("CI workflow passed after its smoke test gate was removed")
+    settings_source = (ROOT / "agent/settings.py").read_text(encoding="utf-8")
+    _assert('MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-flash")' in settings_source,
+            "default DeepSeek model is not a currently supported model ID")
+    _assert("deepseek-chat" not in valid + dev_workflow,
+            "workflow still references the retired deepseek-chat model ID")
+    try:
+        maintenance_agent._workflow_invariants(".github/workflows/ai-issue.yml", valid + "\n# --admin\n")
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("workflow privilege escalation marker passed invariant check")
+
+
 def main() -> int:
     tests = [
         test_brace_matcher_handles_templates_and_nested,
@@ -168,6 +345,11 @@ def main() -> int:
         test_login_task,
         test_card_management_context_has_full_dependencies,
         test_agent_prompts_receive_complete_task,
+        test_context_builder_targeted_expansion,
+        test_need_context_symbol_extraction,
+        test_orchestrator_recovers_need_context,
+        test_deepseek_retries_transient_http_errors,
+        test_maintenance_allowlist_and_workflow_guards,
     ]
     failed = 0
     for t in tests:
