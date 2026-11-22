@@ -24,8 +24,9 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_LOG_CHARS = 12_000
-MAX_CONTEXT_CHARS = 48_000
-MAX_PATCH_CHARS = 22_000
+MAX_CONTEXT_CHARS = 42_000
+MAX_PATCH_CHARS = 12_000
+MAX_PATCH_FILES = 3
 REVIEW_MODEL = os.getenv("DEEPSEEK_REVIEW_MODEL", "deepseek-v4-pro")
 EDITABLE_AGENT_FILES = {
     "agent/orchestrator.py", "agent/context_builder.py",
@@ -67,7 +68,9 @@ ambiguous, the API key is missing/invalid, or the user request is unsafe),
 return cannot_repair_safely and explain why.
 
 The patch must be a valid unified git diff with `diff --git a/path b/path`
-headers and must update only existing allowed files. Keep it below 22000 chars.
+headers and must update only existing allowed files. Prefer one file and never
+update more than three files. Keep the patch below 12000 characters. Return a
+compact JSON object only; do not include markdown fences or explanations outside it.
 """
 
 REVIEW_SYSTEM = """You are an independent security-minded reviewer of an AltCards
@@ -101,8 +104,9 @@ def _tracked_existing(path: str) -> bool:
 
 
 def _collect_context(log: str) -> str:
-    # Prioritize files named by the traceback/workflow; include core orchestration
-    # and tests as invariants. This is intentionally not a dump of the app source.
+    # Select source files from the failure signature instead of always packing
+    # most of the automation repository into the prompt. Explicit paths in the
+    # log remain highest priority.
     candidates = [
         "agent/orchestrator.py", "agent/context_builder.py", "agent/deepseek_client.py",
         "agent/code_agent.py", "agent/qa_agent.py", "agent/patch_validator.py",
@@ -110,11 +114,47 @@ def _collect_context(log: str) -> str:
         ".github/workflows/ai-issue.yml", ".github/workflows/ai-development.yml",
         ".github/workflows/ci.yml",
     ]
-    mentioned = []
-    for path in candidates:
-        if path in log and path not in mentioned:
-            mentioned.append(path)
-    ordered = mentioned + [p for p in candidates if p not in mentioned]
+    lower_log = log.lower()
+    focused: list[str] = []
+    has_context_failure = any(term in lower_log for term in (
+        "context truncated", "context selected", "over_limit", "need_context",
+        "max_context_chars",
+    ))
+    has_output_failure = any(term in lower_log for term in (
+        "deepseek output truncated", "finish_reason=length", "max_tokens",
+        "completion_tokens",
+    ))
+    has_workflow_failure = any(term in lower_log for term in (
+        "gh pr", "github/actions", ".github/workflows", "required status",
+        "branch protection", "workflow_dispatch",
+    ))
+
+    if has_context_failure and has_output_failure:
+        focused.extend([
+            "agent/context_builder.py", "agent/deepseek_client.py",
+            "agent/orchestrator.py", "agent/settings.py", "tests/smoke_test.py",
+        ])
+    elif has_context_failure:
+        focused.extend([
+            "agent/context_builder.py", "agent/orchestrator.py",
+            "agent/settings.py", "tests/smoke_test.py",
+        ])
+    elif has_output_failure:
+        focused.extend([
+            "agent/deepseek_client.py", "agent/orchestrator.py",
+            "agent/context_builder.py", "tests/smoke_test.py",
+        ])
+
+    if has_workflow_failure:
+        focused.extend([
+            ".github/workflows/ai-development.yml", ".github/workflows/ai-issue.yml",
+            ".github/workflows/ci.yml", "tests/smoke_test.py",
+        ])
+
+    mentioned = [path for path in candidates if path in log]
+    # When a signature is recognized, do not append every fallback candidate;
+    # this keeps the model focused on the few files that can explain the error.
+    ordered = list(dict.fromkeys(mentioned + (focused if focused else candidates)))
     parts = []
     used = 0
     for path in ordered:
@@ -142,8 +182,8 @@ def _parse_patch_headers(patch: str) -> list[str]:
         paths.append(a)
     if not paths or len(set(paths)) != len(paths):
         raise RuntimeError("Patch must contain one or more unique diff sections")
-    if len(paths) > 5:
-        raise RuntimeError("Maintenance patch exceeds the 5-file safety limit")
+    if len(paths) > MAX_PATCH_FILES:
+        raise RuntimeError(f"Maintenance patch exceeds the {MAX_PATCH_FILES}-file safety limit")
     return paths
 
 
@@ -312,7 +352,9 @@ def repair(log_path: Path) -> dict:
         "WORKFLOW FAILURE LOG (untrusted evidence):\n" + log
         + "\n\nCURRENT ALLOWED INFRASTRUCTURE SOURCE:\n" + context
         + "\n\nPropose a minimal repair, or refuse if the cause is not safely repairable.",
-        max_tokens=7000,
+        # DeepSeek supports a larger output ceiling; this cap allows compact
+        # repairs to finish while the prompt constrains the patch to a few files.
+        max_tokens=10_000,
     )
     if proposal.get("status") != "ready":
         raise RuntimeError(

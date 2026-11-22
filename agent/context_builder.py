@@ -261,11 +261,13 @@ def _is_cards_task(task_low: str) -> bool:
     return any(k in task_low for k in CARD_KEYWORDS)
 
 def build_context(task: str, source: str, extra_names: list[str] | None = None) -> dict:
-    task_low = task.lower()
     classification_text = _positive_scope_for_classification(task).lower()
     is_xp = _is_xp_task(classification_text)
     is_login = _is_login_task(classification_text)
-    is_cards = _is_cards_task(task_low)
+    # Apply the same positive-scope filter used for XP/login classification.
+    # Otherwise a constraint such as "do not change decks" can accidentally
+    # activate the large card-management context for an unrelated task.
+    is_cards = _is_cards_task(classification_text)
 
     ordered: list[tuple[str, str]] = []
     missing: list[str] = []
@@ -344,12 +346,15 @@ def build_context(task: str, source: str, extra_names: list[str] | None = None) 
             "cards.decksTitle", "cards.editName", "cards.share", "cards.unshare",
             "cards.copiedLock", "cards.keepOneDeck", "cards.deleteDeck",
             "settings.newLimit", "settings.newLimitInfo", "settings.showTut",
-            "settings.back", "tut.g.decks", "tut.g.settings",
+            "settings.back",
         )
+        # Tutorial dictionaries can be very large and are not required for
+        # ordinary deck management. Include such entries only when the positive
+        # task scope explicitly references them.
         # Also extract dictionary keys explicitly mentioned in the task.
         mentioned_keys = re.findall(
-            r"(?:['\"])(cards|settings|tut\.g|library)\.([A-Za-z0-9_.]+)(?:['\"])",
-            task,
+            r"\b(cards|settings|tut\.g|library)\.([A-Za-z0-9_.]+)\b",
+            classification_text,
         )
         dynamic_keys = [f"{namespace}.{suffix}" for namespace, suffix in mentioned_keys]
         for key in dict.fromkeys((*card_translation_keys, *dynamic_keys)):
