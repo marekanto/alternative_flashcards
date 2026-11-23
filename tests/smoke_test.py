@@ -10,7 +10,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "agent"))
 
-from agent.patch_validator import SensitiveChangeNotApproved, enforce_sensitive_guard  # noqa: E402
+from agent.patch_validator import SensitiveChangeNotApproved, changed_protected_areas, enforce_sensitive_guard  # noqa: E402
 from agent.context_builder import build_context, MAX_CONTEXT_CHARS, TARGET_FILE  # noqa: E402
 
 SOURCE = (ROOT / TARGET_FILE).read_text(encoding="utf-8")
@@ -93,6 +93,20 @@ def test_sensitive_guard_requires_explicit_approval() -> None:
         raise AssertionError("protected defaults change passed without approval")
 
     enforce_sensitive_guard(before, after, True)
+
+    # Appending HTML outside the script must not look like a saveSettings edit.
+    closing_body = SOURCE.rfind("</body>")
+    _assert(closing_body >= 0, "source HTML has no closing body tag")
+    with_comment = (
+        SOURCE[:closing_body]
+        + "<!-- AltCards guard regression -->\n"
+        + SOURCE[closing_body:]
+    )
+    changed = changed_protected_areas(SOURCE, with_comment)
+    _assert(
+        "saveSettings" not in changed,
+        f"Trailing HTML comment falsely marked saveSettings as changed: {changed}",
+    )
 
 
 def test_validation_failure_refines_next_instruction() -> None:

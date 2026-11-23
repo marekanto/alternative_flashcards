@@ -39,7 +39,19 @@ def _top_level_function_blocks(source):
     matches = list(FUNCTION_RE.finditer(source))
     out = {}
     for i, match in enumerate(matches):
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(source)
+        if i + 1 < len(matches):
+            end = matches[i + 1].start()
+        else:
+            # The last JavaScript function must not absorb HTML after its
+            # containing script element (for example, a comment before </body>).
+            closing_script = re.search(
+                r"</script\s*>", source[match.start():], flags=re.IGNORECASE
+            )
+            end = (
+                match.start() + closing_script.start()
+                if closing_script
+                else len(source)
+            )
         out[match.group(1)] = source[match.start():end]
     return out
 
