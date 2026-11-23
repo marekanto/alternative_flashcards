@@ -222,6 +222,23 @@ def extract_translation_entry(source: str, key: str) -> str | None:
     return source[match.start():end] if end is not None else None
 
 
+def extract_html_closing_tag_context(
+    source: str, tag_name: str, *, before: int = 1200, after: int = 160
+) -> str | None:
+    """Return a bounded source window around an explicitly supported closing HTML tag."""
+    if tag_name.lower() not in {"body", "head", "html"}:
+        return None
+    matches = list(re.finditer(
+        rf"</\s*{re.escape(tag_name)}\s*>", source, flags=re.IGNORECASE
+    ))
+    if not matches:
+        return None
+    match = matches[-1]
+    start = max(0, match.start() - before)
+    end = min(len(source), match.end() + after)
+    return source[start:end]
+
+
 # Only XP-specific signals belong here. Generic words such as render/save/undo
 # frequently appear in acceptance criteria or "do not change" sections and
 # must not pull the entire XP/Sync context into unrelated card tasks.
@@ -281,7 +298,17 @@ def build_context(task: str, source: str, extra_names: list[str] | None = None) 
         # resolved against current source; no model-supplied code is trusted.
         for raw_name in extra_names[:12]:
             name = str(raw_name).strip()
+            html_match = re.fullmatch(r"</(body|head|html)>", name, flags=re.IGNORECASE)
+            if html_match:
+                tag_name = html_match.group(1)
+                body = extract_html_closing_tag_context(source, tag_name)
+                if body:
+                    push(f"expanded:html:{name}", body)
+                else:
+                    missing.append(f"html:{name}")
+                continue
             if not re.fullmatch(r"[A-Za-z_$][\w$]{0,80}", name):
+                missing.append(f"unsupported:{name[:80]}")
                 continue
             body = extract_named(source, name)
             if body:
@@ -290,6 +317,8 @@ def build_context(task: str, source: str, extra_names: list[str] | None = None) 
             sync_body = extract_sync_method(source, name)
             if sync_body:
                 push(f"expanded:Sync.{name}", sync_body)
+                continue
+            missing.append(f"symbol:{name}")
 
     if is_xp:
         push("init_block", extract_init_block(source))
