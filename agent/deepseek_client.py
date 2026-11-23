@@ -13,7 +13,20 @@ except ImportError:
 
 
 RETRYABLE_HTTP_CODES = {408, 425, 429, 500, 502, 503, 504}
+MAINTENANCE_HTTP_CODES = {408, 425, 500, 502, 503, 504}
 API_MAX_ATTEMPTS = int(os.getenv("DEEPSEEK_API_MAX_ATTEMPTS", "3"))
+
+
+class DeepSeekInfrastructureError(RuntimeError):
+    """A transient transport or upstream server failure that may merit repair."""
+
+
+class DeepSeekConfigurationError(RuntimeError):
+    """A credential or request configuration error; repository repair is not appropriate."""
+
+
+class DeepSeekResponseError(RuntimeError):
+    """The API responded, but its payload was unusable or incomplete."""
 
 
 def chat(
@@ -34,7 +47,7 @@ def chat(
     """
     api_key = os.getenv("DEEPSEEK_API_KEY")
     if not api_key:
-        raise RuntimeError("Missing DEEPSEEK_API_KEY GitHub secret")
+        raise DeepSeekConfigurationError("Missing DEEPSEEK_API_KEY GitHub secret")
 
     use_thinking = THINKING if thinking is None else thinking
     effective_max = int(max_tokens or MAX_OUTPUT_TOKENS)
@@ -75,13 +88,19 @@ def chat(
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")[:1200]
             message = f"DeepSeek API HTTP {exc.code}: {detail}"
-            if exc.code not in RETRYABLE_HTTP_CODES or attempt >= max_attempts:
-                raise RuntimeError(message) from exc
+            if exc.code not in RETRYABLE_HTTP_CODES:
+                raise DeepSeekConfigurationError(message) from exc
+            if attempt >= max_attempts:
+                if exc.code in MAINTENANCE_HTTP_CODES:
+                    raise DeepSeekInfrastructureError(message) from exc
+                # HTTP 429 is retried, but rate limiting is not safely repairable
+                # by changing repository code.
+                raise DeepSeekConfigurationError(message) from exc
             print(f"{message}; retry {attempt}/{max_attempts - 1}")
         except (urllib.error.URLError, TimeoutError, socket.timeout) as exc:
             message = f"DeepSeek API connection error: {exc}"
             if attempt >= max_attempts:
-                raise RuntimeError(message) from exc
+                raise DeepSeekInfrastructureError(message) from exc
             print(f"{message}; retry {attempt}/{max_attempts - 1}")
         # Backoff: 2s, 4s; capped to avoid long workflow stalls.
         time.sleep(min(2 ** attempt, 8))
@@ -102,7 +121,7 @@ def chat(
 
     choices = result.get("choices") or []
     if not choices:
-        raise RuntimeError(f"DeepSeek returned no choices. Raw: {str(result)[:600]}")
+        raise DeepSeekResponseError(f"DeepSeek returned no choices. Raw: {str(result)[:600]}")
 
     choice = choices[0]
     finish_reason = choice.get("finish_reason")
@@ -111,7 +130,7 @@ def chat(
     # --- KLUCZOWE: wykryj ucięcie ---
     if finish_reason == "length":
         got = usage.get("completion_tokens", "?")
-        raise RuntimeError(
+        raise DeepSeekResponseError(
             f"DeepSeek output truncated: hit max_tokens={effective_max} "
             f"(generated {got} tokens, finish_reason=length). "
             f"Raise MAX_OUTPUT_TOKENS or narrow the task. "
@@ -119,7 +138,7 @@ def chat(
         )
 
     if not isinstance(content, str) or not content.strip():
-        raise RuntimeError(
+        raise DeepSeekResponseError(
             f"DeepSeek returned empty content (finish_reason={finish_reason}). "
             f"Raw: {str(result)[:400]}"
         )
@@ -130,7 +149,7 @@ def chat(
     try:
         return json.loads(content)
     except json.JSONDecodeError as exc:
-        raise RuntimeError(
+        raise DeepSeekResponseError(
             f"DeepSeek returned invalid JSON (finish_reason={finish_reason}): "
             f"{content[:600]}"
         ) from exc

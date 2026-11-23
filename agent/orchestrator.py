@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from code_agent import propose
+from deepseek_client import DeepSeekInfrastructureError
 from context_builder import build_context, MAX_CONTEXT_CHARS
 from patch_validator import (
     SensitiveChangeNotApproved,
@@ -311,9 +312,30 @@ def main():
     )
 
 
+def _write_github_outputs(maintenance_eligible: bool, failure_class: str):
+    """Publish an explicit, conservative recovery decision to GitHub Actions."""
+    output_path = os.getenv("GITHUB_OUTPUT")
+    if not output_path:
+        return
+    with open(output_path, "a", encoding="utf-8") as output:
+        output.write(f"maintenance_eligible={str(maintenance_eligible).lower()}\n")
+        output.write(f"failure_class={failure_class}\n")
+
+
 if __name__ == "__main__":
+    # Missing outputs are treated as false by the workflow. Only a typed,
+    # retry-exhausted transport/upstream failure can explicitly opt in.
     try:
         main()
+    except DeepSeekInfrastructureError as exc:
+        _write_github_outputs(True, "infrastructure")
+        print("ERROR_CLASS=infrastructure")
+        print("MAINTENANCE_ELIGIBLE=true")
+        print("ERROR:", str(exc), file=sys.stderr)
+        sys.exit(1)
     except Exception as exc:
+        _write_github_outputs(False, "non_infrastructure")
+        print("ERROR_CLASS=non_infrastructure")
+        print("MAINTENANCE_ELIGIBLE=false")
         print("ERROR:", str(exc), file=sys.stderr)
         sys.exit(1)
