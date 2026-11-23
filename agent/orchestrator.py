@@ -87,7 +87,7 @@ def _refine_after_failure(original_task, current_task, failure, previous_diff, a
 
 
 def _requested_context_names(proposal, task):
-    """Extract likely symbol names, never source code, from a need_context reply."""
+    """Extract exact source symbols and supported HTML closing tags from need_context."""
     values = []
     direct_names = []
     if isinstance(proposal, dict):
@@ -96,10 +96,24 @@ def _requested_context_names(proposal, task):
             direct_names = [str(x).strip() for x in names[:12]]
         values.extend(str(proposal.get(k, "")) for k in ("reason", "summary", "diagnosis"))
     values.append(task)
-    candidates = list(direct_names)
+
+    candidates = []
+    html_tag_pattern = re.compile(r"</\s*(body|head|html)\s*>", re.I)
+
+    # missing_context should normally contain exact identifiers. Models can
+    # occasionally return a prose description instead, so extract only the
+    # explicitly supported closing tags from that description and discard
+    # the surrounding prose (which is not a source symbol).
+    for name in direct_names:
+        candidates.extend(f"</{match.group(1).lower()}>" for match in html_tag_pattern.finditer(name))
+        if re.fullmatch(r"[A-Za-z_$][\w$]{0,80}", name):
+            candidates.append(name)
+
     for value in values:
+        candidates.extend(f"</{match.group(1).lower()}>" for match in html_tag_pattern.finditer(value))
         candidates.extend(re.findall(r"`([A-Za-z_$][\w$]{0,80})`", value))
         candidates.extend(re.findall(r"\b(?:function|method|symbol|handler)\s+([A-Za-z_$][\w$]{0,80})", value, re.I))
+
     common = {"need_context", "context", "function", "method", "source", "missing", "undefined", "return", "const", "async"}
     return list(dict.fromkeys(x for x in candidates if x.lower() not in common))[:12]
 

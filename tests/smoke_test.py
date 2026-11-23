@@ -185,6 +185,16 @@ def test_need_context_symbol_extraction() -> None:
     names = orchestrator._requested_context_names(proposal, "Move shareDeck actions")
     _assert(set(names) >= {"shareDeck", "unshareDeck", "deckMenu"}, f"missing symbols not extracted: {names}")
 
+    html_proposal = {
+        "status": "need_context",
+        "reason": "Need the exact source around the closing body tag.",
+        "missing_context": ["closing </body> tag and adjacent literal HTML in index.html"],
+    }
+    html_names = orchestrator._requested_context_names(
+        html_proposal, "Add a comment immediately before the closing </body> tag"
+    )
+    _assert(html_names == ["</body>"], f"HTML closing tag was not extracted cleanly: {html_names}")
+
 
 def test_orchestrator_recovers_need_context() -> None:
     import tempfile
