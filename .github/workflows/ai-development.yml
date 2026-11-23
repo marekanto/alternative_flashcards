@@ -90,6 +90,7 @@ jobs:
         if: always() && steps.maintenance.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.ALT_CARDS_AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_CHECKS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MAINTENANCE_FILES: ${{ steps.maintenance.outputs.files }}
         run: |
           BRANCH="ai/maintenance-dev-${GITHUB_RUN_ID}"
@@ -112,7 +113,25 @@ jobs:
 
           Independent Maintenance Agent review, local smoke tests, Python compilation, and workflow YAML validation passed. No product files were modified.")
           echo "Infrastructure PR: $PR_URL"
-          timeout 900s gh pr checks "$PR_URL" --required --watch --fail-fast
+          # PR checks may appear a few seconds after PR creation. Also use
+          # GITHUB_TOKEN for reading checks: fine-grained PATs do not support
+          # the Checks API. Keep the PAT for PR creation and merge operations.
+          for attempt in $(seq 1 24); do
+            set +e
+            GH_TOKEN="$GH_CHECKS_TOKEN" gh pr checks "$PR_URL" --required >/tmp/maintenance-pr-checks.log 2>&1
+            set -e
+            if ! grep -Fq "no checks reported on" /tmp/maintenance-pr-checks.log; then
+              break
+            fi
+            echo "Maintenance PR checks are not visible yet (${attempt}/24); waiting 5 seconds."
+            sleep 5
+          done
+          if grep -Fq "no checks reported on" /tmp/maintenance-pr-checks.log; then
+            cat /tmp/maintenance-pr-checks.log
+            echo "::error::No checks appeared for the maintenance PR after 120 seconds."
+            exit 1
+          fi
+          timeout 900s env GH_TOKEN="$GH_CHECKS_TOKEN" gh pr checks "$PR_URL" --required --watch --fail-fast
           gh pr merge "$PR_URL" --squash --delete-branch
 
           STATE=$(gh pr view "$PR_URL" --json state --jq .state)
@@ -165,6 +184,7 @@ jobs:
         if: always() && steps.recovery.outputs.passed == 'true' && steps.post_smoke.outcome == 'success' && inputs.diagnose_only == false
         env:
           GH_TOKEN: ${{ secrets.ALT_CARDS_AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_CHECKS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TASK_INPUT: ${{ inputs.task }}
         run: |
           if git diff --quiet; then
@@ -196,7 +216,25 @@ jobs:
             --body-file /tmp/ai-development-pr-body.md)
           echo "Created PR: $PR_URL"
 
-          timeout 900s gh pr checks "$PR_URL" --required --watch --fail-fast
+          # GitHub can take a short time to publish the first check runs after
+          # PR creation. Use GITHUB_TOKEN for check visibility; the fine-grained
+          # automation PAT is retained for PR creation and merge permissions.
+          for attempt in $(seq 1 24); do
+            set +e
+            GH_TOKEN="$GH_CHECKS_TOKEN" gh pr checks "$PR_URL" --required >/tmp/application-pr-checks.log 2>&1
+            set -e
+            if ! grep -Fq "no checks reported on" /tmp/application-pr-checks.log; then
+              break
+            fi
+            echo "Application PR checks are not visible yet (${attempt}/24); waiting 5 seconds."
+            sleep 5
+          done
+          if grep -Fq "no checks reported on" /tmp/application-pr-checks.log; then
+            cat /tmp/application-pr-checks.log
+            echo "::error::No checks appeared for the application PR after 120 seconds."
+            exit 1
+          fi
+          timeout 900s env GH_TOKEN="$GH_CHECKS_TOKEN" gh pr checks "$PR_URL" --required --watch --fail-fast
           gh pr merge "$PR_URL" --squash --delete-branch
           STATE=$(gh pr view "$PR_URL" --json state --jq .state)
           if [ "$STATE" != "MERGED" ]; then
