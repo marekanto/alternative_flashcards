@@ -2,7 +2,7 @@ import os
 
 from deepseek_client import chat
 
-QA_MAX_OUTPUT_TOKENS = max(1800, int(os.getenv("QA_MAX_OUTPUT_TOKENS", "2000")))
+QA_MAX_OUTPUT_TOKENS = max(3000, int(os.getenv("QA_MAX_OUTPUT_TOKENS", "3500")))
 
 SYSTEM = """You are an independent, conservative reviewer of an AltCards code diff.
 Return ONLY JSON: {\"verdict\":\"pass\"|\"reject\"|\"needs_human_review\",\"findings\":[\"short items\"]}.
@@ -17,7 +17,7 @@ Interpret explicit UI copy requests literally:
 
 Reject concrete issues only: unrelated changes, secrets, new dependencies/network calls, weakened accessibility, broken mobile layout supported by evidence in the diff, or changes outside requested scope.
 Reject changes to SRS, XP, daily limits, persistence, Sync, Supabase, authentication, account deletion or shared-deck behavior unless the task explicitly requires them.
-Do not claim static review proves runtime correctness. Review only the task, diff and supplied repository context. Keep findings concise. If there is no concrete issue, return verdict pass."""
+Do not claim static review proves runtime correctness. Review only the task, diff and supplied repository context. Return at most 3 concise findings, one short sentence each. Do not restate the task or provide lengthy explanations. If there is no concrete issue, return verdict pass."""
 
 
 def review(task, diff):
