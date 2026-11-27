@@ -97,6 +97,26 @@ def test_login_task() -> None:
 
 
 
+def test_sync_offline_user_and_xp_logging_contract() -> None:
+    from agent.context_builder import extract_sync_method
+
+    init = extract_sync_method(SOURCE, "init")
+    log_xp = extract_sync_method(SOURCE, "logXp")
+    _assert(init is not None, "Sync.init context could not be extracted")
+    _assert(log_xp is not None, "Sync.logXp context could not be extracted")
+    _assert("this.user = null;" in init, "offline init must clear the authenticated user")
+    _assert("this.profile = null;" in init, "offline init must clear the profile")
+    _assert("id:'offline'" not in init, "offline init must not create a pseudo-user")
+    _assert("this.user.id==='offline'" in log_xp, "logXp must explicitly reject the offline pseudo-user")
+    _assert("return true;" in log_xp, "logXp must report successful inserts")
+    _assert(log_xp.count("return false;") >= 2, "logXp must report skipped and failed inserts")
+    _assert("console.warn('Sync.logXp failed:'" in log_xp,
+            "logXp failures must be visible in the console")
+    bonuses = extract_sync_method(SOURCE, "checkBonuses")
+    _assert(bonuses is not None and "localStorage.setItem(key,'1')" in bonuses,
+            "checkBonuses must remain present and unchanged by the offline fix")
+
+
 def test_function_context_preserves_declaration_modifiers() -> None:
     """Named-function excerpts must include async/export/generator modifiers."""
     from agent.context_builder import extract_named
@@ -716,6 +736,7 @@ def test_maintenance_gate_requires_explicit_output() -> None:
 def main() -> int:
     tests = [
         test_brace_matcher_handles_templates_and_nested,
+        test_sync_offline_user_and_xp_logging_contract,
         test_function_context_preserves_declaration_modifiers,
         test_sensitive_guard_requires_explicit_approval,
         test_validation_failure_refines_next_instruction,
