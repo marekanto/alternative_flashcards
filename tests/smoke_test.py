@@ -113,8 +113,8 @@ def test_sync_offline_user_and_xp_logging_contract() -> None:
     _assert("console.warn('Sync.logXp failed:'" in log_xp,
             "logXp failures must be visible in the console")
     bonuses = extract_sync_method(SOURCE, "checkBonuses")
-    _assert(bonuses is not None and "localStorage.setItem(key,'1')" in bonuses,
-            "checkBonuses must remain present and unchanged by the offline fix")
+    _assert(bonuses is not None and "if(IS_DEV||!this.user)return;" in bonuses,
+            "checkBonuses must continue to skip when there is no authenticated user")
 
 
 def test_function_context_preserves_declaration_modifiers() -> None:
