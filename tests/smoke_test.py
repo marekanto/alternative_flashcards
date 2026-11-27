@@ -110,6 +110,10 @@ Nie zmieniaj:
             "translation display values must not activate card-management context")
     _assert("talie" not in classification and "decks" not in classification,
             "translation display values leaked into classification text")
+    _assert(
+        _is_cards_task(_classification_text_for_context("Fix " + chr(96) + "renderCards" + chr(96) + " handler").lower()),
+        "standalone inline code symbols must remain available for task routing",
+    )
 
     result = build_context(task, SOURCE)
     _assert(result["ok"],
