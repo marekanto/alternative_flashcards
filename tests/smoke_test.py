@@ -86,6 +86,45 @@ B2: Sync.init() nie powinno ustawiać pseudo-usera.
             "Polish scope exclusions remained in positive classification text")
 
 
+def test_issue63_translation_literals_do_not_activate_card_context() -> None:
+    from agent.context_builder import (
+        _classification_text_for_context,
+        _is_cards_task,
+        _is_settings_task,
+    )
+
+    task = """vSettings: edycja dziennego celu (S.settings.dailyGoal) w index.html
+
+OP1: dwa kafle w Ustawieniach — dzienny limit powtórek i dzienny cel.
+OP2: saveSettings() zapisuje dzienny cel, z guardem na brak #glmt.
+OP3: dodaj klucze TR przed FIND:
+FIND: `'cards.title':{pl:'Talie',en:'Decks',es:'Mazos'},`
+
+Nie zmieniaj:
+- defaults, download, vStudy, ans, grade, undoAnswer, start, SRS, sync."""
+
+    classification = _classification_text_for_context(task).lower()
+    _assert(_is_settings_task(classification),
+            "Issue #63 should route to Settings context")
+    _assert(not _is_cards_task(classification),
+            "translation display values must not activate card-management context")
+    _assert("talie" not in classification and "decks" not in classification,
+            "translation display values leaked into classification text")
+
+    result = build_context(task, SOURCE)
+    _assert(result["ok"],
+            f"Settings context is incomplete: missing={result['missing']} over={result['over_limit']}")
+    for token in ("function vSettings", "function saveSettings"):
+        _assert(token in result["context"], f"Settings context missing {token}")
+    _assert("TR[cards.title]" in result["included"],
+            "the translation insertion anchor should remain available to the agent")
+    _assert(not any(
+        name in result["included"]
+        for name in ("renderCards", "dlist", "delDeck", "shareDeck", "unshareDeck", "editCard")
+    ), "Settings-only task must not load card-management dependencies")
+    _assert(result["chars"] <= MAX_CONTEXT_CHARS,
+            "Issue #63 Settings context exceeded the configured character budget")
+
 def test_login_task() -> None:
     task = "Usuń podtytuł na ekranie logowania i zmień tagline"
     res = build_context(task, SOURCE)
@@ -722,6 +761,7 @@ def main() -> int:
         test_generic_xp_task_is_complete,
         test_ranking_bonus_task,
         test_polish_scope_heading_excludes_restrictions_from_context_classification,
+        test_issue63_translation_literals_do_not_activate_card_context,
         test_login_task,
         test_card_management_context_has_full_dependencies,
         test_agent_prompts_receive_complete_task,
