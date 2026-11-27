@@ -180,13 +180,13 @@ def extract_css_rule(source: str, selector: str) -> str | None:
         return None
 
     rules = []
-    for style_match in re.finditer(r"<style\\b[^>]*>", source, re.IGNORECASE):
+    for style_match in re.finditer(r"<style\b[^>]*>", source, re.IGNORECASE):
         style_start = style_match.end()
-        style_close = re.search(r"</style\\s*>", source[style_start:], re.IGNORECASE)
+        style_close = re.search(r"</style\s*>", source[style_start:], re.IGNORECASE)
         if not style_close:
             continue
         css = source[style_start:style_start + style_close.start()]
-        for opening in re.finditer(r"\\{", css):
+        for opening in re.finditer(r"\{", css):
             brace = opening.start()
             # A selector prelude starts after the most recent rule/block
             # boundary. This also works inside nested @media blocks.
@@ -200,7 +200,7 @@ def extract_css_rule(source: str, selector: str) -> str | None:
                 if rule:
                     rules.append(rule)
 
-    return "\\n".join(dict.fromkeys(rules)) if rules else None
+    return "\n".join(dict.fromkeys(rules)) if rules else None
 
 def _find_sync_object(source: str) -> tuple[int, int] | tuple[None, None]:
     m = re.search(r"\bSync\s*=\s*\{", source)
