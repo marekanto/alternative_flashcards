@@ -998,19 +998,24 @@ async function shareDeck(id){
   if(deck.sharedId) { toast(t('cards.alreadyShared')); return; }
   if(!confirm(t('cards.shareConfirm').replace('{n}', deck.name))) return;
   toast(t('cards.sharing'));
-  const err = await Sync.shareDeck(deck);
+  if($('#md')) $('#md').remove();
+  let err;
+  try { err = await Sync.shareDeck(deck); }
+  catch(e) { err = String(e?.message || e); }
   if(err) toast(err);
   else {
     save(); render();
     toast(t('cards.shared'));
-    setTimeout(()=>{ if(tab==='cards'){ tab='library'; render(); } }, 1000);
   }
 }
 async function unshareDeck(id){
   const deck = S.decks.find(x=>x.id===id);
   if(!deck || !deck.sharedId) return;
   if(!confirm(t('cards.unshareConfirm'))) return;
-  const err = await Sync.unshareDeck(deck.sharedId);
+  if($('#md')) $('#md').remove();
+  let err;
+  try { err = await Sync.unshareDeck(deck.sharedId); }
+  catch(e) { err = String(e?.message || e); }
   if(err) toast(err);
   else {
     deck.sharedId = null;
