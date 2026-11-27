@@ -117,21 +117,21 @@ def _requested_context_names(proposal, task):
         )
 
     candidates = []
-    html_tag_pattern = re.compile(r"</\\s*(body|head|html)\\s*>", re.I)
-    html_comment_pattern = re.compile(r"<!--[\\s\\S]{0,500}?-->")
+    html_tag_pattern = re.compile(r"</\s*(body|head|html)\s*>", re.I)
+    html_comment_pattern = re.compile(r"<!--[\s\S]{0,500}?-->")
 
     for name in direct_names:
         candidates.extend(f"</{match.group(1).lower()}>" for match in html_tag_pattern.finditer(name))
         candidates.extend(match.group(0) for match in html_comment_pattern.finditer(name))
-        if re.fullmatch(r"[A-Za-z_$][\\w$]{0,80}", name):
+        if re.fullmatch(r"[A-Za-z_$][\w$]{0,80}", name):
             candidates.append(name)
 
     # Model-authored explanation can name exact missing symbols. Never scan
     # task text for function identifiers: it includes requirements/exclusions,
     # not a list of source dependencies.
     for value in narrative_values:
-        candidates.extend(re.findall(r"`([A-Za-z_$][\\w$]{0,80})`", value))
-        candidates.extend(re.findall(r"\\b(?:function|method|symbol|handler)\\s+([A-Za-z_$][\\w$]{0,80})", value, re.I))
+        candidates.extend(re.findall(r"[\x60]([A-Za-z_$][\w$]{0,80})[\x60]", value))
+        candidates.extend(re.findall(r"\b(?:function|method|symbol|handler)\s+([A-Za-z_$][\w$]{0,80})", value, re.I))
 
     task_scope = _positive_scope_for_classification(task)
     candidates.extend(f"</{match.group(1).lower()}>" for match in html_tag_pattern.finditer(task_scope))
@@ -245,13 +245,23 @@ def _run_pipeline():
                 # treating a redundant request as a missing-source failure.
                 current_task = (
                     current_task
-                    + "\\n\\nCONTEXT CHECK: The symbols you requested are already present "
+                    + "\n\nCONTEXT CHECK: The symbols you requested are already present "
                     + "in the supplied source context. Re-read those snippets and continue; "
                     + "do not request the same symbols again. Request only an essential "
                     + "source symbol that is genuinely absent."
                 )
                 print(f"  → Requested context already present: {names or '(no new symbols)'}")
                 continue
+
+            base_context = new_context
+            current_task = (
+                current_task
+                + "\n\nCONTEXT RECOVERY: The previous response requested more source context. "
+                + "Use the expanded, current source snippets below. Do not infer missing code. "
+                + ("Requested symbols: " + ", ".join(names) if names else "Re-check the complete supplied snippets.")
+            )
+            print(f"  → Context expanded with: {names or '(no new symbols)'}")
+            continue
 
             base_context = new_context
             current_task = (
