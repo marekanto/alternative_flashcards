@@ -628,9 +628,8 @@ Sync = {
     if(data?.state){
       const pendingValue = localStorage.getItem('altcards-unsynced-at');
       const pending = pendingValue !== null || this.uploading === true;
-      const pendingAt = pendingValue !== null
-        ? (Number(pendingValue) || Date.now())
-        : (this.uploading ? Date.now() : 0);
+      const localPendingAt = pendingValue !== null ? (Number(pendingValue) || Date.now()) : 0;
+      const pendingAt = Math.max(localPendingAt, this.uploading ? Date.now() : 0);
       const serverAt = Date.parse(data.updated_at || '') || 0;
       if(pending && serverAt <= pendingAt) return;
       if(pending && serverAt > pendingAt){
