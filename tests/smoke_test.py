@@ -853,57 +853,6 @@ def test_maintenance_gate_requires_explicit_output() -> None:
     maintenance_agent._workflow_invariants(".github/workflows/ai-issue.yml", workflow)
 
 
-def main() -> int:
-    tests = [
-        test_brace_matcher_handles_templates_and_nested,
-        test_function_context_preserves_declaration_modifiers,
-        test_sensitive_guard_requires_explicit_approval,
-        test_validation_failure_refines_next_instruction,
-        test_generic_xp_task_is_complete,
-        test_ranking_bonus_task,
-        test_polish_scope_heading_excludes_restrictions_from_context_classification,
-        test_issue63_translation_literals_do_not_activate_card_context,
-        test_login_task,
-        test_card_management_context_has_full_dependencies,
-        test_agent_prompts_receive_complete_task,
-        test_context_builder_targeted_expansion,
-        test_need_context_symbol_extraction,
-        test_need_context_does_not_promote_task_identifiers_to_dependencies,
-        test_orchestrator_reprompts_when_requested_context_is_already_present,
-        test_orchestrator_recovers_need_context,
-        test_deepseek_retries_transient_http_errors,
-        test_maintenance_allowlist_and_workflow_guards,
-        test_truncation_is_not_infrastructure_failure,
-        test_code_agent_truncation_retries_once,
-        test_truncation_retry_is_opt_in_only,
-        test_incomplete_response_never_modifies_file,
-        test_infrastructure_error_still_eligible_for_maintenance,
-        test_ordinary_qa_failure_is_not_eligible_for_maintenance,
-        test_issue_workflow_excludes_automation_comments,
-        test_pr_merge_requires_named_quality_gate_without_bypass,
-        test_maintenance_gate_requires_explicit_output,
-        test_issue_payload_filters_automation_comments_and_preserves_task_order,
-        test_approval_fingerprint_binds_exact_task_and_scope,
-        test_approval_verifier_fails_closed,
-        test_clarifier_uses_canonical_automation_comment_filter,
-        test_workflow_verifies_approval_before_agent_and_before_merge,
-    ]
-    failed = 0
-    for t in tests:
-        try:
-            t()
-            print(f"PASS  {t.__name__}")
-        except AssertionError as e:
-            print(f"FAIL  {t.__name__}: {e}")
-            failed += 1
-    print(f"\n{len(tests) - failed}/{len(tests)} passed")
-    return 0 if failed == 0 else 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
-
-
 def test_issue_payload_filters_automation_comments_and_preserves_task_order() -> None:
     from agent.issue_payload import compose_task, filter_user_comments, task_fingerprint
 
@@ -1076,4 +1025,52 @@ def test_workflow_verifies_approval_before_agent_and_before_merge() -> None:
             "retries and pre-PR checks must preserve the exact approval used at agent start")
     maintenance_agent._workflow_invariants(".github/workflows/ai-issue.yml", workflow)
 
+def main() -> int:
+    tests = [
+        test_brace_matcher_handles_templates_and_nested,
+        test_function_context_preserves_declaration_modifiers,
+        test_sensitive_guard_requires_explicit_approval,
+        test_validation_failure_refines_next_instruction,
+        test_generic_xp_task_is_complete,
+        test_ranking_bonus_task,
+        test_polish_scope_heading_excludes_restrictions_from_context_classification,
+        test_issue63_translation_literals_do_not_activate_card_context,
+        test_login_task,
+        test_card_management_context_has_full_dependencies,
+        test_agent_prompts_receive_complete_task,
+        test_context_builder_targeted_expansion,
+        test_need_context_symbol_extraction,
+        test_need_context_does_not_promote_task_identifiers_to_dependencies,
+        test_orchestrator_reprompts_when_requested_context_is_already_present,
+        test_orchestrator_recovers_need_context,
+        test_deepseek_retries_transient_http_errors,
+        test_maintenance_allowlist_and_workflow_guards,
+        test_truncation_is_not_infrastructure_failure,
+        test_code_agent_truncation_retries_once,
+        test_truncation_retry_is_opt_in_only,
+        test_incomplete_response_never_modifies_file,
+        test_infrastructure_error_still_eligible_for_maintenance,
+        test_ordinary_qa_failure_is_not_eligible_for_maintenance,
+        test_issue_workflow_excludes_automation_comments,
+        test_pr_merge_requires_named_quality_gate_without_bypass,
+        test_maintenance_gate_requires_explicit_output,
+        test_issue_payload_filters_automation_comments_and_preserves_task_order,
+        test_approval_fingerprint_binds_exact_task_and_scope,
+        test_approval_verifier_fails_closed,
+        test_clarifier_uses_canonical_automation_comment_filter,
+        test_workflow_verifies_approval_before_agent_and_before_merge,
+    ]
+    failed = 0
+    for t in tests:
+        try:
+            t()
+            print(f"PASS  {t.__name__}")
+        except AssertionError as e:
+            print(f"FAIL  {t.__name__}: {e}")
+            failed += 1
+    print(f"\n{len(tests) - failed}/{len(tests)} passed")
+    return 0 if failed == 0 else 1
 
+
+if __name__ == "__main__":
+    raise SystemExit(main())
