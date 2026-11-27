@@ -453,7 +453,7 @@ def build_context(task: str, source: str, extra_names: list[str] | None = None) 
         # Also extract dictionary keys explicitly mentioned in the task.
         mentioned_keys = re.findall(
             r"\b(cards|settings|tut\.g|library)\.([A-Za-z0-9_.]+)\b",
-            classification_text,
+            positive_scope.lower(),
         )
         dynamic_keys = [f"{namespace}.{suffix}" for namespace, suffix in mentioned_keys]
         for key in dict.fromkeys((*card_translation_keys, *dynamic_keys)):
