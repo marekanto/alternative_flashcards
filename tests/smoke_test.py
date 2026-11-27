@@ -403,7 +403,7 @@ def test_issue69_context_recovery_finds_vadd_and_main_css() -> None:
     _assert("expanded:css:main" in result["included"],
             "Issue #69 did not include the current main CSS rule")
     for token in ('id="fr"', 'id="bk"', 'onchange="suggest()"', 'oninput="plink()"',
-                  "padding: 20px", "max-width: 600px"):
+                  "padding: clamp(16px, 4vw, 32px)", "max-width: 600px"):
         _assert(token in result["context"],
                 f"Issue #69 context is missing current-source token: {token}")
 
