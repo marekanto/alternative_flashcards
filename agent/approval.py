@@ -109,7 +109,10 @@ def latest_owner_decision(comments: list, expected_owner: str) -> dict | None:
     return {"action": action, "body": body}
 
 
-def evaluate_approval(issue: dict, expected_owner: str, expected_task_sha: str | None = None) -> dict:
+def evaluate_approval(
+    issue: dict, expected_owner: str, expected_task_sha: str | None = None,
+    require_approval: bool = False, expected_approval_sha: str | None = None,
+) -> dict:
     labels = [str(x.get("name") or "") for x in issue.get("labels", []) if isinstance(x, dict)]
     label_present = "ai-sensitive-approved" in labels
     current_task_sha = task_fingerprint(issue)
@@ -123,6 +126,15 @@ def evaluate_approval(issue: dict, expected_owner: str, expected_task_sha: str |
             "task_sha256": current_task_sha,
         }
     if not label_present:
+        if require_approval or expected_approval_sha:
+            return {
+                "valid": False,
+                "allow_sensitive": False,
+                "label_present": False,
+                "status": "approval_removed",
+                "reason": "A previously verified approval was removed before the workflow completed.",
+                "task_sha256": current_task_sha,
+            }
         return {
             "valid": True,
             "allow_sensitive": False,
@@ -147,6 +159,9 @@ def evaluate_approval(issue: dict, expected_owner: str, expected_task_sha: str |
         elif record["task_sha256"] != current_task_sha:
             reason = "The approved Issue title, body, or user comments have changed since approval."
             status = "task_fingerprint_mismatch"
+        elif expected_approval_sha and record["approval_sha256"] != expected_approval_sha:
+            reason = "The owner approval or approved scope changed while the workflow was running."
+            status = "approval_changed"
         else:
             return {
                 "valid": True,
@@ -173,17 +188,24 @@ def main() -> int:
     parser.add_argument("--issue-number", required=True, type=int)
     parser.add_argument("--expected-owner", required=True)
     parser.add_argument("--expected-task-sha")
+    parser.add_argument("--expected-approval-sha")
+    parser.add_argument("--require-approval", action="store_true")
     args = parser.parse_args()
     if args.issue_number < 1:
         parser.error("--issue-number must be positive")
     issue = fetch_issue(args.issue_number)
-    result = evaluate_approval(issue, args.expected_owner, args.expected_task_sha)
+    result = evaluate_approval(
+        issue, args.expected_owner, args.expected_task_sha,
+        require_approval=args.require_approval,
+        expected_approval_sha=args.expected_approval_sha,
+    )
     output_path = os.getenv("GITHUB_OUTPUT")
     if output_path:
         with open(output_path, "a", encoding="utf-8") as output:
             output.write(f"allow_sensitive={str(result['allow_sensitive']).lower()}\n")
             output.write(f"approval_status={result['status']}\n")
             output.write(f"verified_task_sha256={result['task_sha256']}\n")
+            output.write(f"verified_approval_sha256={result.get('approval_sha256', '')}\n")
     print(json.dumps(result, ensure_ascii=False))
     return 0 if result["valid"] else 1
 
