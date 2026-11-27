@@ -623,9 +623,21 @@ Sync = {
     } catch(e) {}
   },
   async download(){
-    if(IS_DEV) return;
-    const {data} = await this.client.from('app_states').select('state').eq('user_id',this.user.id).maybeSingle();
+    if(IS_DEV||!this.user)return;
+    const {data} = await this.client.from('app_states').select('state, updated_at').eq('user_id',this.user.id).maybeSingle();
     if(data?.state){
+      const pendingValue = localStorage.getItem('altcards-unsynced-at');
+      const pending = pendingValue !== null || this.uploading === true;
+      const pendingAt = pendingValue !== null
+        ? (Number(pendingValue) || Date.now())
+        : (this.uploading ? Date.now() : 0);
+      const serverAt = Date.parse(data.updated_at || '') || 0;
+      if(pending && serverAt <= pendingAt) return;
+      if(pending && serverAt > pendingAt){
+        localStorage.removeItem('altcards-unsynced-at');
+        clearTimeout(this.timer);
+        this.timer = 0;
+      }
       S = data.state;
       if(!S.settings)S.settings={...defaults};
       if(!S.daily)S.daily={};
@@ -636,13 +648,51 @@ Sync = {
       S.cards.forEach(c=>{if(typeof c.imageEnabled!=='boolean')c.imageEnabled=false;});
       localStorage.setItem('altcards-v1',JSON.stringify(S));
     } else {
+      if(S){
+        this.queueUpload();
+        return;
+      }
       S = {decks:[{id:'d1',name:'Deck 1',lang:'es'}],cards:[],log:{},settings:{...defaults},daily:{},ratings:{}};
       localStorage.setItem('altcards-v1',JSON.stringify(S));
       this.queueUpload();
     }
   },
-  queueUpload(){if(IS_DEV)return;if(!this.user)return;clearTimeout(this.timer);this.timer=setTimeout(()=>this.upload(),800)},
-  async upload(){if(IS_DEV||!this.user||!S)return;try{await this.client.from('app_states').upsert({user_id:this.user.id,state:S,updated_at:new Date().toISOString()})}catch(e){}},
+  queueUpload(){
+    if(IS_DEV)return;
+    if(!this.user)return;
+    localStorage.setItem('altcards-unsynced-at',Date.now().toString());
+    clearTimeout(this.timer);
+    this.timer=setTimeout(()=>{this.timer=0;this.upload()},800);
+  },
+  async upload(){
+    if(IS_DEV||!this.user||!S)return;
+    if(this.uploading){
+      clearTimeout(this.timer);
+      this.timer=setTimeout(()=>{this.timer=0;this.upload()},800);
+      return;
+    }
+    this.uploading=true;
+    clearTimeout(this.timer);
+    this.timer=0;
+    const pendingAt=localStorage.getItem('altcards-unsynced-at');
+    try{
+      const {error}=await this.client.from('app_states').upsert({user_id:this.user.id,state:S,updated_at:new Date().toISOString()});
+      if(error)throw error;
+      const currentPendingAt=localStorage.getItem('altcards-unsynced-at');
+      if(currentPendingAt===pendingAt){
+        localStorage.removeItem('altcards-unsynced-at');
+      }else if(currentPendingAt!==null){
+        clearTimeout(this.timer);
+        this.timer=setTimeout(()=>{this.timer=0;this.upload()},800);
+      }
+    }catch(e){
+      console.warn('Sync.upload failed:',e);
+      clearTimeout(this.timer);
+      this.timer=setTimeout(()=>{this.timer=0;this.upload()},2000);
+    }finally{
+      this.uploading=false;
+    }
+  },
   async logXp(amount){
     if(IS_DEV||!this.user||amount<=0)return;
     try{await this.client.from('xp_logs').insert({user_id:this.user.id,amount:amount})}catch(e){}
