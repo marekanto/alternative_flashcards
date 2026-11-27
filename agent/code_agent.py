@@ -21,7 +21,9 @@ Rules:
 - Treat SRS, grade/ans/undoAnswer/start, XP, daily limit, save/localStorage, Sync/Supabase/auth/account deletion and shared-deck operations as sensitive.
 - If the task does not explicitly request a sensitive subsystem, do not alter it.
 - The Issue may contain stale FIND/REPLACE examples. Treat the supplied repository source as authoritative; never assume an Issue snippet matches current main. Derive exact FIND text from supplied source.
-- If code needed for safe modification is missing, return need_context and list the exact missing function/method/symbol names in missing_context.
+- Inspect the supplied source context before returning need_context. Never request a function, method, constant, translation anchor, or handler that is already present in the supplied context.
+- Return need_context only when an essential source symbol is genuinely absent. missing_context must contain only exact missing source symbols, not task requirements, excluded/out-of-scope identifiers, property names, browser error names, or functions mentioned only as examples.
+- Do not request source for functions the task explicitly says not to change. New translation keys requested by the task are not missing context; use the existing translation insertion anchor and dictionary examples already supplied.
 - Keep replacements compact. No markdown, no explanation outside JSON."""
 
 

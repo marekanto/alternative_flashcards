@@ -14,7 +14,11 @@ from pathlib import Path
 
 from code_agent import propose
 from deepseek_client import DeepSeekInfrastructureError, DeepSeekTruncationError
-from context_builder import build_context, MAX_CONTEXT_CHARS
+from context_builder import (
+    build_context,
+    MAX_CONTEXT_CHARS,
+    _positive_scope_for_classification,
+)
 from patch_validator import (
     SensitiveChangeNotApproved,
     apply_operations,
@@ -94,39 +98,47 @@ def _refine_after_failure(original_task, current_task, failure, previous_diff, a
 
 
 def _requested_context_names(proposal, task):
-    """Extract exact source symbols and supported HTML closing tags from need_context."""
-    values = []
+    """Extract required symbols from the model response, not task prose.
+
+    Task prose names protected and out-of-scope symbols for context. Treating
+    every backticked identifier as a dependency caused recovery to request
+    unrelated functions such as ans/grade. HTML tags/comments remain supported
+    because tasks can explicitly target literal markup.
+    """
+    narrative_values = []
     direct_names = []
     if isinstance(proposal, dict):
         names = proposal.get("missing_context", [])
         if isinstance(names, list):
             direct_names = [str(x).strip() for x in names[:12]]
-        values.extend(str(proposal.get(k, "")) for k in ("reason", "summary", "diagnosis"))
-    values.append(task)
+        narrative_values.extend(
+            str(proposal.get(k, ""))
+            for k in ("reason", "summary", "diagnosis")
+        )
 
     candidates = []
     html_tag_pattern = re.compile(r"</\s*(body|head|html)\s*>", re.I)
     html_comment_pattern = re.compile(r"<!--[\s\S]{0,500}?-->")
 
-    # missing_context should normally contain exact identifiers. Models can
-    # occasionally return a prose description instead, so extract only the
-    # explicitly supported closing tags from that description and discard
-    # the surrounding prose (which is not a source symbol).
     for name in direct_names:
         candidates.extend(f"</{match.group(1).lower()}>" for match in html_tag_pattern.finditer(name))
         candidates.extend(match.group(0) for match in html_comment_pattern.finditer(name))
         if re.fullmatch(r"[A-Za-z_$][\w$]{0,80}", name):
             candidates.append(name)
 
-    for value in values:
-        candidates.extend(f"</{match.group(1).lower()}>" for match in html_tag_pattern.finditer(value))
-        candidates.extend(match.group(0) for match in html_comment_pattern.finditer(value))
-        candidates.extend(re.findall(r"`([A-Za-z_$][\w$]{0,80})`", value))
+    # Model-authored explanation can name exact missing symbols. Never scan
+    # task text for function identifiers: it includes requirements/exclusions,
+    # not a list of source dependencies.
+    for value in narrative_values:
+        candidates.extend(re.findall(r"[\x60]([A-Za-z_$][\w$]{0,80})[\x60]", value))
         candidates.extend(re.findall(r"\b(?:function|method|symbol|handler)\s+([A-Za-z_$][\w$]{0,80})", value, re.I))
+
+    task_scope = _positive_scope_for_classification(task)
+    candidates.extend(f"</{match.group(1).lower()}>" for match in html_tag_pattern.finditer(task_scope))
+    candidates.extend(match.group(0) for match in html_comment_pattern.finditer(task_scope))
 
     common = {"need_context", "context", "function", "method", "source", "missing", "undefined", "return", "const", "async"}
     return list(dict.fromkeys(x for x in candidates if x.lower() not in common))[:12]
-
 
 def _print_diagnosis(proposal):
     print("\n" + "=" * 70)
@@ -217,23 +229,38 @@ def _run_pipeline():
             names = _requested_context_names(proposal, original_task)
             expanded = build_context(original_task, source, extra_names=names)
             new_context = expanded["context"]
-            if new_context == base_context or not expanded.get("ok", False):
+            if not expanded.get("ok", False):
                 # A failed extraction is not papered over. Stop instead of asking
                 # the model to guess at missing or truncated code.
                 raise RuntimeError(
-                    "Code agent returned need_context and targeted expansion "
-                    f"did not produce a complete larger context. Names={names}; "
-                    f"missing={expanded.get('missing')}; over_limit={expanded.get('over_limit')}"
+                    "Code agent requested source symbols that could not be resolved. "
+                    f"Names={names}; missing={expanded.get('missing')}; "
+                    f"over_limit={expanded.get('over_limit')}"
                 )
-            base_context = new_context
+
             context_rebuilds += 1
+            if new_context == base_context:
+                # The requested symbols are already in the supplied context.
+                # Give the model one bounded chance to re-read them instead of
+                # treating a redundant request as a missing-source failure.
+                current_task = (
+                    current_task
+                    + "\n\nCONTEXT CHECK: The symbols you requested are already present "
+                    + "in the supplied source context. Re-read those snippets and continue; "
+                    + "do not request the same symbols again. Request only an essential "
+                    + "source symbol that is genuinely absent."
+                )
+                print(f"  → Requested context already present: {names or '(no new symbols)'}")
+                continue
+
+            base_context = new_context
             current_task = (
                 current_task
                 + "\n\nCONTEXT RECOVERY: The previous response requested more source context. "
                 + "Use the expanded, current source snippets below. Do not infer missing code. "
                 + ("Requested symbols: " + ", ".join(names) if names else "Re-check the complete supplied snippets.")
             )
-            print(f"  → Context expanded with: {names or '(task-selected blocks)'}")
+            print(f"  → Context expanded with: {names or '(no new symbols)'}")
             continue
 
         if status in TRULY_TERMINAL:
