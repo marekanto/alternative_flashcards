@@ -665,8 +665,12 @@ def test_pr_merge_requires_named_quality_gate_without_bypass() -> None:
             "PR merge gate must require the repository quality check")
     _assert('gh pr merge "$PR_URL" --squash --delete-branch' in block,
             "PR merge must use the normal GitHub merge operation")
-    _assert("--admin" not in block and "--required" not in block,
-            "PR merge gate must not bypass rules or rely on disabled required-check metadata")
+    check_commands = [line for line in block.splitlines() if "gh pr checks " in line]
+    merge_commands = [line for line in block.splitlines() if "gh pr merge " in line]
+    _assert(len(check_commands) == 1 and "--required" not in check_commands[0],
+            "PR merge gate must watch reported checks without relying on disabled required-check metadata")
+    _assert(len(merge_commands) == 1 and "--admin" not in merge_commands[0],
+            "PR merge must not bypass active repository rules")
 
 
 
