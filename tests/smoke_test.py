@@ -598,6 +598,32 @@ def test_ordinary_qa_failure_is_not_eligible_for_maintenance() -> None:
             f"QA failure misclassified: {captured}")
 
 
+
+def test_issue_workflow_excludes_automation_comments() -> None:
+    """PAT-authored workflow comments must not retrigger runs or inflate TASK."""
+    workflow = (ROOT / ".github/workflows/ai-issue.yml").read_text(encoding="utf-8")
+    failure = "❌ **Agent nie ukończył zadania. Kolejka została zatrzymana.**"
+    clarification = "🤔 **Potrzebuję doprecyzowania**"
+    success = "✅ **Gotowe**"
+    approval = "Protected-change approval recorded by AltCards Orchestrator."
+    revoked = "Protected-change approval revoked by AltCards Orchestrator."
+
+    trigger = workflow.split("if: |", 1)[1].split("    env:", 1)[0]
+    for prefix in (failure, clarification, success, approval, revoked):
+        _assert(
+            f"!startsWith(github.event.comment.body, '{prefix}')" in trigger,
+            f"issue_comment trigger does not exclude workflow comment: {prefix!r}",
+        )
+
+    for prefix in (failure, clarification, success, approval, revoked):
+        marker = f'select((.body // "") | startswith("{prefix}") | not)'
+        _assert(
+            workflow.count(marker) == 2,
+            f"both TASK composition paths must exclude comment: {prefix!r}",
+        )
+
+
+
 def test_maintenance_gate_requires_explicit_output() -> None:
     """The issue workflow must gate self-repair on an explicit output, not failure()."""
     from agent import maintenance_agent
@@ -634,6 +660,7 @@ def main() -> int:
         test_incomplete_response_never_modifies_file,
         test_infrastructure_error_still_eligible_for_maintenance,
         test_ordinary_qa_failure_is_not_eligible_for_maintenance,
+        test_issue_workflow_excludes_automation_comments,
         test_maintenance_gate_requires_explicit_output,
     ]
     failed = 0
