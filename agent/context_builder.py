@@ -86,7 +86,15 @@ def _match_braces(source: str, brace_start: int) -> int | None:
 
 
 def _extract_function_decl(source: str, name: str) -> str | None:
-    for m in re.finditer(rf"function\s+{re.escape(name)}\s*\(", source):
+    # Preserve declaration modifiers in the returned context. Starting the
+    # excerpt at "function" silently drops prefixes such as "async" and can
+    # make the Code Agent misdiagnose valid source or generate unsafe patches.
+    pat = (
+        rf"(?<![\\w$])"
+        rf"(?:(?:export\\s+(?:default\\s+)?)?)"
+        rf"(?:async\\s+)?function\\s*\\*?\\s*{re.escape(name)}\\s*\\("
+    )
+    for m in re.finditer(pat, source):
         brace = source.find("{", m.end())
         if brace == -1:
             continue
@@ -94,7 +102,6 @@ def _extract_function_decl(source: str, name: str) -> str | None:
         if end is not None:
             return source[m.start():end]
     return None
-
 
 def _extract_arrow_function(source: str, name: str) -> str | None:
     pat = rf"\bconst\s+{re.escape(name)}\s*=\s*(?:\([^)]*\)|\w+)\s*=>"
