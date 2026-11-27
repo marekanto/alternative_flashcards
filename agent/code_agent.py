@@ -24,6 +24,7 @@ Rules:
 - Inspect the supplied source context before returning need_context. Never request a function, method, constant, translation anchor, or handler that is already present in the supplied context.
 - Return need_context only when an essential source symbol is genuinely absent. missing_context must contain only exact missing source symbols, not task requirements, excluded/out-of-scope identifiers, property names, browser error names, or functions mentioned only as examples.
 - Do not request source for functions the task explicitly says not to change. New translation keys requested by the task are not missing context; use the existing translation insertion anchor and dictionary examples already supplied.
+- Never request the bare TR dictionary as context; it is large and unnecessary. Relevant existing translations are supplied as individual TR[key] snippets, while new keys must be authored from the task specification.
 - Keep replacements compact. No markdown, no explanation outside JSON."""
 
 
