@@ -144,6 +144,35 @@ Nie zmieniaj:
     _assert(result["chars"] <= MAX_CONTEXT_CHARS,
             "Issue #63 Settings context exceeded the configured character budget")
 
+def test_issue69_add_form_responsive_markup_and_css() -> None:
+    from agent.context_builder import extract_named
+
+    add_form = extract_named(SOURCE, "vAdd")
+    _assert(add_form is not None, "vAdd source could not be extracted")
+    grid_start = add_form.index('<div class="add-grid">')
+    grid_end = add_form.index("</div>", grid_start)
+    front = add_form.index('<textarea id="fr"', grid_start)
+    back = add_form.index('<textarea id="bk"', front)
+    suggest_row = add_form.index('<div class="row"', grid_end)
+    suggestions = add_form.index('<div id="sg" class="chips"></div>', suggest_row)
+    _assert(front < back < grid_end < suggest_row < suggestions,
+            "front/back must share the grid; Suggest/PONS and #sg must remain below it")
+    _assert('onchange="suggest()"' in add_form and 'oninput="plink()"' in add_form,
+            "front-field suggest/plink handlers must remain unchanged")
+    _assert('id="pl"' in add_form and 'id="sg"' in add_form,
+            "PONS and Suggest containers must remain present")
+
+    _assert("textarea { min-height: 90px; resize: vertical; }" in SOURCE,
+            "the global textarea minimum height must stay unchanged")
+    _assert(".add-grid{display:grid;grid-template-columns:1fr}" in SOURCE,
+            "mobile add-grid must remain a single column")
+    _assert("@media(min-width:700px){.add-grid{grid-template-columns:1fr 1fr;gap:12px}}" in SOURCE,
+            "desktop add-grid must use equal columns and a 12px gap at 700px")
+    _assert("padding: clamp(16px, 4vw, 32px); width: 100%; max-width: 600px; margin: 0 auto;" in SOURCE,
+            "main padding clamp or 600px mobile base width is missing")
+    _assert("@media(min-width:700px){main{max-width:960px}}" in SOURCE,
+            "main must widen to 960px at 700px")
+
 def test_login_task() -> None:
     task = "Usuń podtytuł na ekranie logowania i zmień tagline"
     res = build_context(task, SOURCE)
@@ -374,7 +403,7 @@ def test_issue69_context_recovery_finds_vadd_and_main_css() -> None:
     _assert("expanded:css:main" in result["included"],
             "Issue #69 did not include the current main CSS rule")
     for token in ('id="fr"', 'id="bk"', 'onchange="suggest()"', 'oninput="plink()"',
-                  "padding: 20px", "max-width: 600px"):
+                  "padding: clamp(16px, 4vw, 32px)", "max-width: 600px"):
         _assert(token in result["context"],
                 f"Issue #69 context is missing current-source token: {token}")
 
@@ -946,6 +975,7 @@ def main() -> int:
         test_context_builder_targeted_expansion,
         test_context_builder_targeted_css_expansion,
         test_issue69_context_recovery_finds_vadd_and_main_css,
+        test_issue69_add_form_responsive_markup_and_css,
         test_need_context_symbol_extraction,
         test_need_context_does_not_promote_task_identifiers_to_dependencies,
         test_orchestrator_reprompts_when_requested_context_is_already_present,

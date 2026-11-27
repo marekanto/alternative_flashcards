@@ -64,8 +64,9 @@ body {
 }
 main {
   flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
-  padding: 20px; width: 100%; max-width: 600px; margin: 0 auto;
+  padding: clamp(16px, 4vw, 32px); width: 100%; max-width: 600px; margin: 0 auto;
 }
+@media(min-width:700px){main{max-width:960px}}
 nav {
   display: flex; border-top: 1px solid var(--bd); background: var(--sf-trans);
   backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
@@ -86,6 +87,8 @@ input, select, textarea {
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--ac); box-shadow: 0 0 0 3px rgba(79,70,229,0.15); }
 textarea { min-height: 90px; resize: vertical; }
+.add-grid{display:grid;grid-template-columns:1fr}
+@media(min-width:700px){.add-grid{grid-template-columns:1fr 1fr;gap:12px}}
 button { font: inherit; cursor: pointer; }
 
 .p {
@@ -1158,10 +1161,12 @@ async function importCSV(){
 function vAdd(v){
   v.innerHTML = `<h2>${t('add.title')}</h2>
     <select id="dk" onchange="lastDeck=this.value;plink()">${S.decks.map(d=>`<option value="${d.id}"${d.id===lastDeck?' selected':''}>${esc(d.name)}</option>`).join('')}</select>
-    <textarea id="fr" placeholder="${t('add.front')}" onchange="suggest()" oninput="plink()"></textarea>
+    <div class="add-grid">
+      <textarea id="fr" placeholder="${t('add.front')}" onchange="suggest()" oninput="plink()"></textarea>
+      <textarea id="bk" placeholder="${t('add.back')}"></textarea>
+    </div>
     <div class="row" style="margin-bottom:12px"><button class="s" onclick="suggest()">${t('add.suggest')}</button><a class="s" id="pl" target="_blank" style="text-decoration:none;padding:12px">${t('add.pons')}</a></div>
     <div id="sg" class="chips"></div>
-    <textarea id="bk" placeholder="${t('add.back')}"></textarea>
     <button class="p" onclick="addCard()">${t('add.add')}</button>
     <button class="s" style="width:100%;margin-top:10px" onclick="tab='cards';render()">${t('settings.back')}</button>`;
   plink();
