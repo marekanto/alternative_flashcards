@@ -9,7 +9,7 @@ Return ONLY a JSON object:
   "reason": "short reason",
   "operations": [{"find": "exact literal source", "replace": "replacement"}],
   "risk_notes": [],
-  "missing_context": ["exact function, method, or symbol names when status is need_context"]
+  "missing_context": ["exact missing function, method, symbol, or simple CSS selector names when status is need_context"]
 }
 Rules:
 - Modify only index.html.
@@ -22,7 +22,8 @@ Rules:
 - If the task does not explicitly request a sensitive subsystem, do not alter it.
 - The Issue may contain stale FIND/REPLACE examples. Treat the supplied repository source as authoritative; never assume an Issue snippet matches current main. Derive exact FIND text from supplied source.
 - Inspect the supplied source context before returning need_context. Never request a function, method, constant, translation anchor, or handler that is already present in the supplied context.
-- Return need_context only when an essential source symbol is genuinely absent. missing_context must contain only exact missing source symbols, not task requirements, excluded/out-of-scope identifiers, property names, browser error names, or functions mentioned only as examples.
+- Return need_context only when essential source is genuinely absent. missing_context must contain only exact missing source symbols or simple CSS selectors, not task requirements, excluded/out-of-scope identifiers, property names, browser error names, or functions mentioned only as examples.
+- For CSS tasks, exact simple selectors such as main, .mb, #fr and textarea are valid context requests. Request only selectors whose current CSS rules are not already present in the supplied context.
 - Do not request source for functions the task explicitly says not to change. New translation keys requested by the task are not missing context; use the existing translation insertion anchor and dictionary examples already supplied.
 - Never request the bare TR dictionary as context; it is large and unnecessary. Relevant existing translations are supplied as individual TR[key] snippets, while new keys must be authored from the task specification.
 - Keep replacements compact. No markdown, no explanation outside JSON."""

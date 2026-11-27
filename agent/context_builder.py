@@ -161,6 +161,36 @@ def extract_named(source: str, name: str) -> str | None:
     )
 
 
+def extract_css_rule(source: str, selector: str) -> str | None:
+    """Extract all exact simple-selector rules from document style blocks.
+
+    Context recovery can ask for CSS selectors (for example main, .mb or
+    #fr) as well as JavaScript symbols. Only simple selectors are accepted;
+    arbitrary model text is never interpreted as a CSS query.
+    """
+    if not re.fullmatch(r"(?:[A-Za-z][A-Za-z0-9_-]*|[.#][A-Za-z_][A-Za-z0-9_-]*)", selector):
+        return None
+
+    rules = []
+    rule_pattern = re.compile(
+        rf"(?<![A-Za-z0-9_#.-]){re.escape(selector)}\s*\{{"
+    )
+    for style_match in re.finditer(r"<style\b[^>]*>", source, re.IGNORECASE):
+        style_start = style_match.end()
+        style_close = re.search(r"</style\s*>", source[style_start:], re.IGNORECASE)
+        if not style_close:
+            continue
+        css = source[style_start:style_start + style_close.start()]
+        for match in rule_pattern.finditer(css):
+            brace = css.find("{", match.start(), match.end())
+            end = _match_braces(css, brace)
+            if end is not None:
+                rule = css[match.start():end].strip()
+                if rule:
+                    rules.append(rule)
+
+    return "\n".join(dict.fromkeys(rules)) if rules else None
+
 def _find_sync_object(source: str) -> tuple[int, int] | tuple[None, None]:
     m = re.search(r"\bSync\s*=\s*\{", source)
     if not m:
@@ -383,18 +413,24 @@ def build_context(task: str, source: str, extra_names: list[str] | None = None) 
                 else:
                     missing.append(f"html:{name}")
                 continue
-            if not re.fullmatch(r"[A-Za-z_$][\w$]{0,80}", name):
+            is_js_symbol = bool(re.fullmatch(r"[A-Za-z_$][\w$]{0,80}", name))
+            if is_js_symbol:
+                body = extract_named(source, name)
+                if body:
+                    push(f"expanded:{name}", body)
+                    continue
+                sync_body = extract_sync_method(source, name)
+                if sync_body:
+                    push(f"expanded:Sync.{name}", sync_body)
+                    continue
+            css_body = extract_css_rule(source, name)
+            if css_body:
+                push(f"expanded:css:{name}", css_body)
+                continue
+            if not is_js_symbol:
                 missing.append(f"unsupported:{name[:80]}")
-                continue
-            body = extract_named(source, name)
-            if body:
-                push(f"expanded:{name}", body)
-                continue
-            sync_body = extract_sync_method(source, name)
-            if sync_body:
-                push(f"expanded:Sync.{name}", sync_body)
-                continue
-            missing.append(f"symbol:{name}")
+            else:
+                missing.append(f"symbol:{name}")
 
     if is_xp:
         push("init_block", extract_init_block(source))

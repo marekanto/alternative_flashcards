@@ -301,6 +301,75 @@ function unshareDeck(id) {
     _assert("return Sync.shareDeck(id);" in res["context"], "expanded function body is incomplete")
 
 
+def test_context_builder_targeted_css_expansion() -> None:
+    from agent.context_builder import extract_css_rule
+
+    source = """<!doctype html>
+<style>
+main {
+  padding: 20px;
+  max-width: 600px;
+}
+@media (min-width: 700px) {
+  main { max-width: 960px; }
+}
+.add-grid { display: grid; grid-template-columns: 1fr; }
+</style>
+<script>
+function vAdd(v) {
+  v.innerHTML = '<textarea id="fr" onchange="suggest()" oninput="plink()"></textarea>';
+}
+</script>
+"""
+    main_rules = extract_css_rule(source, "main")
+    _assert(main_rules is not None and "max-width: 600px" in main_rules,
+            "CSS selector main was not extracted")
+    _assert("max-width: 960px" in main_rules,
+            "CSS extractor should include matching rules inside media queries")
+    _assert(extract_css_rule(source, ".add-grid") is not None,
+            "class selectors must be supported")
+    class_context = build_context(
+        "Style the Add Card grid", source, extra_names=[".add-grid"]
+    )
+    _assert(class_context["ok"] and "expanded:css:.add-grid" in class_context["included"],
+            "class selectors must be accepted by targeted context expansion")
+    _assert(extract_css_rule(source, "#fr") is None,
+            "an HTML id without a corresponding CSS rule must not fabricate context")
+    _assert(extract_css_rule(source, "main, body") is None,
+            "complex or untrusted selector strings must be rejected")
+
+    result = build_context(
+        "Style: responsive two-column layout for Add Card front/back fields",
+        source,
+        extra_names=["vAdd", "main"],
+    )
+    _assert(result["ok"],
+            f"targeted CSS context should be complete: {result['missing']} {result['over_limit']}")
+    _assert("expanded:vAdd" in result["included"],
+            "the Add form function was not included")
+    _assert("expanded:css:main" in result["included"],
+            "the main CSS rule was not included")
+    _assert('onchange="suggest()" oninput="plink()"' in result["context"],
+            "the current Add form field handlers should remain visible to the agent")
+
+
+def test_issue69_context_recovery_finds_vadd_and_main_css() -> None:
+    result = build_context(
+        "Style: responsive two-column layout for Add Card front/back fields",
+        SOURCE,
+        extra_names=["vAdd", "main"],
+    )
+    _assert(result["ok"],
+            f"Issue #69 context recovery failed: missing={result['missing']} over={result['over_limit']}")
+    _assert("expanded:vAdd" in result["included"],
+            "Issue #69 did not include the current vAdd implementation")
+    _assert("expanded:css:main" in result["included"],
+            "Issue #69 did not include the current main CSS rule")
+    for token in ('id="fr"', 'id="bk"', 'onchange="suggest()"', 'oninput="plink()"',
+                  "padding: 20px", "max-width: 600px"):
+        _assert(token in result["context"],
+                f"Issue #69 context is missing current-source token: {token}")
+
 def test_need_context_symbol_extraction() -> None:
     import orchestrator
     proposal = {
@@ -867,6 +936,8 @@ def main() -> int:
         test_card_management_context_has_full_dependencies,
         test_agent_prompts_receive_complete_task,
         test_context_builder_targeted_expansion,
+        test_context_builder_targeted_css_expansion,
+        test_issue69_context_recovery_finds_vadd_and_main_css,
         test_need_context_symbol_extraction,
         test_need_context_does_not_promote_task_identifiers_to_dependencies,
         test_orchestrator_reprompts_when_requested_context_is_already_present,
