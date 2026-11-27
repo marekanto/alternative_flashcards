@@ -26,4 +26,14 @@ Rules:
 
 
 def propose(task, context):
-    return chat(SYSTEM, "TASK (complete; upstream limit 4000 chars):\n" + task + "\n\nALTcards CONTEXT AND SOURCE:\n" + context + "\n\nReturn JSON only.", max_tokens=3500)
+    # retry_on_truncation enables exactly one concise regeneration when the
+    # completion hits the output limit. QA, the refiner and the maintenance
+    # agent do not opt in, so their calls are unaffected.
+    return chat(
+        SYSTEM,
+        "TASK (complete; upstream limit 4000 chars):\n" + task
+        + "\n\nALTcards CONTEXT AND SOURCE:\n" + context
+        + "\n\nReturn JSON only.",
+        max_tokens=3500,
+        retry_on_truncation=True,
+    )

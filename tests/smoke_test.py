@@ -391,6 +391,228 @@ def test_maintenance_allowlist_and_workflow_guards() -> None:
         raise AssertionError("workflow privilege escalation marker passed invariant check")
 
 
+def test_truncation_is_not_infrastructure_failure() -> None:
+    """finish_reason=length must never set maintenance_eligible=true."""
+    import json
+    import deepseek_client
+    import orchestrator
+    from unittest.mock import patch
+
+    class TruncatedResponse:
+        def __enter__(self):
+            return self
+        def __exit__(self, *_args):
+            return False
+        def read(self):
+            return json.dumps({
+                "usage": {"completion_tokens": 3500},
+                "choices": [{"finish_reason": "length", "message": {"content": "{\"operations\":"}}],
+            }).encode("utf-8")
+
+    captured = {}
+
+    def fake_write(maintenance_eligible, failure_class):
+        captured["eligible"] = str(maintenance_eligible).lower()
+        captured["class"] = failure_class
+
+    with patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"}), \
+         patch.object(deepseek_client, "API_MAX_ATTEMPTS", 1), \
+         patch.object(deepseek_client, "TRUNCATION_RETRY_MAX", 0), \
+         patch.object(deepseek_client.urllib.request, "urlopen", return_value=TruncatedResponse()), \
+         patch.object(orchestrator, "_write_github_outputs", side_effect=fake_write), \
+         patch.object(orchestrator, "_run_pipeline",
+                      side_effect=deepseek_client.DeepSeekTruncationError("truncated")):
+        try:
+            orchestrator.main()
+        except deepseek_client.DeepSeekTruncationError:
+            pass
+        else:
+            raise AssertionError("truncation must propagate to the workflow")
+
+    _assert(captured.get("eligible") == "false",
+            f"truncation wrongly eligible for maintenance: {captured}")
+    _assert(captured.get("class") == orchestrator.FAILURE_TRUNCATED_OUTPUT,
+            f"truncation misclassified: {captured}")
+
+
+def test_code_agent_truncation_retries_once() -> None:
+    """A truncated Code Agent response triggers exactly one concise retry."""
+    import json
+    import deepseek_client
+    from unittest.mock import patch
+
+    class TruncatedResponse:
+        def __enter__(self):
+            return self
+        def __exit__(self, *_args):
+            return False
+        def read(self):
+            return json.dumps({
+                "usage": {"completion_tokens": 3500},
+                "choices": [{"finish_reason": "length", "message": {"content": "partial"}}],
+            }).encode("utf-8")
+
+    class CompleteResponse:
+        def __enter__(self):
+            return self
+        def __exit__(self, *_args):
+            return False
+        def read(self):
+            return json.dumps({
+                "usage": {"completion_tokens": 900},
+                "choices": [{"finish_reason": "stop", "message": {"content": "{\"status\":\"ready\"}"}}],
+            }).encode("utf-8")
+
+    with patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"}), \
+         patch.object(deepseek_client, "API_MAX_ATTEMPTS", 1), \
+         patch.object(deepseek_client, "TRUNCATION_RETRY_MAX", 1), \
+         patch.object(deepseek_client.urllib.request, "urlopen",
+                      side_effect=[TruncatedResponse(), CompleteResponse()]) as urlopen, \
+         patch.object(deepseek_client.time, "sleep"):
+        result = deepseek_client.chat("system", "user", max_tokens=3500, retry_on_truncation=True)
+
+    _assert(result == {"status": "ready"}, f"retry did not recover: {result}")
+    _assert(urlopen.call_count == 2, "truncation was not retried exactly once")
+
+
+def test_truncation_retry_is_opt_in_only() -> None:
+    """QA, refiner and maintenance calls must never retry on truncation."""
+    import json
+    import deepseek_client
+    from unittest.mock import patch
+
+    class TruncatedResponse:
+        def __enter__(self):
+            return self
+        def __exit__(self, *_args):
+            return False
+        def read(self):
+            return json.dumps({
+                "usage": {"completion_tokens": 900},
+                "choices": [{"finish_reason": "length", "message": {"content": "partial"}}],
+            }).encode("utf-8")
+
+    with patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"}), \
+         patch.object(deepseek_client, "API_MAX_ATTEMPTS", 1), \
+         patch.object(deepseek_client, "TRUNCATION_RETRY_MAX", 1), \
+         patch.object(deepseek_client.urllib.request, "urlopen",
+                      return_value=TruncatedResponse()) as urlopen, \
+         patch.object(deepseek_client.time, "sleep"):
+        try:
+            deepseek_client.chat("system", "user", max_tokens=900)
+        except deepseek_client.DeepSeekTruncationError:
+            pass
+        else:
+            raise AssertionError("non-opt-in call must raise on truncation")
+
+    _assert(urlopen.call_count == 1, "non-opt-in call performed an extra request")
+    _assert(deepseek_client.TRUNCATION_RETRY_MAX <= 1,
+            "truncation retry ceiling must stay at most 1")
+
+
+def test_incomplete_response_never_modifies_file() -> None:
+    """A truncated proposal must not reach apply_operations or the working tree."""
+    import tempfile
+    import orchestrator
+    from unittest.mock import patch
+
+    with tempfile.TemporaryDirectory(prefix="altcards-truncation-") as td:
+        root = pathlib.Path(td)
+        target = root / "index.html"
+        baseline = "baseline source"
+        target.write_text(baseline, encoding="utf-8")
+        context = {"context": "BASE CONTEXT", "chars": 12, "included": ["base"],
+                   "missing": [], "over_limit": [], "ok": True}
+
+        with patch.object(orchestrator, "ROOT", root), \
+             patch.object(orchestrator, "TARGET_FILE", "index.html"), \
+             patch.object(orchestrator, "check_clean_tree"), \
+             patch.object(orchestrator, "build_context", return_value=context), \
+             patch.object(orchestrator, "propose",
+                          side_effect=orchestrator.DeepSeekTruncationError("hit max_tokens")), \
+             patch.object(orchestrator, "apply_operations") as apply_ops:
+            with patch.dict("os.environ", {"TASK": "Update a label", "ALLOW_SENSITIVE_CHANGES": "false"}):
+                try:
+                    orchestrator.main()
+                except orchestrator.DeepSeekTruncationError:
+                    pass
+                else:
+                    raise AssertionError("truncation must abort the pipeline")
+
+        _assert(apply_ops.call_count == 0, "truncated proposal reached the patch applicator")
+        _assert(target.read_text(encoding="utf-8") == baseline,
+                "truncated response modified the target file")
+
+
+def test_infrastructure_error_still_eligible_for_maintenance() -> None:
+    """A real DeepSeekInfrastructureError must keep the self-repair path open."""
+    import orchestrator
+    from unittest.mock import patch
+
+    captured = {}
+
+    def fake_write(maintenance_eligible, failure_class):
+        captured["eligible"] = str(maintenance_eligible).lower()
+        captured["class"] = failure_class
+
+    with patch.object(orchestrator, "_write_github_outputs", side_effect=fake_write), \
+         patch.object(orchestrator, "_run_pipeline",
+                      side_effect=orchestrator.DeepSeekInfrastructureError("upstream 503")):
+        try:
+            orchestrator.main()
+        except orchestrator.DeepSeekInfrastructureError:
+            pass
+        else:
+            raise AssertionError("infrastructure error must propagate")
+
+    _assert(captured.get("eligible") == "true",
+            f"infrastructure failure lost maintenance eligibility: {captured}")
+    _assert(captured.get("class") == orchestrator.FAILURE_INFRASTRUCTURE,
+            f"infrastructure failure misclassified: {captured}")
+
+
+def test_ordinary_qa_failure_is_not_eligible_for_maintenance() -> None:
+    """A plain QA rejection must not start infrastructure self-repair."""
+    import orchestrator
+    from unittest.mock import patch
+
+    captured = {}
+
+    def fake_write(maintenance_eligible, failure_class):
+        captured["eligible"] = str(maintenance_eligible).lower()
+        captured["class"] = failure_class
+
+    with patch.object(orchestrator, "_write_github_outputs", side_effect=fake_write), \
+         patch.object(orchestrator, "_run_pipeline",
+                      side_effect=RuntimeError("All 3 attempts failed. Last verdict: reject.")):
+        try:
+            orchestrator.main()
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("QA failure must propagate")
+
+    _assert(captured.get("eligible") == "false",
+            f"QA failure wrongly eligible for maintenance: {captured}")
+    _assert(captured.get("class") == orchestrator.FAILURE_NON_INFRASTRUCTURE,
+            f"QA failure misclassified: {captured}")
+
+
+def test_maintenance_gate_requires_explicit_output() -> None:
+    """The issue workflow must gate self-repair on an explicit output, not failure()."""
+    from agent import maintenance_agent
+    workflow = (ROOT / ".github/workflows/ai-issue.yml").read_text(encoding="utf-8")
+    start = workflow.index("- name: Self-repair automation infrastructure")
+    end = workflow.index("- name: Commit and merge infrastructure repair")
+    block = workflow[start:end]
+    _assert("steps.agent.outputs.maintenance_eligible == 'true'" in block,
+            "maintenance step is not gated on the explicit orchestrator output")
+    condition = block.split("run:", 1)[0]
+    _assert("failure()" not in condition,
+            "maintenance step still contains a generic failure() fallback")
+    maintenance_agent._workflow_invariants(".github/workflows/ai-issue.yml", workflow)
+
+
 def main() -> int:
     tests = [
         test_brace_matcher_handles_templates_and_nested,
@@ -406,6 +628,13 @@ def main() -> int:
         test_orchestrator_recovers_need_context,
         test_deepseek_retries_transient_http_errors,
         test_maintenance_allowlist_and_workflow_guards,
+        test_truncation_is_not_infrastructure_failure,
+        test_code_agent_truncation_retries_once,
+        test_truncation_retry_is_opt_in_only,
+        test_incomplete_response_never_modifies_file,
+        test_infrastructure_error_still_eligible_for_maintenance,
+        test_ordinary_qa_failure_is_not_eligible_for_maintenance,
+        test_maintenance_gate_requires_explicit_output,
     ]
     failed = 0
     for t in tests:

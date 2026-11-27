@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 from code_agent import propose
-from deepseek_client import DeepSeekInfrastructureError
+from deepseek_client import DeepSeekInfrastructureError, DeepSeekTruncationError
 from context_builder import build_context, MAX_CONTEXT_CHARS
 from patch_validator import (
     SensitiveChangeNotApproved,
@@ -30,6 +30,13 @@ QA_MAX_ATTEMPTS = max(1, int(os.getenv("QA_MAX_ATTEMPTS", "3")))
 CONTEXT_REBUILD_MAX = max(0, int(os.getenv("CONTEXT_REBUILD_MAX", "2")))
 DIAGNOSE_ONLY = os.getenv("DIAGNOSE_ONLY", "false").lower() == "true"
 TRULY_TERMINAL = {"cannot_do_safely", "refused"}
+
+# Failure classes published to GitHub Actions. Only "infrastructure" may set
+# maintenance_eligible=true; every other class is explicitly false.
+FAILURE_INFRASTRUCTURE = "infrastructure"
+FAILURE_TRUNCATED_OUTPUT = "truncated_output"
+FAILURE_NON_INFRASTRUCTURE = "non_infrastructure"
+FAILURE_NONE = "none"
 
 
 def run(args):
@@ -142,7 +149,8 @@ def _print_diagnosis(proposal):
                 print(f"     REPL: {r!r}")
 
 
-def main():
+def _run_pipeline():
+    """Return normally on a QA-approved patch; raise on any failure."""
     task = os.getenv("TASK", "").strip()
     if not task or len(task) > 4000:
         raise RuntimeError("TASK must contain 1–4000 characters")
@@ -329,6 +337,36 @@ def main():
     )
 
 
+def main():
+    """Run the pipeline and publish an explicit recovery decision to the workflow."""
+    try:
+        _run_pipeline()
+    except DeepSeekInfrastructureError as exc:
+        _write_github_outputs(True, FAILURE_INFRASTRUCTURE)
+        print("ERROR_CLASS=" + FAILURE_INFRASTRUCTURE)
+        print("MAINTENANCE_ELIGIBLE=true")
+        print("ERROR:", str(exc), file=sys.stderr)
+        raise
+    except DeepSeekTruncationError as exc:
+        # The API and transport worked; the request was too large for the output
+        # ceiling. Repository code cannot repair that, so the workflow may retry
+        # the task but must never start infrastructure maintenance.
+        _write_github_outputs(False, FAILURE_TRUNCATED_OUTPUT)
+        print("ERROR_CLASS=" + FAILURE_TRUNCATED_OUTPUT)
+        print("MAINTENANCE_ELIGIBLE=false")
+        print("ERROR:", str(exc), file=sys.stderr)
+        raise
+    except Exception as exc:
+        _write_github_outputs(False, FAILURE_NON_INFRASTRUCTURE)
+        print("ERROR_CLASS=" + FAILURE_NON_INFRASTRUCTURE)
+        print("MAINTENANCE_ELIGIBLE=false")
+        print("ERROR:", str(exc), file=sys.stderr)
+        raise
+    _write_github_outputs(False, FAILURE_NONE)
+    print("ERROR_CLASS=" + FAILURE_NONE)
+    print("MAINTENANCE_ELIGIBLE=false")
+
+
 def _write_github_outputs(maintenance_eligible: bool, failure_class: str):
     """Publish an explicit, conservative recovery decision to GitHub Actions."""
     output_path = os.getenv("GITHUB_OUTPUT")
@@ -340,19 +378,8 @@ def _write_github_outputs(maintenance_eligible: bool, failure_class: str):
 
 
 if __name__ == "__main__":
-    # Missing outputs are treated as false by the workflow. Only a typed,
-    # retry-exhausted transport/upstream failure can explicitly opt in.
+    # main() already classified the failure and wrote the GitHub outputs.
     try:
         main()
-    except DeepSeekInfrastructureError as exc:
-        _write_github_outputs(True, "infrastructure")
-        print("ERROR_CLASS=infrastructure")
-        print("MAINTENANCE_ELIGIBLE=true")
-        print("ERROR:", str(exc), file=sys.stderr)
-        sys.exit(1)
-    except Exception as exc:
-        _write_github_outputs(False, "non_infrastructure")
-        print("ERROR_CLASS=non_infrastructure")
-        print("MAINTENANCE_ELIGIBLE=false")
-        print("ERROR:", str(exc), file=sys.stderr)
+    except BaseException:
         sys.exit(1)
