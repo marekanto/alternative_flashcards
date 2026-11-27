@@ -648,6 +648,28 @@ def test_issue_workflow_excludes_automation_comments() -> None:
 
 
 
+
+def test_pr_merge_requires_named_quality_gate_without_bypass() -> None:
+    """The merge gate waits for checks and verifies the repo's quality gate."""
+    workflow = (ROOT / ".github/workflows/ai-issue.yml").read_text(encoding="utf-8")
+    start = workflow.index("- name: Commit + PR + auto-merge")
+    end = workflow.index("- name: Close issue with summary", start)
+    block = workflow[start:end]
+    _assert('gh pr checks "$PR_URL" --watch --fail-fast' in block,
+            "PR merge gate must wait for all reported checks")
+    _assert('gh pr view "$PR_URL" --json headRefOid --jq .headRefOid' in block,
+            "PR merge gate must inspect the exact head commit")
+    _assert('repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs' in block,
+            "PR merge gate must query check runs for the exact head commit")
+    _assert('"AltCards required quality gates"' in block,
+            "PR merge gate must require the repository quality check")
+    _assert('gh pr merge "$PR_URL" --squash --delete-branch' in block,
+            "PR merge must use the normal GitHub merge operation")
+    _assert("--admin" not in block and "--required" not in block,
+            "PR merge gate must not bypass rules or rely on disabled required-check metadata")
+
+
+
 def test_maintenance_gate_requires_explicit_output() -> None:
     """The issue workflow must gate self-repair on an explicit output, not failure()."""
     from agent import maintenance_agent
@@ -686,6 +708,7 @@ def main() -> int:
         test_infrastructure_error_still_eligible_for_maintenance,
         test_ordinary_qa_failure_is_not_eligible_for_maintenance,
         test_issue_workflow_excludes_automation_comments,
+        test_pr_merge_requires_named_quality_gate_without_bypass,
         test_maintenance_gate_requires_explicit_output,
     ]
     failed = 0
