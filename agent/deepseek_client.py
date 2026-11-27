@@ -22,9 +22,7 @@ API_MAX_ATTEMPTS = int(os.getenv("DEEPSEEK_API_MAX_ATTEMPTS", "3"))
 TRUNCATION_RETRY_MAX = min(1, max(0, int(os.getenv("DEEPSEEK_TRUNCATION_RETRY_MAX", "1"))))
 CONCISE_RETRY_SUFFIX = (
     "\n\nCONCISENESS REQUIREMENT: your previous response was cut off at the output "
-    "token limit. Return a strictly smaller JSON object: at most 3 operations, no "
-    "risk_notes, no long summary, no explanation. Keep every `find` string short "
-    "but still an exact, unique literal from the supplied source."
+    "token limit. Return a strictly smaller JSON object with at most 3 operations. Keep summary and reason under 80 characters, leave risk_notes empty, and include no explanation. Each find string must be the shortest exact, unique source literal that safely anchors the edit. Never copy a complete function, template literal or stylesheet into a replacement; change only the smallest affected fragment."
 )
 
 
