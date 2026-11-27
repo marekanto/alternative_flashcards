@@ -83,11 +83,13 @@ jobs:
             exit 0
           fi
           echo "active=true" >> "$GITHUB_OUTPUT"
-          echo "allow_sensitive=$HAS_SENSITIVE_APPROVAL" >> "$GITHUB_OUTPUT"
+          # The label alone is never authorization. A later step verifies the
+          # owner-authored task + scope fingerprint and emits allow_sensitive.
+          echo "allow_sensitive=false" >> "$GITHUB_OUTPUT"
           if [ "$HAS_SENSITIVE_APPROVAL" = "true" ]; then
-            echo "Sensitive changes explicitly approved by ai-sensitive-approved label."
+            echo "Approval label found; verifying its current task fingerprint."
           else
-            echo "Sensitive changes are NOT approved; protected areas remain blocked."
+            echo "No protected-change approval label; protected areas remain blocked."
           fi
 
       - name: Clarify — does the task need more info?
@@ -157,21 +159,18 @@ jobs:
         id: task
         if: steps.active.outputs.active == 'true' && steps.clarify.outputs.status != 'needs_clarification'
         run: |
-          if ! gh issue view "$ISSUE_NUMBER" --json title,body,comments --jq '
-            .title + "\n\n" + (.body // "") + "\n\n" +
-            ([.comments[]
-              | select(.author.login != "github-actions[bot]")
-              | select((.body // "") | startswith("Protected-change approval recorded by AltCards Orchestrator.") | not)
-              | select((.body // "") | startswith("Protected-change approval revoked by AltCards Orchestrator.") | not)
-              | select((.body // "") | startswith("❌ **Agent nie ukończył zadania. Kolejka została zatrzymana.**") | not)
-              | select((.body // "") | startswith("🤔 **Potrzebuję doprecyzowania**") | not)
-              | select((.body // "") | startswith("✅ **Gotowe**") | not)
-              | .body] | join("\n\n---\n\n"))
-          ' > /tmp/task.txt 2>/tmp/task-compose.log; then
-            cat /tmp/task-compose.log
-            exit 1
-          fi
-          echo "TASK_PREVIEW:"; head -c 500 /tmp/task.txt; echo
+          python -B agent/issue_payload.py --issue-number "$ISSUE_NUMBER" --output /tmp/task.txt
+
+      - name: Verify sensitive approval fingerprint
+        id: approval
+        if: steps.active.outputs.active == 'true' && steps.clarify.outputs.status != 'needs_clarification'
+        env:
+          EXPECTED_TASK_SHA256: ${{ steps.task.outputs.task_sha256 }}
+          EXPECTED_APPROVER: ${{ github.repository_owner }}
+        run: |
+          python -B agent/approval.py --issue-number "$ISSUE_NUMBER" \
+            --expected-owner "$EXPECTED_APPROVER" \
+            --expected-task-sha "$EXPECTED_TASK_SHA256"
 
       - name: Run agent
         id: agent
@@ -181,7 +180,7 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           # Zgoda jest pobierana z aktualnych etykiet Issue, nie ze starego payloadu eventu.
           # Bez ai-sensitive-approved chronione obszary pozostają zablokowane.
-          ALLOW_SENSITIVE_CHANGES: ${{ steps.active.outputs.allow_sensitive }}
+          ALLOW_SENSITIVE_CHANGES: ${{ steps.approval.outputs.allow_sensitive }}
           DIAGNOSE_ONLY: 'false'
           QA_MAX_ATTEMPTS: '3'
           CONTEXT_REBUILD_MAX: '2'
@@ -213,7 +212,7 @@ jobs:
         continue-on-error: true
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          ALLOW_SENSITIVE_CHANGES: ${{ steps.active.outputs.allow_sensitive }}
+          ALLOW_SENSITIVE_CHANGES: ${{ steps.approval.outputs.allow_sensitive }}
           DIAGNOSE_ONLY: 'false'
           QA_MAX_ATTEMPTS: '1'
           CONTEXT_REBUILD_MAX: '2'
@@ -227,6 +226,10 @@ jobs:
             echo "::error::No task available to retry after truncated output."
             exit 1
           fi
+          TASK_SHA256=$(sha256sum /tmp/task.txt | awk '{print $1}')
+          python -B agent/approval.py --issue-number "$ISSUE_NUMBER" \
+            --expected-owner "$GITHUB_REPOSITORY_OWNER" \
+            --expected-task-sha "$TASK_SHA256"
           export TASK="$(cat /tmp/task.txt)"
           python -B agent/orchestrator.py 2>&1 | tee /tmp/agent-truncation.log
       # Warstwa utrzymaniowa uruchamia sie WYLACZNIE po jawnym, typowanym
@@ -304,7 +307,7 @@ jobs:
         if: always() && steps.maintenance_merge.outputs.changed == 'true'
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          ALLOW_SENSITIVE_CHANGES: ${{ steps.active.outputs.allow_sensitive }}
+          ALLOW_SENSITIVE_CHANGES: ${{ steps.approval.outputs.allow_sensitive }}
           DIAGNOSE_ONLY: 'false'
           QA_MAX_ATTEMPTS: '2'
           CONTEXT_REBUILD_MAX: '2'
@@ -316,22 +319,16 @@ jobs:
           # If the failure happened before task composition (e.g. pre-smoke or
           # clarification API), rebuild the task from the current Issue state.
           if [ ! -s /tmp/task.txt ]; then
-            gh issue view "$ISSUE_NUMBER" --json title,body,comments --jq '
-              .title + "\n\n" + (.body // "") + "\n\n" +
-              ([.comments[]
-                | select(.author.login != "github-actions[bot]")
-                | select((.body // "") | startswith("Protected-change approval recorded by AltCards Orchestrator.") | not)
-                | select((.body // "") | startswith("Protected-change approval revoked by AltCards Orchestrator.") | not)
-                | select((.body // "") | startswith("❌ **Agent nie ukończył zadania. Kolejka została zatrzymana.**") | not)
-                | select((.body // "") | startswith("🤔 **Potrzebuję doprecyzowania**") | not)
-                | select((.body // "") | startswith("✅ **Gotowe**") | not)
-                | .body] | join("\n\n---\n\n"))
-            ' > /tmp/task.txt
+            python -B agent/issue_payload.py --issue-number "$ISSUE_NUMBER" --output /tmp/task.txt
           fi
           if [ ! -s /tmp/task.txt ] || [ "$(wc -c < /tmp/task.txt)" -gt 4000 ]; then
             echo "::error::Could not rebuild a valid 1-4000 character task after infrastructure repair."
             exit 1
           fi
+          TASK_SHA256=$(sha256sum /tmp/task.txt | awk '{print $1}')
+          python -B agent/approval.py --issue-number "$ISSUE_NUMBER" \
+            --expected-owner "$GITHUB_REPOSITORY_OWNER" \
+            --expected-task-sha "$TASK_SHA256"
           export TASK="$(cat /tmp/task.txt)"
           python -B agent/orchestrator.py 2>&1 | tee /tmp/agent-retry.log
 
@@ -355,9 +352,18 @@ jobs:
         if: always() && steps.recovery.outputs.passed == 'true'
         run: python -B tests/smoke_test.py
 
+      - name: Verify task and approval unchanged before PR
+        id: final_approval
+        if: always() && steps.recovery.outputs.passed == 'true' && steps.post_smoke.outcome == 'success'
+        run: |
+          TASK_SHA256=$(sha256sum /tmp/task.txt | awk '{print $1}')
+          python -B agent/approval.py --issue-number "$ISSUE_NUMBER" \
+            --expected-owner "$GITHUB_REPOSITORY_OWNER" \
+            --expected-task-sha "$TASK_SHA256"
+
       - name: Commit + PR + auto-merge
         id: merge
-        if: always() && steps.recovery.outputs.passed == 'true' && steps.post_smoke.outcome == 'success'
+        if: always() && steps.recovery.outputs.passed == 'true' && steps.post_smoke.outcome == 'success' && steps.final_approval.outcome == 'success'
         run: |
           if git diff --quiet; then
             echo "::error::Agent completed without producing a code change. Queue will remain blocked."
