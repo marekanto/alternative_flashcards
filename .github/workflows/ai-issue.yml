@@ -386,8 +386,7 @@ jobs:
 
           echo "Created PR: $PR_URL"
 
-          # Nie omijamy branch protection. Jeśli wymagane kontrole nie przejdą,
-          # merge zakończy się błędem, a kolejka pozostanie zatrzymana.
+          # Wait for the PR to become mergeable without bypassing repository rules.
           for i in $(seq 1 30); do
             STATE=$(gh pr view "$PR_URL" --json mergeable --jq '.mergeable')
             if [ "$STATE" = "MERGEABLE" ]; then
@@ -402,7 +401,21 @@ jobs:
             exit 1
           fi
 
-          timeout 900s gh pr checks "$PR_URL" --required --watch --fail-fast
+          # Wait for checks (including optional/non-required checks), then require
+          # this repository's named CI quality gate explicitly. Some repositories
+          # have a configured ruleset in enforcement=disabled; gh pr checks
+          # --required then reports no required checks even when CI is green.
+          # The normal merge below still obeys any ACTIVE branch protection.
+          timeout 900s gh pr checks "$PR_URL" --watch --fail-fast
+          HEAD_SHA=$(gh pr view "$PR_URL" --json headRefOid --jq .headRefOid)
+          QUALITY_GATE_COUNT=$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs" \\
+            --jq '[.check_runs[] | select(.name == "AltCards required quality gates" and .conclusion == "success")] | length')
+          if [ "$QUALITY_GATE_COUNT" -lt 1 ]; then
+            echo "::error::AltCards required quality gates did not report success. Queue will remain blocked."
+            exit 1
+          fi
+
+          # Never use --admin: GitHub itself enforces all active protection rules.
           gh pr merge "$PR_URL" --squash --delete-branch
           STATE=$(gh pr view "$PR_URL" --json state --jq .state)
           if [ "$STATE" != "MERGED" ]; then
