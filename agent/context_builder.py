@@ -281,7 +281,7 @@ CARD_KEYWORDS = (
 def _positive_scope_for_classification(task: str) -> str:
     """Ignore explicit exclusions when classifying which code context is needed."""
     match = re.search(
-        r"(?im)^\s*(?:#{1,6}\s*)?(?:nie zmieniaj|nie ruszaj|do not change|must not change|out of scope|constraints)\s*:?[ \t]*$",
+        r"(?im)^\s*(?:#{1,6}\s*)?(?:nie zmieniaj|nie ruszaj|do not change|must not change|out of scope|constraints|granice zmian)\s*:?[ \t]*$",
         task,
     )
     return task[:match.start()] if match else task
