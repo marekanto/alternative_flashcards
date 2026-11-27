@@ -328,6 +328,11 @@ function vAdd(v) {
             "CSS extractor should include matching rules inside media queries")
     _assert(extract_css_rule(source, ".add-grid") is not None,
             "class selectors must be supported")
+    class_context = build_context(
+        "Style the Add Card grid", source, extra_names=[".add-grid"]
+    )
+    _assert(class_context["ok"] and "expanded:css:.add-grid" in class_context["included"],
+            "class selectors must be accepted by targeted context expansion")
     _assert(extract_css_rule(source, "#fr") is None,
             "an HTML id without a corresponding CSS rule must not fabricate context")
     _assert(extract_css_rule(source, "main, body") is None,
