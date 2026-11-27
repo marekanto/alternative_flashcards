@@ -965,19 +965,9 @@ function renderCards(){
 }
 function dlist(){
   $('#dl').innerHTML = S.decks.map(d=>{
-    let actionBtn = '';
-    if(d.isCopied){
-      actionBtn = `<span title="${t('cards.copiedLock')}" style="font-size:16px;opacity:0.6;padding:8px">🔒</span>`;
-    } else if(d.sharedId){
-      actionBtn = `<button onclick="unshareDeck('${d.id}')" title="${t('cards.unshare')}">🚫</button>`;
-    } else {
-      actionBtn = `<button onclick="shareDeck('${d.id}')" title="${t('cards.share')}">🌍</button>`;
-    }
     const authorInfo = d.isCopied && d.author ? ` · ${t('library.author')}: ${esc(d.author)}` : '';
     return `<div class="it"><div>${esc(d.name)} <span class="mu">· ${langName(d.lang)} · ${S.cards.filter(c=>c.deck==d.id).length}${authorInfo}</span></div>
-      <button onclick="deckMenu('${d.id}')">⚙️</button>
-      ${actionBtn}
-      <button onclick="delDeck('${d.id}')">🗑</button></div>`;
+      <button onclick="deckMenu('${d.id}')">⚙️</button></div>`;
   }).join('');
 }
 function editDeckName(id) {
@@ -1034,6 +1024,7 @@ function deckMenu(id){
   m.innerHTML=`<div class="mb"><h3>${esc(d.name)}</h3>
     <button class="s" style="width:100%;margin-bottom:8px;justify-content:flex-start" onclick="document.getElementById('md').remove();editDeckName('${d.id}')">✎ ${t('cards.editName')}</button>
     <button class="s" style="width:100%;margin-bottom:8px;justify-content:flex-start" onclick="document.getElementById('md').remove();toggleDeckDir('${d.id}')">${d.reverse?'🔄':'➡️'} ${d.reverse?t('cards.dirRev'):t('cards.dirFwd')}</button>
+    ${d.isCopied?`<div class="s" style="width:100%;margin-bottom:8px;justify-content:flex-start;opacity:0.5;pointer-events:none">🔒 ${t('cards.copiedLock')} · ${t('cards.copyBlocked')}</div>`:d.sharedId?`<button class="s" style="width:100%;margin-bottom:8px;justify-content:flex-start" onclick="document.getElementById('md').remove();unshareDeck('${d.id}')">🚫 ${t('cards.unshare')}</button>`:`<button class="s" style="width:100%;margin-bottom:8px;justify-content:flex-start" onclick="document.getElementById('md').remove();shareDeck('${d.id}')">🌍 ${t('cards.share')}</button>`}
     <button class="s" style="width:100%;margin-bottom:8px;justify-content:flex-start;border-color:#ef4444;color:#ef4444" onclick="document.getElementById('md').remove();delDeck('${d.id}')">🗑 ${t('cards.del')}</button>
     <button class="s" style="width:100%" onclick="document.getElementById('md').remove()">${t('common.cancel')}</button></div>`;
   document.body.appendChild(m);
