@@ -213,6 +213,8 @@ jobs:
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           ALLOW_SENSITIVE_CHANGES: ${{ steps.approval.outputs.allow_sensitive }}
+          EXPECTED_APPROVAL_SHA256: ${{ steps.approval.outputs.verified_approval_sha256 }}
+          REQUIRE_SENSITIVE_APPROVAL: ${{ steps.approval.outputs.allow_sensitive }}
           DIAGNOSE_ONLY: 'false'
           QA_MAX_ATTEMPTS: '1'
           CONTEXT_REBUILD_MAX: '2'
@@ -227,9 +229,11 @@ jobs:
             exit 1
           fi
           TASK_SHA256=$(sha256sum /tmp/task.txt | awk '{print $1}')
-          python -B agent/approval.py --issue-number "$ISSUE_NUMBER" \
-            --expected-owner "$GITHUB_REPOSITORY_OWNER" \
-            --expected-task-sha "$TASK_SHA256"
+          APPROVAL_ARGS=(--issue-number "$ISSUE_NUMBER" --expected-owner "$GITHUB_REPOSITORY_OWNER" --expected-task-sha "$TASK_SHA256")
+          if [ "$REQUIRE_SENSITIVE_APPROVAL" = "true" ]; then
+            APPROVAL_ARGS+=(--require-approval --expected-approval-sha "$EXPECTED_APPROVAL_SHA256")
+          fi
+          python -B agent/approval.py "${APPROVAL_ARGS[@]}"
           export TASK="$(cat /tmp/task.txt)"
           python -B agent/orchestrator.py 2>&1 | tee /tmp/agent-truncation.log
       # Warstwa utrzymaniowa uruchamia sie WYLACZNIE po jawnym, typowanym
@@ -308,6 +312,8 @@ jobs:
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           ALLOW_SENSITIVE_CHANGES: ${{ steps.approval.outputs.allow_sensitive }}
+          EXPECTED_APPROVAL_SHA256: ${{ steps.approval.outputs.verified_approval_sha256 }}
+          REQUIRE_SENSITIVE_APPROVAL: ${{ steps.approval.outputs.allow_sensitive }}
           DIAGNOSE_ONLY: 'false'
           QA_MAX_ATTEMPTS: '2'
           CONTEXT_REBUILD_MAX: '2'
@@ -326,9 +332,11 @@ jobs:
             exit 1
           fi
           TASK_SHA256=$(sha256sum /tmp/task.txt | awk '{print $1}')
-          python -B agent/approval.py --issue-number "$ISSUE_NUMBER" \
-            --expected-owner "$GITHUB_REPOSITORY_OWNER" \
-            --expected-task-sha "$TASK_SHA256"
+          APPROVAL_ARGS=(--issue-number "$ISSUE_NUMBER" --expected-owner "$GITHUB_REPOSITORY_OWNER" --expected-task-sha "$TASK_SHA256")
+          if [ "$REQUIRE_SENSITIVE_APPROVAL" = "true" ]; then
+            APPROVAL_ARGS+=(--require-approval --expected-approval-sha "$EXPECTED_APPROVAL_SHA256")
+          fi
+          python -B agent/approval.py "${APPROVAL_ARGS[@]}"
           export TASK="$(cat /tmp/task.txt)"
           python -B agent/orchestrator.py 2>&1 | tee /tmp/agent-retry.log
 
@@ -355,11 +363,16 @@ jobs:
       - name: Verify task and approval unchanged before PR
         id: final_approval
         if: always() && steps.recovery.outputs.passed == 'true' && steps.post_smoke.outcome == 'success'
+        env:
+          EXPECTED_APPROVAL_SHA256: ${{ steps.approval.outputs.verified_approval_sha256 }}
+          REQUIRE_SENSITIVE_APPROVAL: ${{ steps.approval.outputs.allow_sensitive }}
         run: |
           TASK_SHA256=$(sha256sum /tmp/task.txt | awk '{print $1}')
-          python -B agent/approval.py --issue-number "$ISSUE_NUMBER" \
-            --expected-owner "$GITHUB_REPOSITORY_OWNER" \
-            --expected-task-sha "$TASK_SHA256"
+          APPROVAL_ARGS=(--issue-number "$ISSUE_NUMBER" --expected-owner "$GITHUB_REPOSITORY_OWNER" --expected-task-sha "$TASK_SHA256")
+          if [ "$REQUIRE_SENSITIVE_APPROVAL" = "true" ]; then
+            APPROVAL_ARGS+=(--require-approval --expected-approval-sha "$EXPECTED_APPROVAL_SHA256")
+          fi
+          python -B agent/approval.py "${APPROVAL_ARGS[@]}"
 
       - name: Commit + PR + auto-merge
         id: merge
