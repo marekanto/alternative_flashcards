@@ -91,10 +91,12 @@ def test_issue63_translation_literals_do_not_activate_card_context() -> None:
         _classification_text_for_context,
         _is_cards_task,
         _is_settings_task,
+        _is_xp_task,
     )
 
     task = """vSettings: edycja dziennego celu (S.settings.dailyGoal) w index.html
 
+## Expected behavior
 OP1: dwa kafle w Ustawieniach — dzienny limit powtórek i dzienny cel.
 OP2: saveSettings() zapisuje dzienny cel, z guardem na brak #glmt.
 OP3: dodaj klucze TR przed FIND:
@@ -106,6 +108,14 @@ Nie zmieniaj:
     classification = _classification_text_for_context(task).lower()
     _assert(_is_settings_task(classification),
             "Issue #63 should route to Settings context")
+    _assert(not _is_xp_task(classification),
+            "the words 'Expected behavior' must not activate XP context")
+    _assert(not _is_xp_task("expected behavior: edit daily goal"),
+            "ordinary text containing the letters xp must not trigger XP routing")
+    _assert(_is_xp_task("increase XP for each correct answer"),
+            "the standalone XP acronym must still activate XP routing")
+    _assert(_is_xp_task("S.settings.xp is persisted"),
+            "the explicit settings.xp property must still activate XP routing")
     _assert(not _is_cards_task(classification),
             "translation display values must not activate card-management context")
     _assert("talie" not in classification and "decks" not in classification,
@@ -126,6 +136,11 @@ Nie zmieniaj:
         name in result["included"]
         for name in ("renderCards", "dlist", "delDeck", "shareDeck", "unshareDeck", "editCard")
     ), "Settings-only task must not load card-management dependencies")
+    _assert(not any(
+        name in result["included"] for name in ("vStudy", "vStats", "Sync.download", "Sync.upload", "Sync.checkBonuses")
+    ), "Settings-only task must not load XP or Sync feature dependencies")
+    _assert(result["over_limit"] == [],
+            f"Issue #63 Settings context should fit without overflow: {result['over_limit']}")
     _assert(result["chars"] <= MAX_CONTEXT_CHARS,
             "Issue #63 Settings context exceeded the configured character budget")
 
@@ -266,6 +281,8 @@ def test_agent_prompts_receive_complete_task() -> None:
             "Code Agent must not re-request source already supplied")
     _assert("not task requirements" in code_agent.SYSTEM,
             "Code Agent must not treat out-of-scope task mentions as dependencies")
+    _assert("Never request the bare TR dictionary" in code_agent.SYSTEM,
+            "Code Agent must request translation entries individually, not the whole dictionary")
 
 def test_context_builder_targeted_expansion() -> None:
     source = """
@@ -348,11 +365,11 @@ Do not change: computeStreak, totalDue, todayDone, ans, grade, undoAnswer, Sync.
         "status": "need_context",
         "summary": "Need settings handlers",
         "reason": "Need complete vSettings and saveSettings source.",
-        "missing_context": ["vSettings", "saveSettings"],
+        "missing_context": ["vSettings", "saveSettings", "TR"],
     }
     names = orchestrator._requested_context_names(proposal, task)
     _assert(names == ["vSettings", "saveSettings"],
-            f"task mentions were incorrectly treated as missing dependencies: {names}")
+            f"task mentions or the broad TR dictionary were incorrectly treated as missing dependencies: {names}")
 
     # Keep markup extraction from a task: this is distinct from scanning
     # every identifier in the requirements for source dependencies.

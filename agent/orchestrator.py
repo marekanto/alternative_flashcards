@@ -137,7 +137,7 @@ def _requested_context_names(proposal, task):
     candidates.extend(f"</{match.group(1).lower()}>" for match in html_tag_pattern.finditer(task_scope))
     candidates.extend(match.group(0) for match in html_comment_pattern.finditer(task_scope))
 
-    common = {"need_context", "context", "function", "method", "source", "missing", "undefined", "return", "const", "async"}
+    common = {"need_context", "context", "function", "method", "source", "missing", "undefined", "return", "const", "async", "tr"}
     return list(dict.fromkeys(x for x in candidates if x.lower() not in common))[:12]
 
 def _print_diagnosis(proposal):
