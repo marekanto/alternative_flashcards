@@ -259,6 +259,11 @@ body.reviewing .fbx-fab { bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   .fbx-cancel { background: #334155; color: #cbd5e1; }
   .fbx-close { background: #334155; color: #cbd5e1; }
 }
+body.adding main{display:flex;flex-direction:column}
+body.adding main > *:not(.add-grid){flex-shrink:0}
+body.adding .add-grid{flex:1 1 auto;grid-template-rows:1fr 1fr;gap:12px}
+body.adding .add-grid textarea{margin:0;height:100%;min-height:90px;resize:none}
+@media(min-width:700px){body.adding .add-grid{grid-template-rows:1fr}}
 </style></head><body>
 <main id="v"></main>
 <nav>
@@ -832,6 +837,7 @@ function render(){
   if(!Sync?.user){showLogin();return}
   if(!Sync.profile){showNicknameModal();return}
   document.body.classList.toggle('reviewing',tab==='study'&&!!sess);
+document.body.classList.toggle('adding',tab==='add');
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==tab));
   ({study:vStudy, add:vAdd, cards:vCards, library:vLibrary, stats:vStats, settings:vSettings})[tab]($('#v'));
 }
