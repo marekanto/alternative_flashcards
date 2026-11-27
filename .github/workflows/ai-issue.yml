@@ -408,7 +408,7 @@ jobs:
           # The normal merge below still obeys any ACTIVE branch protection.
           timeout 900s gh pr checks "$PR_URL" --watch --fail-fast
           HEAD_SHA=$(gh pr view "$PR_URL" --json headRefOid --jq .headRefOid)
-          QUALITY_GATE_COUNT=$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs" \\
+          QUALITY_GATE_COUNT=$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/check-runs" \
             --jq '[.check_runs[] | select(.name == "AltCards required quality gates" and .conclusion == "success")] | length')
           if [ "$QUALITY_GATE_COUNT" -lt 1 ]; then
             echo "::error::AltCards required quality gates did not report success. Queue will remain blocked."
