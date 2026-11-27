@@ -1,4 +1,8 @@
+import os
+
 from deepseek_client import chat
+
+QA_MAX_OUTPUT_TOKENS = max(1800, int(os.getenv("QA_MAX_OUTPUT_TOKENS", "2000")))
 
 SYSTEM = """You are an independent, conservative reviewer of an AltCards code diff.
 Return ONLY JSON: {\"verdict\":\"pass\"|\"reject\"|\"needs_human_review\",\"findings\":[\"short items\"]}.
@@ -22,4 +26,4 @@ def review(task, diff):
         + "\n\nDIFF TO REVIEW:\n" + diff[:10000]
         + "\n\nReturn JSON only. A concern must cite a concrete contradiction or regression visible in the task, diff, or supplied context."
     )
-    return chat(SYSTEM, prompt, max_tokens=900)
+    return chat(SYSTEM, prompt, max_tokens=QA_MAX_OUTPUT_TOKENS)

@@ -195,6 +195,7 @@ def test_agent_prompts_receive_complete_task() -> None:
     with patch.object(qa_agent, "chat", return_value={"verdict": "pass", "findings": []}) as qa_chat:
         qa_agent.review(task, "diff")
         _assert(task in qa_chat.call_args.args[1], "QA task został obcięty")
+        _assert(qa_chat.call_args.kwargs["max_tokens"] >= 1800, "QA output cap is too low")
 
 def test_context_builder_targeted_expansion() -> None:
     source = """
