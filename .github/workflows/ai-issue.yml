@@ -130,6 +130,24 @@ jobs:
           set -o pipefail
           python -B tests/smoke_test.py 2>&1 | tee /tmp/pre-smoke.log
 
+      # Kroki clarifier / pre_smoke / task nie wywoluja infrastruktury DeepSeek
+      # w sposob naprawialny przez zmiane kodu repo. Celowo NIE maja kanalu
+      # maintenance_eligible - ich blad klasyfikujemy jawnie jako
+      # non_infrastructure, zeby zadne ogolne failure() nie moglo uruchomic
+      # samo-naprawy.
+      - name: Classify earlier step failures
+        id: classify
+        if: >-
+          always() && steps.active.outputs.active == 'true' &&
+          (steps.clarifier.outcome == 'failure' ||
+           steps.pre_smoke.outcome == 'failure' ||
+           steps.task.outcome == 'failure')
+        run: |
+          echo "ERROR_CLASS=non_infrastructure"
+          echo "MAINTENANCE_ELIGIBLE=false"
+          echo "maintenance_eligible=false" >> "$GITHUB_OUTPUT"
+          echo "failure_class=non_infrastructure" >> "$GITHUB_OUTPUT"
+          echo "::notice::An earlier pipeline step failed (clarifier/pre_smoke/task). This is not an infrastructure defect; self-repair is intentionally not started."
       - name: Compose TASK from issue
         id: task
         if: steps.active.outputs.active == 'true' && steps.clarify.outputs.status != 'needs_clarification'
@@ -160,6 +178,7 @@ jobs:
           QA_MAX_ATTEMPTS: '3'
           CONTEXT_REBUILD_MAX: '2'
           DEEPSEEK_API_MAX_ATTEMPTS: '3'
+          DEEPSEEK_TRUNCATION_RETRY_MAX: '1'
           DEEPSEEK_MODEL: 'deepseek-flash'
           LC_ALL: 'C.UTF-8'
         run: |
@@ -173,13 +192,47 @@ jobs:
 
       # Warstwa utrzymaniowa jest uruchamiana po naprawialnym błędzie pipeline'u.
       # Ma ścisłą listę edytowalnych plików; walidatory i prompty QA są read-only.
+      # Ucieta odpowiedz modelu to nie awaria infrastruktury. Orchestrator
+      # zglasza failure_class=truncated_output i maintenance_eligible=false,
+      # wiec ten krok ponawia wylacznie zadanie, nigdy samo-naprawe repo.
+      - name: Retry task after truncated model output
+        id: retry_truncation
+        if: >-
+          always() && steps.active.outputs.active == 'true' &&
+          steps.clarify.outputs.status != 'needs_clarification' &&
+          steps.agent.outcome == 'failure' &&
+          steps.agent.outputs.failure_class == 'truncated_output'
+        continue-on-error: true
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          ALLOW_SENSITIVE_CHANGES: ${{ steps.active.outputs.allow_sensitive }}
+          DIAGNOSE_ONLY: 'false'
+          QA_MAX_ATTEMPTS: '1'
+          CONTEXT_REBUILD_MAX: '2'
+          DEEPSEEK_API_MAX_ATTEMPTS: '3'
+          DEEPSEEK_TRUNCATION_RETRY_MAX: '0'
+          DEEPSEEK_MODEL: 'deepseek-flash'
+          LC_ALL: 'C.UTF-8'
+        run: |
+          set -o pipefail
+          if [ ! -s /tmp/task.txt ]; then
+            echo "::error::No task available to retry after truncated output."
+            exit 1
+          fi
+          export TASK="$(cat /tmp/task.txt)"
+          python -B agent/orchestrator.py 2>&1 | tee /tmp/agent-truncation.log
+      # Warstwa utrzymaniowa uruchamia sie WYLACZNIE po jawnym, typowanym
+      # DeepSeekInfrastructureError. Ogolny failure() jest celowo usuniety:
+      # blad QA, patch validation, ucieta odpowiedz modelu i niejednoznaczne
+      # zadanie nie sa naprawialne przez zmiane kodu repozytorium.
+      # Ma scisla liste edytowalnych plikow; walidatory i prompty QA sa read-only.
       - name: Self-repair automation infrastructure
         id: maintenance
         if: >-
           always() && steps.active.outputs.active == 'true' &&
           steps.clarify.outputs.status != 'needs_clarification' &&
-          (failure() || steps.clarifier.outcome == 'failure' || steps.pre_smoke.outcome == 'failure' ||
-           steps.task.outcome == 'failure' || steps.agent.outcome == 'failure')
+          (steps.agent.outputs.maintenance_eligible == 'true' ||
+           steps.retry_truncation.outputs.maintenance_eligible == 'true')
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           DEEPSEEK_MODEL: 'deepseek-flash'
@@ -187,7 +240,8 @@ jobs:
           DEEPSEEK_REVIEW_MODEL: 'deepseek-v4-pro'
         run: |
           { cat /tmp/clarifier.log 2>/dev/null || true; cat /tmp/pre-smoke.log 2>/dev/null || true;
-            cat /tmp/task-compose.log 2>/dev/null || true; cat /tmp/agent.log 2>/dev/null || true; } > /tmp/maintenance-failure.log
+            cat /tmp/task-compose.log 2>/dev/null || true; cat /tmp/agent.log 2>/dev/null || true;
+            cat /tmp/agent-truncation.log 2>/dev/null || true; } > /tmp/maintenance-failure.log
           if [ ! -s /tmp/maintenance-failure.log ]; then
             gh run view "$GITHUB_RUN_ID" --log-failed > /tmp/maintenance-failure.log 2>&1 || true
           fi
@@ -275,9 +329,10 @@ jobs:
         if: always() && steps.active.outputs.active == 'true' && steps.clarify.outputs.status != 'needs_clarification'
         env:
           FIRST_OUTCOME: ${{ steps.agent.outcome }}
+          TRUNC_RETRY_OUTCOME: ${{ steps.retry_truncation.outcome }}
           RETRY_OUTCOME: ${{ steps.retry_agent.outcome }}
         run: |
-          if [ "$FIRST_OUTCOME" = "success" ] || [ "$RETRY_OUTCOME" = "success" ]; then
+          if [ "$FIRST_OUTCOME" = "success" ] || [ "$TRUNC_RETRY_OUTCOME" = "success" ] || [ "$RETRY_OUTCOME" = "success" ]; then
             echo "passed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
