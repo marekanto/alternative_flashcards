@@ -424,6 +424,16 @@ def build_context(task: str, source: str, extra_names: list[str] | None = None) 
                 else:
                     missing.append(f"html:{name}")
                 continue
+            is_translation_key = bool(
+                re.fullmatch(r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+", name)
+            )
+            if is_translation_key:
+                translation_body = extract_translation_entry(source, name)
+                if translation_body:
+                    push(f"expanded:TR:{name}", translation_body)
+                    continue
+                missing.append(f"translation:{name}")
+                continue
             is_js_symbol = bool(re.fullmatch(r"[A-Za-z_$][\w$]{0,80}", name))
             if is_js_symbol:
                 body = extract_named(source, name)
