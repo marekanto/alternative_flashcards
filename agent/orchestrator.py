@@ -123,7 +123,7 @@ def _requested_context_names(proposal, task):
     # The context builder performs the final allowlist validation before
     # extracting source, so combinators and selector lists never pass through.
     css_selector_pattern = re.compile(
-        r"(?<![A-Za-z0-9_])(?:[A-Za-z][A-Za-z0-9_-]*)?"
+        r"(?<![A-Za-z0-9_])"
         r"(?:[.#][A-Za-z_][A-Za-z0-9_-]*)+(?![A-Za-z0-9_-])"
     )
 
