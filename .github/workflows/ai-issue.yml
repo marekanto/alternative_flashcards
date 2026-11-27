@@ -415,7 +415,7 @@ jobs:
             exit 1
           fi
 
-          # Never use --admin: GitHub itself enforces all active protection rules.
+          # Never use an administrator bypass: GitHub enforces all active protection rules.
           gh pr merge "$PR_URL" --squash --delete-branch
           STATE=$(gh pr view "$PR_URL" --json state --jq .state)
           if [ "$STATE" != "MERGED" ]; then
