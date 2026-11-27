@@ -324,6 +324,7 @@ def _is_xp_task(task_low: str) -> bool:
     # "xp" is a short acronym and substring matching catches ordinary words
     # such as "expected". Require token boundaries for the bare acronym while
     # keeping the more specific XP feature identifiers as substring signals.
+    task_low = task_low.lower()
     return bool(re.search(r"\bxp\b", task_low)) or any(
         keyword in task_low for keyword in XP_KEYWORDS if keyword != "xp"
     )
