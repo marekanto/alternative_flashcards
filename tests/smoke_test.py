@@ -208,6 +208,38 @@ def test_need_context_symbol_extraction() -> None:
         html_proposal, "Add a comment immediately before the closing </body> tag"
     )
     _assert(html_names == ["</body>"], f"HTML closing tag was not extracted cleanly: {html_names}")
+    old_comment = "<!-- AltCards Repair Loop B validation 2026-11-23 -->"
+    new_comment = "<!-- AltCards Repair Loop B validation complete 2026-11-23 -->"
+    replace_task = f"Replace this HTML comment:\n{old_comment}\nwith:\n{new_comment}"
+    comment_proposal = {
+        "status": "need_context",
+        "reason": "Target HTML comment is not present in supplied source excerpts",
+        "missing_context": [],
+    }
+    comment_names = orchestrator._requested_context_names(comment_proposal, replace_task)
+    _assert(old_comment in comment_names, f"Existing HTML comment was not extracted: {comment_names}")
+    _assert(new_comment in comment_names, f"Replacement HTML comment was not extracted: {comment_names}")
+
+    # Context expansion must retrieve the existing comment, while tolerating
+    # the replacement comment not being present in source yet.
+    comment_source = f"<html><body><main>Content</main>{old_comment}\n</body></html>"
+    comment_context = build_context(
+        "Replace an existing HTML comment",
+        comment_source,
+        extra_names=[old_comment, new_comment],
+    )
+    _assert(
+        comment_context["ok"],
+        f"Exact comment expansion should succeed: {comment_context['missing']} {comment_context['over_limit']}",
+    )
+    _assert(
+        "expanded:html-comment" in comment_context["included"],
+        "HTML comment context was not included",
+    )
+    _assert(
+        old_comment in comment_context["context"],
+        "Existing HTML comment is absent from expanded context",
+    )
 
 
 def test_orchestrator_recovers_need_context() -> None:

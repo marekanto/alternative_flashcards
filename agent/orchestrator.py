@@ -99,6 +99,7 @@ def _requested_context_names(proposal, task):
 
     candidates = []
     html_tag_pattern = re.compile(r"</\s*(body|head|html)\s*>", re.I)
+    html_comment_pattern = re.compile(r"<!--[\s\S]{0,500}?-->")
 
     # missing_context should normally contain exact identifiers. Models can
     # occasionally return a prose description instead, so extract only the
@@ -106,11 +107,13 @@ def _requested_context_names(proposal, task):
     # the surrounding prose (which is not a source symbol).
     for name in direct_names:
         candidates.extend(f"</{match.group(1).lower()}>" for match in html_tag_pattern.finditer(name))
+        candidates.extend(match.group(0) for match in html_comment_pattern.finditer(name))
         if re.fullmatch(r"[A-Za-z_$][\w$]{0,80}", name):
             candidates.append(name)
 
     for value in values:
         candidates.extend(f"</{match.group(1).lower()}>" for match in html_tag_pattern.finditer(value))
+        candidates.extend(match.group(0) for match in html_comment_pattern.finditer(value))
         candidates.extend(re.findall(r"`([A-Za-z_$][\w$]{0,80})`", value))
         candidates.extend(re.findall(r"\b(?:function|method|symbol|handler)\s+([A-Za-z_$][\w$]{0,80})", value, re.I))
 
