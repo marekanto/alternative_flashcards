@@ -90,9 +90,9 @@ def _extract_function_decl(source: str, name: str) -> str | None:
     # excerpt at "function" silently drops prefixes such as "async" and can
     # make the Code Agent misdiagnose valid source or generate unsafe patches.
     pat = (
-        rf"(?<![\\w$])"
-        rf"(?:(?:export\\s+(?:default\\s+)?)?)"
-        rf"(?:async\\s+)?function\\s*\\*?\\s*{re.escape(name)}\\s*\\("
+        rf"(?<![\w$])"
+        rf"(?:export\s+(?:default\s+)?)?"
+        rf"(?:async\s+)?function\s*\*?\s*{re.escape(name)}\s*\("
     )
     for m in re.finditer(pat, source):
         brace = source.find("{", m.end())
