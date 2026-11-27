@@ -162,30 +162,41 @@ def extract_named(source: str, name: str) -> str | None:
 
 
 def extract_css_rule(source: str, selector: str) -> str | None:
-    """Extract all exact simple-selector rules from document style blocks.
+    """Extract rules whose selector list contains one exact simple selector.
 
-    Context recovery can ask for CSS selectors (for example main, .mb or
-    #fr) as well as JavaScript symbols. Only simple selectors are accepted;
-    arbitrary model text is never interpreted as a CSS query.
+    Context recovery accepts simple type, class, ID, and compound selectors
+    (for example main, .mb, #fr, or .mb.long). Grouped rules such as
+    ".mb, #login .box" are returned in full when the requested selector is
+    an exact member of the selector list. Combinators, pseudo-selectors,
+    attributes, and model-supplied selector lists remain unsupported.
     """
-    if not re.fullmatch(r"(?:[A-Za-z][A-Za-z0-9_-]*|[.#][A-Za-z_][A-Za-z0-9_-]*)", selector):
+    simple_identifier = r"[A-Za-z_][A-Za-z0-9_-]*"
+    simple_selector = (
+        rf"(?:[A-Za-z][A-Za-z0-9_-]*)?"
+        rf"(?:[.#]{simple_identifier})+"
+        rf"|[A-Za-z][A-Za-z0-9_-]*"
+    )
+    if not re.fullmatch(simple_selector, selector):
         return None
 
     rules = []
-    rule_pattern = re.compile(
-        rf"(?<![A-Za-z0-9_#.-]){re.escape(selector)}\s*\{{"
-    )
     for style_match in re.finditer(r"<style\b[^>]*>", source, re.IGNORECASE):
         style_start = style_match.end()
         style_close = re.search(r"</style\s*>", source[style_start:], re.IGNORECASE)
         if not style_close:
             continue
         css = source[style_start:style_start + style_close.start()]
-        for match in rule_pattern.finditer(css):
-            brace = css.find("{", match.start(), match.end())
+        for opening in re.finditer(r"\{", css):
+            brace = opening.start()
+            # A selector prelude starts after the most recent rule/block
+            # boundary. This also works inside nested @media blocks.
+            boundary = max(css.rfind("}", 0, brace), css.rfind("{", 0, brace)) + 1
+            prelude = css[boundary:brace].strip()
+            if selector not in (part.strip() for part in prelude.split(",")):
+                continue
             end = _match_braces(css, brace)
             if end is not None:
-                rule = css[match.start():end].strip()
+                rule = css[boundary:end].strip()
                 if rule:
                     rules.append(rule)
 

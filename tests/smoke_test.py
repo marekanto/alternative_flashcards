@@ -351,6 +351,11 @@ main {
   main { max-width: 960px; }
 }
 .add-grid { display: grid; grid-template-columns: 1fr; }
+.mb, #login .box { max-width: 420px; }
+.mb.long { max-height: 80vh; overflow-y: auto; }
+@media (max-width: 700px) {
+  .mb.long { max-height: 70vh; }
+}
 </style>
 <script>
 function vAdd(v) {
@@ -370,10 +375,30 @@ function vAdd(v) {
     )
     _assert(class_context["ok"] and "expanded:css:.add-grid" in class_context["included"],
             "class selectors must be accepted by targeted context expansion")
+
+    mb_rules = extract_css_rule(source, ".mb")
+    _assert(mb_rules is not None and ".mb, #login .box" in mb_rules,
+            "a simple selector inside a grouped CSS rule must return the full rule")
+    mb_long_rules = extract_css_rule(source, ".mb.long")
+    _assert(mb_long_rules is not None and "max-height: 80vh" in mb_long_rules
+            and "max-height: 70vh" in mb_long_rules,
+            "compound class selectors and their media-query rules must be extracted")
+    dialog_context = build_context(
+        "Cap the dialog height", source, extra_names=[".mb", ".mb.long"]
+    )
+    _assert(dialog_context["ok"]
+            and "expanded:css:.mb" in dialog_context["included"]
+            and "expanded:css:.mb.long" in dialog_context["included"],
+            "grouped and compound CSS selectors must be available to targeted context expansion")
+
     _assert(extract_css_rule(source, "#fr") is None,
             "an HTML id without a corresponding CSS rule must not fabricate context")
     _assert(extract_css_rule(source, "main, body") is None,
-            "complex or untrusted selector strings must be rejected")
+            "selector lists supplied as a query must be rejected")
+    _assert(extract_css_rule(source, ".mb, #login .box") is None,
+            "model-supplied selector lists must be rejected")
+    _assert(extract_css_rule(source, "main .mb") is None,
+            "combinator selectors must be rejected")
 
     result = build_context(
         "Style: responsive two-column layout for Add Card front/back fields",
@@ -388,6 +413,23 @@ function vAdd(v) {
             "the main CSS rule was not included")
     _assert('onchange="suggest()" oninput="plink()"' in result["context"],
             "the current Add form field handlers should remain visible to the agent")
+
+
+def test_issue70_context_recovery_finds_grouped_and_compound_rules() -> None:
+    result = build_context(
+        "Cap dialog height and add internal vertical scroll",
+        SOURCE,
+        extra_names=[".mb", ".mb.long"],
+    )
+    _assert(result["ok"],
+            f"Issue #70 context recovery failed: missing={result['missing']} over={result['over_limit']}")
+    _assert("expanded:css:.mb" in result["included"],
+            "Issue #70 grouped .mb selector was not included")
+    _assert("expanded:css:.mb.long" in result["included"],
+            "Issue #70 compound .mb.long selector was not included")
+    for token in (".mb, #login .box", ".mb.long { max-height: 80vh; overflow-y: auto; }"):
+        _assert(token in result["context"],
+                f"Issue #70 context is missing current-source token: {token}")
 
 
 def test_issue69_context_recovery_finds_vadd_and_main_css() -> None:
@@ -1152,6 +1194,7 @@ def main() -> int:
         test_agent_prompts_receive_complete_task,
         test_context_builder_targeted_expansion,
         test_context_builder_targeted_css_expansion,
+        test_issue70_context_recovery_finds_grouped_and_compound_rules,
         test_issue69_context_recovery_finds_vadd_and_main_css,
         test_issue69_add_form_responsive_markup_and_css,
         test_need_context_symbol_extraction,
