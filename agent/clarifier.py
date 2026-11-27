@@ -17,8 +17,10 @@ import sys
 
 try:
     from .deepseek_client import chat
+    from .issue_payload import filter_user_comments
 except ImportError:
     from deepseek_client import chat
+    from issue_payload import filter_user_comments
 
 
 BOT_LOGIN = "github-actions[bot]"
@@ -81,26 +83,16 @@ def gh(*args: str) -> str:
 
 def fetch_issue(issue_number: str) -> dict:
     """
-    Pobiera issue + wszystkie komentarze (bez komentarzy bota).
-    Zwraca: {'title': str, 'body': str, 'comments': [str, ...]}
+    Pobiera Issue i tylko komentarze użytkownika. Filtry są współdzielone
+    z kanonicznym builderem TASK, aby approval i Clarifier widziały te same dane.
     """
     raw = gh("issue", "view", issue_number, "--json",
              "title,body,comments,author")
     data = json.loads(raw)
-
-    comments = []
-    for c in data.get("comments") or []:
-        author = ((c.get("author") or {}).get("login") or "").lower()
-        if author == BOT_LOGIN.lower():
-            continue
-        body = (c.get("body") or "").strip()
-        if body:
-            comments.append(body)
-
     return {
         "title": data.get("title") or "",
         "body": data.get("body") or "",
-        "comments": comments,
+        "comments": filter_user_comments(data.get("comments") or []),
         "author": (data.get("author") or {}).get("login") or "unknown",
     }
 

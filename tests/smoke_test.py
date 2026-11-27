@@ -909,12 +909,18 @@ def test_issue_workflow_excludes_automation_comments() -> None:
             f"issue_comment trigger does not exclude workflow comment: {prefix!r}",
         )
 
+    payload_builder = (ROOT / "agent/issue_payload.py").read_text(encoding="utf-8")
     for prefix in (failure, clarification, success, approval, revoked):
-        marker = f'select((.body // "") | startswith("{prefix}") | not)'
         _assert(
-            workflow.count(marker) == 2,
-            f"both TASK composition paths must exclude comment: {prefix!r}",
+            f'"{prefix}"' in payload_builder,
+            f"canonical TASK builder does not exclude workflow comment: {prefix!r}",
         )
+
+    compose_calls = workflow.count(
+        'python -B agent/issue_payload.py --issue-number "$ISSUE_NUMBER" --output /tmp/task.txt'
+    )
+    _assert(compose_calls == 2,
+            "initial composition and recovery rebuild must use the same canonical TASK builder")
 
 
 
@@ -959,6 +965,178 @@ def test_maintenance_gate_requires_explicit_output() -> None:
     maintenance_agent._workflow_invariants(".github/workflows/ai-issue.yml", workflow)
 
 
+def test_issue_payload_filters_automation_comments_and_preserves_task_order() -> None:
+    from agent.issue_payload import compose_task, filter_user_comments, task_fingerprint
+
+    issue = {
+        "title": "Protect last deck",
+        "body": "The app must retain at least one deck.",
+        "comments": [
+            {"author": {"login": "alice"}, "body": "Keep the current confirmation."},
+            {"author": {"login": "marekanto"}, "body": "Protected-change approval recorded by AltCards Orchestrator.\n\naudit"},
+            {"author": {"login": "github-actions[bot]"}, "body": "workflow status"},
+            {"author": {"login": "marekanto"}, "body": "✅ **Gotowe**\nautomatic summary"},
+            {"author": {"login": "bob"}, "body": "Also preserve translations."},
+        ],
+    }
+    expected = (
+        "Protect last deck\n\nThe app must retain at least one deck.\n\n"
+        "Keep the current confirmation.\n\n---\n\nAlso preserve translations."
+    )
+    _assert(compose_task(issue) == expected, "canonical TASK composition or comment filtering changed")
+    _assert(len(filter_user_comments(issue["comments"])) == 2,
+            "only actual user follow-up comments should remain")
+    _assert(task_fingerprint(issue) == task_fingerprint(issue),
+            "identical Issue payload must have a stable fingerprint")
+
+
+def test_approval_fingerprint_binds_exact_task_and_scope() -> None:
+    from agent.issue_payload import task_fingerprint
+    from agent.approval import (
+        approval_fingerprint, build_approval_comment, parse_approval_comment,
+        scope_fingerprint,
+    )
+
+    issue = {"title": "Protect Sync", "body": "Keep offline sync safe.", "comments": []}
+    task_sha = task_fingerprint(issue)
+    scope = "Modify Sync.shareDeck error handling without changing its public contract."
+    comment = build_approval_comment(task_sha, scope, "yes, approve this exact scope")
+    record = parse_approval_comment(comment)
+    _assert(record is not None, "fresh approval audit comment did not parse")
+    _assert(record["task_sha256"] == task_sha, "approval does not bind to current TASK")
+    _assert(record["scope_sha256"] == scope_fingerprint(scope), "approval does not bind to exact scope")
+    _assert(record["approval_sha256"] == approval_fingerprint(task_sha, scope_fingerprint(scope)),
+            "combined approval fingerprint is incorrect")
+    altered = comment.replace("Modify Sync.shareDeck", "Modify Sync.unshareDeck")
+    _assert(parse_approval_comment(altered) is None,
+            "editing the visible approved scope must invalidate its fingerprint")
+
+
+def test_approval_verifier_fails_closed() -> None:
+    from agent.issue_payload import task_fingerprint
+    from agent.approval import (
+        APPROVAL_PREFIX, REVOCATION_PREFIX, build_approval_comment, evaluate_approval,
+    )
+
+    issue = {
+        "title": "Protect Sync",
+        "body": "Keep offline sync safe.",
+        "labels": [{"name": "ai-sensitive-approved"}],
+        "comments": [],
+    }
+    task_sha = task_fingerprint(issue)
+    scope = "Modify Sync.shareDeck error handling without changing its public contract."
+    audit = build_approval_comment(task_sha, scope, "yes, approve this exact scope")
+
+    missing = evaluate_approval(issue, "marekanto")
+    _assert(not missing["valid"] and missing["status"] == "missing_owner_approval",
+            "approval label without owner audit must fail closed")
+
+    issue["comments"] = [{
+        "author": {"login": "marekanto"}, "body": audit,
+        "createdAt": "2026-11-28T10:00:00Z",
+    }]
+    valid = evaluate_approval(issue, "marekanto", task_sha)
+    _assert(valid["valid"] and valid["allow_sensitive"] and valid["status"] == "verified",
+            f"matching owner approval should pass: {valid}")
+
+    stale = dict(issue)
+    stale["body"] = issue["body"] + " Added a new requirement."
+    invalidated = evaluate_approval(stale, "marekanto")
+    _assert(not invalidated["valid"] and invalidated["status"] == "task_fingerprint_mismatch",
+            "a changed Issue must invalidate the previous approval")
+
+    changed_snapshot = evaluate_approval(issue, "marekanto", "0" * 64)
+    _assert(not changed_snapshot["valid"] and changed_snapshot["status"] == "task_changed",
+            "the workflow must reject task drift after the TASK snapshot")
+
+    removed = dict(issue)
+    removed["labels"] = []
+    removed_result = evaluate_approval(
+        removed, "marekanto", task_sha, require_approval=True,
+        expected_approval_sha=valid["approval_sha256"],
+    )
+    _assert(not removed_result["valid"] and removed_result["status"] == "approval_removed",
+            "a previously verified approval must not disappear during a run")
+
+    changed_scope_audit = build_approval_comment(
+        task_sha, "Modify Sync.unshareDeck instead of Sync.shareDeck.", "yes, approve this exact scope"
+    )
+    changed_scope = dict(issue)
+    changed_scope["comments"] = issue["comments"] + [{
+        "author": {"login": "marekanto"}, "body": changed_scope_audit,
+        "createdAt": "2026-11-28T10:00:30Z",
+    }]
+    changed_scope_result = evaluate_approval(
+        changed_scope, "marekanto", task_sha, require_approval=True,
+        expected_approval_sha=valid["approval_sha256"],
+    )
+    _assert(not changed_scope_result["valid"] and changed_scope_result["status"] == "approval_changed",
+            "a new scope approval must not replace the approval used by an in-flight run")
+
+    revoked = dict(issue)
+    revoked["comments"] = issue["comments"] + [{
+        "author": {"login": "marekanto"}, "body": REVOCATION_PREFIX + "\n\nReason: Scope withdrawn.",
+        "createdAt": "2026-11-28T10:01:00Z",
+    }]
+    revoked_result = evaluate_approval(revoked, "marekanto")
+    _assert(not revoked_result["valid"] and revoked_result["status"] == "revoked",
+            "latest owner revocation must override a still-present label")
+
+    forged = dict(issue)
+    forged["comments"] = issue["comments"] + [{
+        "author": {"login": "another-user"}, "body": REVOCATION_PREFIX,
+        "createdAt": "2026-11-28T10:02:00Z",
+    }]
+    forged_result = evaluate_approval(forged, "marekanto")
+    _assert(forged_result["valid"] and forged_result["allow_sensitive"],
+            "a non-owner comment must not revoke the owner's approval")
+
+
+def test_clarifier_uses_canonical_automation_comment_filter() -> None:
+    import json
+    from unittest.mock import patch
+    from agent import clarifier
+
+    issue_payload = {
+        "title": "A task",
+        "body": "Expected behavior.",
+        "author": {"login": "alice"},
+        "comments": [
+            {"author": {"login": "alice"}, "body": "Please preserve translations."},
+            {"author": {"login": "marekanto"}, "body": "Protected-change approval recorded by AltCards Orchestrator.\n\naudit"},
+            {"author": {"login": "github-actions[bot]"}, "body": "bot status"},
+        ],
+    }
+    with patch.object(clarifier, "gh", return_value=json.dumps(issue_payload)):
+        fetched = clarifier.fetch_issue("123")
+    _assert(fetched["comments"] == ["Please preserve translations."],
+            f"Clarifier did not use canonical comment filtering: {fetched['comments']}")
+
+
+def test_workflow_verifies_approval_before_agent_and_before_merge() -> None:
+    from agent import maintenance_agent
+
+    workflow = (ROOT / ".github/workflows/ai-issue.yml").read_text(encoding="utf-8")
+    compose = workflow.index("- name: Compose TASK from issue")
+    approval = workflow.index("- name: Verify sensitive approval fingerprint")
+    run_agent = workflow.index("- name: Run agent")
+    final_verify = workflow.index("- name: Verify task and approval unchanged before PR")
+    merge = workflow.index("- name: Commit + PR + auto-merge")
+    _assert(compose < approval < run_agent,
+            "approval must be verified after canonical TASK composition and before Code Agent")
+    _assert(final_verify < merge,
+            "task and approval must be rechecked immediately before PR creation")
+    _assert("steps.approval.outputs.allow_sensitive" in workflow,
+            "protected-change permission must come from verified approval output")
+    _assert("agent/issue_payload.py" in workflow and "agent/approval.py" in workflow,
+            "workflow must use the canonical payload builder and fingerprint verifier")
+    _assert("--expected-task-sha" in workflow,
+            "workflow must compare the exact captured TASK fingerprint")
+    _assert("--expected-approval-sha" in workflow and "--require-approval" in workflow,
+            "retries and pre-PR checks must preserve the exact approval used at agent start")
+    maintenance_agent._workflow_invariants(".github/workflows/ai-issue.yml", workflow)
+
 def main() -> int:
     tests = [
         test_brace_matcher_handles_templates_and_nested,
@@ -991,6 +1169,11 @@ def main() -> int:
         test_issue_workflow_excludes_automation_comments,
         test_pr_merge_requires_named_quality_gate_without_bypass,
         test_maintenance_gate_requires_explicit_output,
+        test_issue_payload_filters_automation_comments_and_preserves_task_order,
+        test_approval_fingerprint_binds_exact_task_and_scope,
+        test_approval_verifier_fails_closed,
+        test_clarifier_uses_canonical_automation_comment_filter,
+        test_workflow_verifies_approval_before_agent_and_before_merge,
     ]
     failed = 0
     for t in tests:
