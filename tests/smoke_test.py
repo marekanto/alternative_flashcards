@@ -155,6 +155,65 @@ def test_issue70_dialog_scroll_css() -> None:
             "dialog rules must preserve the base -> .mb.long -> later dvh override order")
 
 
+def test_issue79_suggest_direction_and_empty_input() -> None:
+    from agent.context_builder import extract_named, extract_translation_entry
+
+    suggest = extract_named(SOURCE, "suggest")
+    _assert(suggest is not None, "suggest() source could not be extracted")
+    guard_box = suggest.index("if(!box) return;")
+    guard_empty = suggest.index("if(!f){ box.innerHTML = ''; toast(t('add.sg.empty')); return; }")
+    search_state = suggest.index("box.innerHTML = `<span class=\"mu\">${t('add.sg.search')}</span>`;")
+    _assert(guard_box < guard_empty < search_state,
+            "missing #sg and empty #fr must be handled before any request or search UI")
+    _assert("if(!f) return;" not in suggest,
+            "empty front input must not silently return")
+    _assert("const rev = !!d?.reverse;" in suggest,
+            "suggestion direction must follow the selected deck's reverse flag")
+    _assert("`Słownik polsko-${ln.name.pl}. Hasło: „${f}”. Podaj do 4 tłumaczeń. JSON array stringów.`" in suggest,
+            "reverse decks must retain Polish-to-foreign suggestions")
+    _assert("`Słownik ${ln.name.pl}-polski. Hasło: „${f}”. Podaj do 4 polskich tłumaczeń. JSON array stringów.`" in suggest,
+            "default decks must request Polish translations for foreign headwords")
+    _assert("await nb.postMessage({q:f,lang:d.lang,rev})" in suggest,
+            "the native bridge payload must include the additive reverse flag")
+    _assert("await sm.json(prompt)" in suggest,
+            "the non-native suggestion client must use the direction-aware prompt")
+    _assert("k.value=k.value?k.value+', '+tn:tn" in suggest,
+            "suggestion chips must continue appending to the back field")
+    _assert("L[d?.lang]||L.es" in suggest,
+            "the existing silent Spanish fallback must remain unchanged")
+    _assert(suggest.count("catch(e)") == 1,
+            "suggest() must retain its single catch block")
+
+    empty_key = extract_translation_entry(SOURCE, "add.sg.empty")
+    _assert(empty_key is not None, "add.sg.empty translation entry is missing")
+    for language in ("pl:'Wpisz słowo'", "en:'Type a word'", "es:'Escribe una palabra'"):
+        _assert(language in empty_key, f"add.sg.empty is missing locale value {language}")
+
+
+def test_issue79_targeted_suggest_and_translation_context() -> None:
+    from agent.context_builder import extract_named, extract_translation_entry
+
+    suggest = extract_named(SOURCE, "suggest")
+    translation = extract_translation_entry(SOURCE, "add.sg.unavailable")
+    _assert(suggest is not None and "async function suggest()" in suggest,
+            "targeted context must include the current async suggest() implementation")
+    _assert(translation is not None and "Użyj PONS." in translation,
+            "targeted context must include the existing unavailable translation anchor")
+    result = build_context(
+        "Honor reverse deck direction in add-card suggestions",
+        SOURCE,
+        extra_names=["suggest", "add.sg.unavailable"],
+    )
+    _assert(result["ok"],
+            f"Issue #79 targeted context failed: missing={result['missing']} over={result['over_limit']}")
+    _assert("expanded:suggest" in result["included"],
+            "Issue #79 suggest() was not included in targeted context")
+    _assert("expanded:TR:add.sg.unavailable" in result["included"],
+            "Issue #79 translation entry was not included in targeted context")
+    _assert("add.sg.unavailable" in result["context"] and "async function suggest()" in result["context"],
+            "Issue #79 exact patch anchors are absent from recovered context")
+
+
 def test_issue69_add_form_responsive_markup_and_css() -> None:
     from agent.context_builder import extract_named
 
@@ -486,6 +545,23 @@ def test_need_context_symbol_extraction() -> None:
     _assert(css_context["ok"] and "expanded:css:.mb" in css_context["included"]
             and "expanded:css:.mb.long" in css_context["included"],
             f"requested CSS context was not supplied to the agent: {css_context}")
+
+    translation_proposal = {
+        "status": "need_context",
+        "reason": "Need current `suggest()` body and `add.sg.unavailable` translation entry.",
+        "missing_context": ["suggest", "add.sg.unavailable"],
+    }
+    translation_names = orchestrator._requested_context_names(translation_proposal, "Fix suggestion hints")
+    _assert(set(translation_names) >= {"suggest", "add.sg.unavailable"},
+            f"translation entry key was not recovered from need_context: {translation_names}")
+    translation_context = build_context(
+        "Fix suggestion hints",
+        SOURCE,
+        extra_names=translation_names,
+    )
+    _assert(translation_context["ok"] and "expanded:suggest" in translation_context["included"]
+            and "expanded:TR:add.sg.unavailable" in translation_context["included"],
+            f"orchestrator did not deliver the requested translation context: {translation_context}")
 
     html_proposal = {
         "status": "need_context",
@@ -1218,6 +1294,8 @@ def main() -> int:
         test_polish_scope_heading_excludes_restrictions_from_context_classification,
         test_issue63_translation_literals_do_not_activate_card_context,
         test_login_task,
+        test_issue79_suggest_direction_and_empty_input,
+        test_issue79_targeted_suggest_and_translation_context,
         test_issue70_dialog_scroll_css,
         test_card_management_context_has_full_dependencies,
         test_agent_prompts_receive_complete_task,
