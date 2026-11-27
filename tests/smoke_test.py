@@ -63,6 +63,29 @@ def test_ranking_bonus_task() -> None:
     _assert(res["chars"] <= MAX_CONTEXT_CHARS, "przekroczony limit znaków")
 
 
+def test_polish_scope_heading_excludes_restrictions_from_context_classification() -> None:
+    from agent.context_builder import (
+        _positive_scope_for_classification,
+        _is_cards_task,
+        _is_xp_task,
+    )
+
+    task = """AltCards: poprawna obsługa XP i bonusów offline
+
+B1: Sync.logXp() powinno raportować powodzenie.
+B2: Sync.init() nie powinno ustawiać pseudo-usera.
+
+## Granice zmian
+- Nie zmieniać SRS, kart, fiszek, limitów dziennych ani UI.
+"""
+    positive_scope = _positive_scope_for_classification(task).lower()
+    _assert(_is_xp_task(positive_scope), "XP scope was lost after filtering")
+    _assert(not _is_cards_task(positive_scope),
+            "SRS/cards exclusions incorrectly activated card-management context")
+    _assert("srs" not in positive_scope and "fiszek" not in positive_scope,
+            "Polish scope exclusions remained in positive classification text")
+
+
 def test_login_task() -> None:
     task = "Usuń podtytuł na ekranie logowania i zmień tagline"
     res = build_context(task, SOURCE)
@@ -698,6 +721,7 @@ def main() -> int:
         test_validation_failure_refines_next_instruction,
         test_generic_xp_task_is_complete,
         test_ranking_bonus_task,
+        test_polish_scope_heading_excludes_restrictions_from_context_classification,
         test_login_task,
         test_card_management_context_has_full_dependencies,
         test_agent_prompts_receive_complete_task,
