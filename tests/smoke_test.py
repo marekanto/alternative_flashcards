@@ -357,7 +357,7 @@ Do not change: computeStreak, totalDue, todayDone, ans, grade, undoAnswer, Sync.
     # Keep markup extraction from a task: this is distinct from scanning
     # every identifier in the requirements for source dependencies.
     old_comment = "<!-- Existing target comment -->"
-    markup_task = f"Replace this comment with a new one:\\n{old_comment}"
+    markup_task = f"Replace this comment with a new one:\n{old_comment}"
     markup_names = orchestrator._requested_context_names(
         {"status": "need_context", "missing_context": []}, markup_task
     )
@@ -387,19 +387,21 @@ def test_orchestrator_reprompts_when_requested_context_is_already_present() -> N
             if args[1:] == ["diff", "--name-only"]:
                 return "index.html"
             if args[1:] == ["diff", "--", "index.html"]:
-                return "diff --git a/index.html b/index.html\\n-baseline\\n+updated\\n"
+                return "diff --git a/index.html b/index.html\n-baseline\n+updated\n"
             raise AssertionError(f"Unexpected git command in test: {args}")
 
-        with patch.object(orchestrator, "ROOT", root), \\
-             patch.object(orchestrator, "TARGET_FILE", "index.html"), \\
-             patch.object(orchestrator, "check_clean_tree"), \\
-             patch.object(orchestrator, "build_context", return_value=context), \\
-             patch.object(orchestrator, "propose", side_effect=proposals) as code_agent, \\
-             patch.object(orchestrator, "apply_operations", return_value="updated source"), \\
-             patch.object(orchestrator, "enforce_sensitive_guard"), \\
-             patch.object(orchestrator, "enforce_file_allowlist"), \\
-             patch.object(orchestrator, "review", return_value={"verdict": "pass", "findings": []}), \\
-             patch.object(orchestrator, "run", side_effect=fake_run):
+        with (
+            patch.object(orchestrator, "ROOT", root),
+            patch.object(orchestrator, "TARGET_FILE", "index.html"),
+            patch.object(orchestrator, "check_clean_tree"),
+            patch.object(orchestrator, "build_context", return_value=context),
+            patch.object(orchestrator, "propose", side_effect=proposals) as code_agent,
+            patch.object(orchestrator, "apply_operations", return_value="updated source"),
+            patch.object(orchestrator, "enforce_sensitive_guard"),
+            patch.object(orchestrator, "enforce_file_allowlist"),
+            patch.object(orchestrator, "review", return_value={"verdict": "pass", "findings": []}),
+            patch.object(orchestrator, "run", side_effect=fake_run),
+        ):
             with patch.dict("os.environ", {"TASK": "Update a setting", "ALLOW_SENSITIVE_CHANGES": "false"}):
                 orchestrator.main()
 
