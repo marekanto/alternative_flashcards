@@ -276,6 +276,10 @@ CARD_KEYWORDS = (
     "kart", "fiszk", "tali", "deck", "rendercards", "dlist", "delcard",
     "editcard", "vcards", "excluded", "wyklucz", "kolejk", "srs",
 )
+SETTINGS_KEYWORDS = (
+    "settings", "vsettings", "dailygoal", "daily goal",
+    "dzienny cel", "dziennego celu", "ustawienia", "ustawień", "ustawien",
+)
 
 
 def _positive_scope_for_classification(task: str) -> str:
@@ -285,6 +289,35 @@ def _positive_scope_for_classification(task: str) -> str:
         task,
     )
     return task[:match.start()] if match else task
+
+
+_INLINE_CODE_SPAN_RE = re.compile(r"\x60+([^\x60\n]+?)\x60+")
+_TRANSLATION_EXAMPLE_LINE_RE = re.compile(
+    r"""(?im)^[ \t]*(?:FIND:\s*)?['"](?:cards|settings|tut\.g|library)\.[A-Za-z0-9_.]+['"]\s*:\s*\{[^{}\n]*\}\s*,?[ \t]*$"""
+)
+
+
+def _classification_text_for_context(task: str) -> str:
+    """Ignore display literals in code examples but retain standalone symbols.
+
+    Translation examples such as 'cards.title':{pl:'Talie',en:'Decks'} must
+    not activate card-management context merely because their display values
+    contain tali or deck. Inline symbols such as vSettings, saveSettings()
+    and S.settings.dailyGoal remain useful routing signals.
+    """
+    positive_scope = _positive_scope_for_classification(task)
+    text = _TRANSLATION_EXAMPLE_LINE_RE.sub(" ", positive_scope)
+
+    def keep_symbol(match: re.Match[str]) -> str:
+        value = match.group(1).strip()
+        if re.fullmatch(
+            r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*(?:\(\))?",
+            value,
+        ):
+            return value
+        return " "
+
+    return _INLINE_CODE_SPAN_RE.sub(keep_symbol, text)
 
 
 def _is_xp_task(task_low: str) -> bool:
@@ -298,14 +331,23 @@ def _is_login_task(task_low: str) -> bool:
 def _is_cards_task(task_low: str) -> bool:
     return any(k in task_low for k in CARD_KEYWORDS)
 
+
+def _is_settings_task(task_low: str) -> bool:
+    return any(k in task_low for k in SETTINGS_KEYWORDS)
+
+
 def build_context(task: str, source: str, extra_names: list[str] | None = None) -> dict:
-    classification_text = _positive_scope_for_classification(task).lower()
+    positive_scope = _positive_scope_for_classification(task)
+    # Classify task prose and standalone code symbols, not display strings
+    # embedded in FIND/REPLACE or translation examples.
+    classification_text = _classification_text_for_context(task).lower()
     is_xp = _is_xp_task(classification_text)
     is_login = _is_login_task(classification_text)
     # Apply the same positive-scope filter used for XP/login classification.
     # Otherwise a constraint such as "do not change decks" can accidentally
     # activate the large card-management context for an unrelated task.
     is_cards = _is_cards_task(classification_text)
+    is_settings = _is_settings_task(classification_text)
 
     ordered: list[tuple[str, str]] = []
     missing: list[str] = []
@@ -411,7 +453,7 @@ def build_context(task: str, source: str, extra_names: list[str] | None = None) 
         # Also extract dictionary keys explicitly mentioned in the task.
         mentioned_keys = re.findall(
             r"\b(cards|settings|tut\.g|library)\.([A-Za-z0-9_.]+)\b",
-            classification_text,
+            positive_scope.lower(),
         )
         dynamic_keys = [f"{namespace}.{suffix}" for namespace, suffix in mentioned_keys]
         for key in dict.fromkeys((*card_translation_keys, *dynamic_keys)):
@@ -422,6 +464,33 @@ def build_context(task: str, source: str, extra_names: list[str] | None = None) 
         for name in ("vCards", "vSettings", "dlist", "shareDeck", "unshareDeck", "deckMenu"):
             if extract_named(source, name) is None:
                 missing.append(f"function:{name}")
+
+    if is_settings and not is_cards and not is_xp:
+        # Settings-only work needs the Settings view and its save handler, not
+        # all deck-management handlers. Keep shared persistence/render context.
+        push("vSettings", extract_named(source, "vSettings"))
+        push("saveSettings", extract_named(source, "saveSettings"))
+
+        settings_translation_keys = (
+            "settings.newLimit", "settings.newLimitInfo", "settings.showTut",
+            "settings.back", "settings.saved", "settings.save",
+        )
+        # Read namespaced keys from the original positive scope so an anchor
+        # such as cards.title remains available after literal values are masked.
+        mentioned_keys = re.findall(
+            r"\b(cards|settings|tut\.g|library)\.([A-Za-z0-9_.]+)\b",
+            positive_scope.lower(),
+        )
+        dynamic_keys = [
+            f"{namespace}.{suffix}" for namespace, suffix in mentioned_keys
+        ]
+        for key in dict.fromkeys((*settings_translation_keys, *dynamic_keys)):
+            push(f"TR[{key}]", extract_translation_entry(source, key))
+
+        for name in ("vSettings", "saveSettings"):
+            if extract_named(source, name) is None:
+                missing.append(f"function:{name}")
+
     parts: list[str] = []
     included: list[str] = []
     over_limit: list[str] = []
@@ -434,6 +503,8 @@ def build_context(task: str, source: str, extra_names: list[str] | None = None) 
     if is_cards:
         # Include all deck handlers plus the relevant existing TR entries.
         snippet_cap += 30
+    elif is_settings:
+        snippet_cap += 8
 
     for label, body in ordered:
         key = body.strip()
