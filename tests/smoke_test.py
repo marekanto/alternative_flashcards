@@ -262,6 +262,10 @@ def test_agent_prompts_receive_complete_task() -> None:
         qa_agent.review(task, "diff")
         _assert(task in qa_chat.call_args.args[1], "QA task został obcięty")
         _assert(qa_chat.call_args.kwargs["max_tokens"] >= 3000, "QA output cap is too low")
+    _assert("already present in the supplied context" in code_agent.SYSTEM,
+            "Code Agent must not re-request source already supplied")
+    _assert("not task requirements" in code_agent.SYSTEM,
+            "Code Agent must not treat out-of-scope task mentions as dependencies")
 
 def test_context_builder_targeted_expansion() -> None:
     source = """
@@ -331,6 +335,80 @@ def test_need_context_symbol_extraction() -> None:
         old_comment in comment_context["context"],
         "Existing HTML comment is absent from expanded context",
     )
+
+
+def test_need_context_does_not_promote_task_identifiers_to_dependencies() -> None:
+    import orchestrator
+
+    task = """Add a daily goal setting.
+Problem context: it currently lives in defaults, is migrated in download(), and is read by vStudy().
+Do not change: computeStreak, totalDue, todayDone, ans, grade, undoAnswer, Sync.download.
+"""
+    proposal = {
+        "status": "need_context",
+        "summary": "Need settings handlers",
+        "reason": "Need complete vSettings and saveSettings source.",
+        "missing_context": ["vSettings", "saveSettings"],
+    }
+    names = orchestrator._requested_context_names(proposal, task)
+    _assert(names == ["vSettings", "saveSettings"],
+            f"task mentions were incorrectly treated as missing dependencies: {names}")
+
+    # Keep markup extraction from a task: this is distinct from scanning
+    # every identifier in the requirements for source dependencies.
+    old_comment = "<!-- Existing target comment -->"
+    markup_task = f"Replace this comment with a new one:\\n{old_comment}"
+    markup_names = orchestrator._requested_context_names(
+        {"status": "need_context", "missing_context": []}, markup_task
+    )
+    _assert(old_comment in markup_names,
+            f"HTML comment target was lost while filtering task identifiers: {markup_names}")
+
+
+def test_orchestrator_reprompts_when_requested_context_is_already_present() -> None:
+    import tempfile
+    from unittest.mock import patch
+    import orchestrator
+
+    with tempfile.TemporaryDirectory(prefix="altcards-context-already-present-") as td:
+        root = pathlib.Path(td)
+        target = root / "index.html"
+        target.write_text("baseline source", encoding="utf-8")
+        context = {"context": "BASE CONTEXT WITH vSettings and saveSettings", "chars": 44,
+                   "included": ["base", "vSettings", "saveSettings"],
+                   "missing": [], "over_limit": [], "ok": True}
+        proposals = [
+            {"status": "need_context", "summary": "Need settings handlers",
+             "reason": "Need vSettings and saveSettings", "missing_context": ["vSettings", "saveSettings"]},
+            {"status": "ready", "summary": "Updated setting", "operations": [{"find": "baseline", "replace": "updated"}]},
+        ]
+
+        def fake_run(args):
+            if args[1:] == ["diff", "--name-only"]:
+                return "index.html"
+            if args[1:] == ["diff", "--", "index.html"]:
+                return "diff --git a/index.html b/index.html\\n-baseline\\n+updated\\n"
+            raise AssertionError(f"Unexpected git command in test: {args}")
+
+        with patch.object(orchestrator, "ROOT", root), \\
+             patch.object(orchestrator, "TARGET_FILE", "index.html"), \\
+             patch.object(orchestrator, "check_clean_tree"), \\
+             patch.object(orchestrator, "build_context", return_value=context), \\
+             patch.object(orchestrator, "propose", side_effect=proposals) as code_agent, \\
+             patch.object(orchestrator, "apply_operations", return_value="updated source"), \\
+             patch.object(orchestrator, "enforce_sensitive_guard"), \\
+             patch.object(orchestrator, "enforce_file_allowlist"), \\
+             patch.object(orchestrator, "review", return_value={"verdict": "pass", "findings": []}), \\
+             patch.object(orchestrator, "run", side_effect=fake_run):
+            with patch.dict("os.environ", {"TASK": "Update a setting", "ALLOW_SENSITIVE_CHANGES": "false"}):
+                orchestrator.main()
+
+        _assert(code_agent.call_count == 2,
+                "a redundant need_context response should get one bounded re-read")
+        _assert("already present" in code_agent.call_args_list[1].args[0],
+                "retry did not tell the Code Agent to inspect the supplied snippets")
+        _assert(target.read_text(encoding="utf-8") == "updated source",
+                "patch was not retained after the bounded context re-read")
 
 
 def test_orchestrator_recovers_need_context() -> None:
@@ -771,6 +849,8 @@ def main() -> int:
         test_agent_prompts_receive_complete_task,
         test_context_builder_targeted_expansion,
         test_need_context_symbol_extraction,
+        test_need_context_does_not_promote_task_identifiers_to_dependencies,
+        test_orchestrator_reprompts_when_requested_context_is_already_present,
         test_orchestrator_recovers_need_context,
         test_deepseek_retries_transient_http_errors,
         test_maintenance_allowlist_and_workflow_guards,
