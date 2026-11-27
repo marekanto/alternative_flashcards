@@ -803,12 +803,18 @@ def test_issue_workflow_excludes_automation_comments() -> None:
             f"issue_comment trigger does not exclude workflow comment: {prefix!r}",
         )
 
+    payload_builder = (ROOT / "agent/issue_payload.py").read_text(encoding="utf-8")
     for prefix in (failure, clarification, success, approval, revoked):
-        marker = f'select((.body // "") | startswith("{prefix}") | not)'
         _assert(
-            workflow.count(marker) == 2,
-            f"both TASK composition paths must exclude comment: {prefix!r}",
+            f'"{prefix}"' in payload_builder,
+            f"canonical TASK builder does not exclude workflow comment: {prefix!r}",
         )
+
+    compose_calls = workflow.count(
+        'python -B agent/issue_payload.py --issue-number "$ISSUE_NUMBER" --output /tmp/task.txt'
+    )
+    _assert(compose_calls == 2,
+            "initial composition and recovery rebuild must use the same canonical TASK builder")
 
 
 
