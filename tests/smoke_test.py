@@ -273,6 +273,8 @@ def test_agent_prompts_receive_complete_task() -> None:
     with patch.object(code_agent, "chat", return_value={"status": "need_context", "summary": "test"}) as code_chat:
         code_agent.propose(task, "source context")
         _assert(task in code_chat.call_args.args[1], "Code Agent task został obcięty")
+        _assert(code_chat.call_args.kwargs["max_tokens"] == 5000,
+                "Code Agent must receive 5000 completion tokens")
     with patch.object(qa_agent, "chat", return_value={"verdict": "pass", "findings": []}) as qa_chat:
         qa_agent.review(task, "diff")
         _assert(task in qa_chat.call_args.args[1], "QA task został obcięty")
@@ -283,6 +285,12 @@ def test_agent_prompts_receive_complete_task() -> None:
             "Code Agent must not treat out-of-scope task mentions as dependencies")
     _assert("Never request the bare TR dictionary" in code_agent.SYSTEM,
             "Code Agent must request translation entries individually, not the whole dictionary")
+    _assert("Never rewrite a whole JavaScript function" in code_agent.SYSTEM,
+            "Code Agent must prefer small fragment-level edits")
+    _assert("smallest possible patch" in code_agent.SYSTEM,
+            "Code Agent must use compact patch operations")
+    _assert(code_chat.call_args.kwargs["max_tokens"] == 5000,
+            "Code Agent output headroom should be 5000 tokens, without raising the global cap")
 
 def test_context_builder_targeted_expansion() -> None:
     source = """
