@@ -215,6 +215,7 @@ def _workflow_invariants(path: str, text: str) -> None:
             "Verify task and approval unchanged before PR",
             "agent/issue_payload.py", "agent/approval.py",
             "steps.approval.outputs.allow_sensitive", "--expected-task-sha",
+            "--expected-approval-sha", "--require-approval",
         ])
     else:
         required.extend(["allow_sensitive", "ALLOW_SENSITIVE_CHANGES"])
