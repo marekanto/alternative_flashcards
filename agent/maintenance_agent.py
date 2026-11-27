@@ -209,7 +209,14 @@ def _workflow_invariants(path: str, text: str) -> None:
                 "pull-requests: write", "python -B tests/smoke_test.py",
                 "set -o pipefail", "gh pr checks", "--required", "gh pr merge"]
     if path.endswith("ai-issue.yml"):
-        required.extend(["ai-sensitive-approved", "ai-blocked", "ALLOW_SENSITIVE_CHANGES"])
+        required.extend([
+            "ai-sensitive-approved", "ai-blocked", "ALLOW_SENSITIVE_CHANGES",
+            "Verify sensitive approval fingerprint",
+            "Verify task and approval unchanged before PR",
+            "agent/issue_payload.py", "agent/approval.py",
+            "steps.approval.outputs.allow_sensitive", "--expected-task-sha",
+            "--expected-approval-sha", "--require-approval",
+        ])
     else:
         required.extend(["allow_sensitive", "ALLOW_SENSITIVE_CHANGES"])
     missing = [token for token in required if token not in text]
@@ -257,6 +264,9 @@ def _source_invariants(path: str, text: str) -> None:
             "test_card_management_context_has_full_dependencies",
             "test_orchestrator_recovers_need_context",
             "test_maintenance_allowlist_and_workflow_guards",
+            "test_issue_payload_filters_automation_comments_and_preserves_task_order",
+            "test_approval_fingerprint_binds_exact_task_and_scope",
+            "test_approval_verifier_fails_closed",
         ],
     }.get(path, [])
     missing = [token for token in required if token not in text]
