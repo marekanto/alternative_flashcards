@@ -73,6 +73,30 @@ def test_login_task() -> None:
     _assert(res["chars"] <= MAX_CONTEXT_CHARS, "przekroczony limit znaków")
 
 
+
+def test_function_context_preserves_declaration_modifiers() -> None:
+    """Named-function excerpts must include async/export/generator modifiers."""
+    from agent.context_builder import extract_named
+
+    samples = [
+        ("async function shareDeck(id){ await sync(id); }", "shareDeck", "async function shareDeck"),
+        ("export async function exportedTask(){ return 1; }", "exportedTask", "export async function exportedTask"),
+        ("function* cardIterator(){ yield 1; }", "cardIterator", "function* cardIterator"),
+    ]
+    for source, name, prefix in samples:
+        extracted = extract_named(source, name)
+        _assert(extracted is not None and extracted.startswith(prefix),
+                f"{name} declaration modifier was lost: {extracted!r}")
+
+    actual = extract_named(SOURCE, "shareDeck")
+    _assert(actual is not None and actual.startswith("async function shareDeck"),
+            "current shareDeck context must preserve its async declaration")
+    actual_unshare = extract_named(SOURCE, "unshareDeck")
+    _assert(actual_unshare is not None and actual_unshare.startswith("async function unshareDeck"),
+            "current unshareDeck context must preserve its async declaration")
+
+
+
 def test_brace_matcher_handles_templates_and_nested() -> None:
     from agent.context_builder import _match_braces
     sample = 'function f(){ const x = `a${ {b:1}.b }c`; if(1){return 2} }'
@@ -642,6 +666,7 @@ def test_maintenance_gate_requires_explicit_output() -> None:
 def main() -> int:
     tests = [
         test_brace_matcher_handles_templates_and_nested,
+        test_function_context_preserves_declaration_modifiers,
         test_sensitive_guard_requires_explicit_approval,
         test_validation_failure_refines_next_instruction,
         test_generic_xp_task_is_complete,
