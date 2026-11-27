@@ -14,6 +14,9 @@ Return ONLY a JSON object:
 Rules:
 - Modify only index.html.
 - Use 1 to 5 exact search/replace operations; every find must be copied verbatim from supplied code and occur exactly once in the full file.
+- Return the smallest possible patch: replace only the exact affected markup, declaration, or CSS rule. Never rewrite a whole JavaScript function, template, or stylesheet when a smaller fragment is sufficient.
+- For markup wrapping, include only the neighboring elements needed to anchor the insertion. For CSS, change only the requested declaration and add only the requested selector/media rule.
+- Keep the JSON concise: summary and reason at most 80 characters each, risk_notes empty unless a concrete safety issue exists, and no explanations outside the required fields.
 - Do not include line-number prefixes in find strings.
 - Prefer CSS-only changes for visual requests.
 - Do not rewrite the entire file, refactor unrelated code, add libraries, scripts, network calls, telemetry or secrets.
@@ -38,6 +41,6 @@ def propose(task, context):
         "TASK (complete; upstream limit 4000 chars):\n" + task
         + "\n\nALTcards CONTEXT AND SOURCE:\n" + context
         + "\n\nReturn JSON only.",
-        max_tokens=3500,
+        max_tokens=5000,
         retry_on_truncation=True,
     )
