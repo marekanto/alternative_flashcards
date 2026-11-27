@@ -571,7 +571,9 @@ Sync = {
         else showLogin();
       });
     } catch(e) {
-      if(S && S.cards && S.cards.length) { this.user={id:'offline',email:'offline'}; hideLogin(); render(); }
+      this.user = null;
+      this.profile = null;
+      if(S && S.cards && S.cards.length) { hideLogin(); render(); }
       else showLogin();
     }
   },
@@ -693,8 +695,15 @@ Sync = {
     }
   },
   async logXp(amount){
-    if(IS_DEV||!this.user||amount<=0)return;
-    try{await this.client.from('xp_logs').insert({user_id:this.user.id,amount:amount})}catch(e){}
+    if(IS_DEV||!this.user||this.user.id==='offline'||amount<=0)return false;
+    try{
+      const {error}=await this.client.from('xp_logs').insert({user_id:this.user.id,amount:amount});
+      if(error)throw error;
+      return true;
+    }catch(e){
+      console.warn('Sync.logXp failed:',e);
+      return false;
+    }
   },
   async checkBonuses(){
     if(IS_DEV||!this.user)return;
