@@ -263,16 +263,6 @@ def _run_pipeline():
             print(f"  → Context expanded with: {names or '(no new symbols)'}")
             continue
 
-            base_context = new_context
-            current_task = (
-                current_task
-                + "\\n\\nCONTEXT RECOVERY: The previous response requested more source context. "
-                + "Use the expanded, current source snippets below. Do not infer missing code. "
-                + ("Requested symbols: " + ", ".join(names) if names else "Re-check the complete supplied snippets.")
-            )
-            print(f"  → Context expanded with: {names or '(task-selected blocks)'}")
-            continue
-
         if status in TRULY_TERMINAL:
             raise RuntimeError(
                 f"Code agent returned terminal status={status!r}. "
