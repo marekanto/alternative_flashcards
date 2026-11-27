@@ -221,7 +221,7 @@ jobs:
           # automation PAT is retained for PR creation and merge permissions.
           for attempt in $(seq 1 24); do
             set +e
-            GH_TOKEN="$GH_CHECKS_TOKEN" gh pr checks "$PR_URL" --required >/tmp/application-pr-checks.log 2>&1
+            GH_TOKEN="$GH_CHECKS_TOKEN" gh pr checks "$PR_URL" >/tmp/application-pr-checks.log 2>&1
             set -e
             if ! grep -Fq "no checks reported on" /tmp/application-pr-checks.log; then
               break
@@ -234,7 +234,7 @@ jobs:
             echo "::error::No checks appeared for the application PR after 120 seconds."
             exit 1
           fi
-          timeout 900s env GH_TOKEN="$GH_CHECKS_TOKEN" gh pr checks "$PR_URL" --required --watch --fail-fast
+          timeout 900s env GH_TOKEN="$GH_CHECKS_TOKEN" gh pr checks "$PR_URL" --watch --fail-fast
           gh pr merge "$PR_URL" --squash --delete-branch
           STATE=$(gh pr view "$PR_URL" --json state --jq .state)
           if [ "$STATE" != "MERGED" ]; then
