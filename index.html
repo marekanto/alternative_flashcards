@@ -209,6 +209,7 @@ body.reviewing #t { bottom: 20px; }
   background: var(--sf); border-radius: 24px; padding: 28px; width: 100%; max-width: 420px;
   box-shadow: var(--shadow-lg); margin: auto; animation: scaleUp 0.2s ease;
 }
+.mb { max-height: calc(100vh - 40px); overflow-y: auto; }
 @keyframes scaleUp { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
 .mb.long { max-height: 80vh; overflow-y: auto; }
@@ -216,6 +217,7 @@ body.reviewing #t { bottom: 20px; }
 .mb p, .mb ul, .mb div.mu { font-size: 15px; line-height: 1.6; color: var(--tx); white-space: pre-wrap; }
 .mb ul { padding-left: 20px; margin-bottom: 16px; }
 .mb li { margin-bottom: 8px; }
+.mb { max-height: calc(100dvh - 40px); }
 
 #login { background: var(--bg); z-index: 60; }
 #login .box { max-width: 400px; padding: 36px; border-radius: 28px; }

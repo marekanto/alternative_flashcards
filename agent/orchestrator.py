@@ -119,18 +119,27 @@ def _requested_context_names(proposal, task):
     candidates = []
     html_tag_pattern = re.compile(r"</\s*(body|head|html)\s*>", re.I)
     html_comment_pattern = re.compile(r"<!--[\s\S]{0,500}?-->")
+    # Only simple class/ID selectors and compound forms are accepted here.
+    # The context builder performs the final allowlist validation before
+    # extracting source, so combinators and selector lists never pass through.
+    css_selector_pattern = re.compile(
+        r"(?<![A-Za-z0-9_])"
+        r"(?:[.#][A-Za-z_][A-Za-z0-9_-]*)+(?![A-Za-z0-9_-])"
+    )
 
     for name in direct_names:
         candidates.extend(f"</{match.group(1).lower()}>" for match in html_tag_pattern.finditer(name))
         candidates.extend(match.group(0) for match in html_comment_pattern.finditer(name))
+        candidates.extend(css_selector_pattern.findall(name))
         if re.fullmatch(r"[A-Za-z_$][\w$]{0,80}", name):
             candidates.append(name)
 
-    # Model-authored explanation can name exact missing symbols. Never scan
-    # task text for function identifiers: it includes requirements/exclusions,
-    # not a list of source dependencies.
+    # Model-authored explanation can name exact missing symbols or CSS
+    # selectors. Never scan task text for function identifiers: it includes
+    # requirements/exclusions, not a list of source dependencies.
     for value in narrative_values:
         candidates.extend(re.findall(r"[\x60]([A-Za-z_$][\w$]{0,80})[\x60]", value))
+        candidates.extend(css_selector_pattern.findall(value))
         candidates.extend(re.findall(r"\b(?:function|method|symbol|handler)\s+([A-Za-z_$][\w$]{0,80})", value, re.I))
 
     task_scope = _positive_scope_for_classification(task)

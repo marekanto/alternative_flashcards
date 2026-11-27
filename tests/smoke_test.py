@@ -144,6 +144,17 @@ Nie zmieniaj:
     _assert(result["chars"] <= MAX_CONTEXT_CHARS,
             "Issue #63 Settings context exceeded the configured character budget")
 
+def test_issue70_dialog_scroll_css() -> None:
+    base_rule = ".mb { max-height: calc(100vh - 40px); overflow-y: auto; }"
+    modern_viewport_override = ".mb { max-height: calc(100dvh - 40px); }"
+    long_dialog_rule = ".mb.long { max-height: 80vh; overflow-y: auto; }"
+    _assert(base_rule in SOURCE, "standard dialogs must have a 100vh cap and internal scrolling")
+    _assert(long_dialog_rule in SOURCE, "the existing .mb.long rule must remain unchanged")
+    _assert(modern_viewport_override in SOURCE, "the later 100dvh override is missing")
+    _assert(SOURCE.index(base_rule) < SOURCE.index(long_dialog_rule) < SOURCE.index(modern_viewport_override),
+            "dialog rules must preserve the base -> .mb.long -> later dvh override order")
+
+
 def test_issue69_add_form_responsive_markup_and_css() -> None:
     from agent.context_builder import extract_named
 
@@ -458,6 +469,23 @@ def test_need_context_symbol_extraction() -> None:
     }
     names = orchestrator._requested_context_names(proposal, "Move shareDeck actions")
     _assert(set(names) >= {"shareDeck", "unshareDeck", "deckMenu"}, f"missing symbols not extracted: {names}")
+
+    css_proposal = {
+        "status": "need_context",
+        "reason": "Need the current `.mb` and `.mb.long` CSS rules to apply a safe dialog patch.",
+        "missing_context": [".mb rule", ".mb.long rule"],
+    }
+    css_names = orchestrator._requested_context_names(css_proposal, "Cap dialog height")
+    _assert(set(css_names) >= {".mb", ".mb.long"},
+            f"CSS selectors were not recovered from need_context: {css_names}")
+    css_context = build_context(
+        "Cap dialog height",
+        SOURCE,
+        extra_names=css_names,
+    )
+    _assert(css_context["ok"] and "expanded:css:.mb" in css_context["included"]
+            and "expanded:css:.mb.long" in css_context["included"],
+            f"requested CSS context was not supplied to the agent: {css_context}")
 
     html_proposal = {
         "status": "need_context",
@@ -1190,6 +1218,7 @@ def main() -> int:
         test_polish_scope_heading_excludes_restrictions_from_context_classification,
         test_issue63_translation_literals_do_not_activate_card_context,
         test_login_task,
+        test_issue70_dialog_scroll_css,
         test_card_management_context_has_full_dependencies,
         test_agent_prompts_receive_complete_task,
         test_context_builder_targeted_expansion,
