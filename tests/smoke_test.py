@@ -989,6 +989,30 @@ def test_approval_verifier_fails_closed() -> None:
     _assert(not changed_snapshot["valid"] and changed_snapshot["status"] == "task_changed",
             "the workflow must reject task drift after the TASK snapshot")
 
+    removed = dict(issue)
+    removed["labels"] = []
+    removed_result = evaluate_approval(
+        removed, "marekanto", task_sha, require_approval=True,
+        expected_approval_sha=valid["approval_sha256"],
+    )
+    _assert(not removed_result["valid"] and removed_result["status"] == "approval_removed",
+            "a previously verified approval must not disappear during a run")
+
+    changed_scope_audit = build_approval_comment(
+        task_sha, "Modify Sync.unshareDeck instead of Sync.shareDeck.", "yes, approve this exact scope"
+    )
+    changed_scope = dict(issue)
+    changed_scope["comments"] = issue["comments"] + [{
+        "author": {"login": "marekanto"}, "body": changed_scope_audit,
+        "createdAt": "2026-11-28T10:00:30Z",
+    }]
+    changed_scope_result = evaluate_approval(
+        changed_scope, "marekanto", task_sha, require_approval=True,
+        expected_approval_sha=valid["approval_sha256"],
+    )
+    _assert(not changed_scope_result["valid"] and changed_scope_result["status"] == "approval_changed",
+            "a new scope approval must not replace the approval used by an in-flight run")
+
     revoked = dict(issue)
     revoked["comments"] = issue["comments"] + [{
         "author": {"login": "marekanto"}, "body": REVOCATION_PREFIX + "\n\nReason: Scope withdrawn.",
@@ -1048,6 +1072,8 @@ def test_workflow_verifies_approval_before_agent_and_before_merge() -> None:
             "workflow must use the canonical payload builder and fingerprint verifier")
     _assert("--expected-task-sha" in workflow,
             "workflow must compare the exact captured TASK fingerprint")
+    _assert("--expected-approval-sha" in workflow and "--require-approval" in workflow,
+            "retries and pre-PR checks must preserve the exact approval used at agent start")
     maintenance_agent._workflow_invariants(".github/workflows/ai-issue.yml", workflow)
 
 
