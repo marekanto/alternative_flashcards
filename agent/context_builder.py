@@ -413,22 +413,24 @@ def build_context(task: str, source: str, extra_names: list[str] | None = None) 
                 else:
                     missing.append(f"html:{name}")
                 continue
-            if not re.fullmatch(r"[A-Za-z_$][\w$]{0,80}", name):
-                missing.append(f"unsupported:{name[:80]}")
-                continue
-            body = extract_named(source, name)
-            if body:
-                push(f"expanded:{name}", body)
-                continue
+            is_js_symbol = bool(re.fullmatch(r"[A-Za-z_$][\w$]{0,80}", name))
+            if is_js_symbol:
+                body = extract_named(source, name)
+                if body:
+                    push(f"expanded:{name}", body)
+                    continue
+                sync_body = extract_sync_method(source, name)
+                if sync_body:
+                    push(f"expanded:Sync.{name}", sync_body)
+                    continue
             css_body = extract_css_rule(source, name)
             if css_body:
                 push(f"expanded:css:{name}", css_body)
                 continue
-            sync_body = extract_sync_method(source, name)
-            if sync_body:
-                push(f"expanded:Sync.{name}", sync_body)
-                continue
-            missing.append(f"symbol:{name}")
+            if not is_js_symbol:
+                missing.append(f"unsupported:{name[:80]}")
+            else:
+                missing.append(f"symbol:{name}")
 
     if is_xp:
         push("init_block", extract_init_block(source))
