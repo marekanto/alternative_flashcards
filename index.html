@@ -882,8 +882,8 @@ function vStudy(v){
   const lvlInfo = getLevelInfo(S.settings.xp||0);
   const streak = computeStreak();
   const goal = Math.min(S.settings.dailyGoal||20, S.settings.newLimit);
-  const todayDone = todayCount >= goal;
   const totalDue = Math.min(due('').length, remaining);
+  const todayDone = todayCount >= goal && totalDue === 0;
   const streakStatus = todayDone ? t('study.todayDone') : (totalDue > 0 ? t('study.todayPending').replace('{n}', totalDue) : t('study.todayNoCards'));
   v.innerHTML = `<h2>${t('study.title')}</h2>
     <div class="c" style="padding:10px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;${todayDone ? '' : 'background:rgba(245,158,11,0.12);'}">
